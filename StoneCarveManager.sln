@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36705.20 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManagerWebAPI", "StoneCarveManagerWebAPI\StoneCarveManagerWebAPI.csproj", "{20187BB7-C106-408C-BA76-170F95568598}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManager.Model", "StoneCarveManager.Model\StoneCarveManager.Model.csproj", "{F5DD20F7-F3C9-45AF-A092-66D0324A5078}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManager.Services", "StoneCarveManager.Services\StoneCarveManager.Services.csproj", "{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20187BB7-C106-408C-BA76-170F95568598}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20187BB7-C106-408C-BA76-170F95568598}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20187BB7-C106-408C-BA76-170F95568598}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20187BB7-C106-408C-BA76-170F95568598}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5DD20F7-F3C9-45AF-A092-66D0324A5078}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5DD20F7-F3C9-45AF-A092-66D0324A5078}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5DD20F7-F3C9-45AF-A092-66D0324A5078}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5DD20F7-F3C9-45AF-A092-66D0324A5078}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6BFECBA6-9141-493D-A851-BD625D76D1BF}
+	EndGlobalSection
+EndGlobal

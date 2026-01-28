@@ -96,6 +96,50 @@ namespace StoneCarveManager.Services.Services
             };
         }
 
+        public async Task<bool> ApproveReviewAsync(int id)
+        {
+            var entity = await _context.ProductReviews.FindAsync(id);
+            if (entity == null)
+                return false;
+
+            entity.IsApproved = true;
+            entity.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RejectReviewAsync(int id)
+        {
+            var entity = await _context.ProductReviews.FindAsync(id);
+            if (entity == null)
+                return false;
+
+            entity.IsApproved = false;
+            entity.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // Mapiraj response, dodaš ovdje po potrebi (i custom flagove/VerifiedPurchase)
+        private ProductReviewResponse MapToResponse(ProductReview entity)
+        {
+            return new ProductReviewResponse
+            {
+                Id = entity.Id,
+                Rating = entity.Rating,
+                Comment = entity.Comment,
+                CreatedAt = entity.CreatedAt,
+                UpdatedAt = entity.UpdatedAt,
+                UserId = entity.UserId,
+                //UserName = entity.User?.Username,
+                ProductId = entity.ProductId,
+                ProductName = entity.Product?.Name,
+                OrderId = entity.OrderId,
+                IsApproved = entity.IsApproved
+                // Dodaj IsVerifiedPurchase ako želiš
+            };
+        }
+
 
         protected override IQueryable<ProductReview> ApplyFilter(IQueryable<ProductReview> query, ProductReviewSearchObject? search)
         {
@@ -161,28 +205,28 @@ namespace StoneCarveManager.Services.Services
             await base.BeforeInsert(entity, request);
         }
 
-        public async Task<bool> ApproveReviewAsync(int reviewId)
-        {
-            var review = await _context.ProductReviews.FindAsync(reviewId);
-            if (review == null)
-                return false;
+        //public async Task<bool> ApproveReviewAsync(int reviewId)
+        //{
+        //    var review = await _context.ProductReviews.FindAsync(reviewId);
+        //    if (review == null)
+        //        return false;
 
-            review.IsApproved = true;
-            review.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            return true;
-        }
+        //    review.IsApproved = true;
+        //    review.UpdatedAt = DateTime.UtcNow;
+        //    await _context.SaveChangesAsync();
+        //    return true;
+        //}
 
-        public async Task<bool> RejectReviewAsync(int reviewId)
-        {
-            var review = await _context.ProductReviews.FindAsync(reviewId);
-            if (review == null)
-                return false;
+        //public async Task<bool> RejectReviewAsync(int reviewId)
+        //{
+        //    var review = await _context.ProductReviews.FindAsync(reviewId);
+        //    if (review == null)
+        //        return false;
 
-            review.IsApproved = false;
-            review.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            return true;
-        }
+        //    review.IsApproved = false;
+        //    review.UpdatedAt = DateTime.UtcNow;
+        //    await _context.SaveChangesAsync();
+        //    return true;
+        //}
     }
 }

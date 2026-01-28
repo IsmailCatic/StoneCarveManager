@@ -25,6 +25,7 @@ namespace StoneCarveManager.Services.Services
         {
             var query = _context.Products
                 .Include(p => p.Images)
+                .Include(p => p.Reviews)
                 .AsQueryable();
 
             // Apply filter & paginaciju kao u bazi
@@ -56,6 +57,7 @@ namespace StoneCarveManager.Services.Services
         {
             var product = await _context.Products
                 .Include(p => p.Images)
+                .Include(p => p.Reviews)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null)

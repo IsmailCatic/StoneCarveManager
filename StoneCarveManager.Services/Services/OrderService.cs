@@ -27,47 +27,49 @@ namespace StoneCarveManager.Services.Services
             _fileService = fileService;
         }
 
-         public override async Task<PagedResult<OrderResponse>> GetAsync(OrderSearchObject search)
-    {
-        var query = _context.Orders
-            .Include(o => o.ProgressImages)
-            .AsQueryable();
+        public override async Task<PagedResult<OrderResponse>> GetAsync(OrderSearchObject search)
+         {
+            var query = _context.Orders
+                .Include(o => o.ProgressImages)
+                .Include(o => o.Review)
+                .AsQueryable();
 
-        query = ApplyFilter(query, search);
+            query = ApplyFilter(query, search);
 
-        int? totalCount = null;
-        if (search.IncludeTotalCount)
-            totalCount = await query.CountAsync();
+            int? totalCount = null;
+            if (search.IncludeTotalCount)
+                totalCount = await query.CountAsync();
 
-        if (!search.RetrieveAll)
-        {
-            if (search.Page.HasValue && search.PageSize.HasValue)
-                query = query.Skip(search.Page.Value * search.PageSize.Value)
-                             .Take(search.PageSize.Value);
-        }
+            if (!search.RetrieveAll)
+            {
+                if (search.Page.HasValue && search.PageSize.HasValue)
+                    query = query.Skip(search.Page.Value * search.PageSize.Value)
+                                    .Take(search.PageSize.Value);
+            }
 
-        var list = await query.ToListAsync();
-        var items = list.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+            var list = await query.ToListAsync();
+            var items = list.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
 
-        return new PagedResult<OrderResponse>
-        {
-            Items = items,
-            TotalCount = totalCount
-        };
-    }
+            return new PagedResult<OrderResponse>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
+         }
 
-    // GetById sa progres slikama
-    public override async Task<OrderResponse?> GetByIdAsync(int id)
-    {
-        var order = await _context.Orders
-            .Include(o => o.ProgressImages)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            // GetById sa progres slikama
+         public override async Task<OrderResponse?> GetByIdAsync(int id)
+            {
+                var order = await _context.Orders
+                    .Include(o => o.ProgressImages)
+                    .Include(o => o.Review)
+                    .FirstOrDefaultAsync(o => o.Id == id);
 
-        if (order == null)
-            return null;
+                if (order == null)
+                    return null;
 
-        return _mapper.Map<OrderResponse>(order);
-    }
+                return _mapper.Map<OrderResponse>(order);
+          }
 
 
         protected override IQueryable<Order> ApplyFilter(IQueryable<Order> query, OrderSearchObject? search)

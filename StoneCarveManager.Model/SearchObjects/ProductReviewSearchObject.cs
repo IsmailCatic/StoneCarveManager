@@ -7,5 +7,6 @@ namespace StoneCarveManager.Model.SearchObjects
         public int? ProductId { get; set; }
         public int? UserId { get; set; }
         public bool? IsApproved { get; set; }
+        public int? OrderId { get; set; }
     }
 }

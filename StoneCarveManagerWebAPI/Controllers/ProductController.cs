@@ -10,10 +10,13 @@ namespace StoneCarveManagerWebAPI.Controllers
         : BaseCRUDController<ProductResponse, ProductSearchObject, ProductInsertRequest, ProductUpdateRequest>
     {
         private readonly IProductService _productService;
+        private readonly IProductReviewService _reviewService;
 
-        public ProductController(IProductService service) : base(service)
+
+        public ProductController(IProductService service, IProductReviewService reviewService) : base(service)
         {
             _productService = service;
+            _reviewService = reviewService;
         }
 
         [HttpPatch("{id}/increment-view-count")]

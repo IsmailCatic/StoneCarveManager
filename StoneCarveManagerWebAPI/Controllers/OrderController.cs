@@ -10,10 +10,12 @@ namespace StoneCarveManagerWebAPI.Controllers
            : BaseCRUDController<OrderResponse, OrderSearchObject, OrderInsertRequest, OrderUpdateRequest>
     {
         private readonly IOrderService _orderService;
+        private readonly IProductReviewService _reviewService;
 
-        public OrderController(IOrderService service) : base(service)
+        public OrderController(IOrderService service, IProductReviewService reviewService) : base(service)
         {
             _orderService = service;
+            _reviewService = reviewService;
         }
 
 

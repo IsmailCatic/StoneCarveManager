@@ -47,6 +47,7 @@ namespace StoneCarveManager.Model.Responses
             public string? DeliveryZipCode { get; set; }
 
             public DateTime? DeliveryDate { get; set; }
+            public ProductReviewResponse? Review { get; set; }
             public List<OrderProgressImageResponse> ProgressImages { get; set; } = new();
         }
     }

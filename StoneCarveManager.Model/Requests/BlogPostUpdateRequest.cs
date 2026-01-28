@@ -22,5 +22,6 @@ namespace StoneCarveManager.Model.Requests
         public bool? IsActive { get; set; }
 
         public int? AuthorId { get; set; }
+        public int? CategoryId { get; set; }
     }
 }

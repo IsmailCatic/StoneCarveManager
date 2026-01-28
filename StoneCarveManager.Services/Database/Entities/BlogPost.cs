@@ -33,5 +33,7 @@ namespace StoneCarveManager.Services.Database.Entities
         public int AuthorId { get; set; }
         public User Author { get; set; } = null!;
         public ICollection<BlogImage> Images { get; set; } = new List<BlogImage>();
+        public int CategoryId { get; set; }
+        public BlogCategory Category { get; set; } = null!;
     }
 }

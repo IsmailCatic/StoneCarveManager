@@ -25,6 +25,7 @@ namespace StoneCarveManager.Services.Services
         {
             var query = _context.BlogPosts
                 .Include(bp => bp.Images)
+                .Include(bp => bp.Category)
                 .AsQueryable();
 
             query = ApplyFilter(query, search);
@@ -55,6 +56,7 @@ namespace StoneCarveManager.Services.Services
         {
             var blogPost = await _context.BlogPosts
                 .Include(bp => bp.Images)
+                .Include(bp => bp.Category)
                 .FirstOrDefaultAsync(bp => bp.Id == id);
 
             if (blogPost == null)
@@ -118,6 +120,9 @@ namespace StoneCarveManager.Services.Services
             {
                 query = query.Where(bp => bp.AuthorId == search.AuthorId.Value);
             }
+
+            if (search.CategoryId.HasValue)
+                query = query.Where(bp => bp.CategoryId == search.CategoryId.Value);
 
             return query;
         }

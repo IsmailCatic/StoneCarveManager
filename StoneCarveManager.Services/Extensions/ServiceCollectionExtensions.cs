@@ -25,9 +25,11 @@ namespace StoneCarveManager.Services.Extensions
             services.AddScoped<IMaterialService, MaterialService>();
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<IBlogPostService, BlogPostService>();
+            services.AddScoped<IBlogCategoryService, BlogCategoryService>();
             services.AddScoped<IProductImageService, ProductImageService>();
             services.AddScoped<IProductReviewService, ProductReviewService>();
             services.AddScoped<IFileService, AzureBlobFileService>();
+            services.AddScoped<IBusinessAnalyticsService, BusinessAnalyticsService>();
 
             // Register Role service
             services.AddScoped<IRoleService, RoleService>();

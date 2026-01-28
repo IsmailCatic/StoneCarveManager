@@ -25,5 +25,7 @@ namespace StoneCarveManager.Model.Requests
 
         [Required]
         public int AuthorId { get; set; }
+        [Required]
+        public int CategoryId { get; set; }
     }
 }

@@ -6,5 +6,6 @@ namespace StoneCarveManager.Model.SearchObjects
     {
         public bool? IsPublished { get; set; }
         public int? AuthorId { get; set; }
+        public int? CategoryId { get; set; }
     }
 }

@@ -40,6 +40,8 @@ namespace StoneCarveManagerWebAPI.Extensions
             config.NewConfig<User, UserDTO>()
                 .Map(dest => dest.Roles, src => src.UserRoles.Select(ur => ur.RoleId.ToString()));
             // ovdje kasnije možeš spojiti sa Role tablicom u Services ako želiš imena
+            config.NewConfig<BlogPost, BlogPostResponse>()
+                 .Map(dest => dest.CategoryName, src => src.Category.Name);
 
             // 2. Registracija IMapper u DI
             builder.Services.AddSingleton(config);

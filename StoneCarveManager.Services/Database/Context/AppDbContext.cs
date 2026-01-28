@@ -31,6 +31,7 @@ namespace StoneCarveManager.Services.Database.Context
 
         public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<BlogImage> BlogImages { get; set; }
+        public DbSet<BlogCategory> BlogCategories { get; set; }
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Category> Categories { get; set; }

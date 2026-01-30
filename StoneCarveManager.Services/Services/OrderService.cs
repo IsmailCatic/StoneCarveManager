@@ -1,4 +1,6 @@
-﻿using MapsterMapper;
+﻿using Mapster;
+using MapsterMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -10,6 +12,7 @@ using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,10 +30,41 @@ namespace StoneCarveManager.Services.Services
             _fileService = fileService;
         }
 
+        public override async Task<OrderResponse?> UpdateAsync(int id, OrderUpdateRequest request)
+        {
+            // Ovo iz base: nađi entitet, mapiraj promjene iz requesta, SaveChanges itd.
+            var entity = await _context.Orders.FindAsync(id);
+            if (entity == null)
+                return null;
+
+            // Mapiraj primitivne property-je iz requesta u entity (ili koristi MapUpdateToEntity ako imaš)
+            // (ili zovi svoju mapiraj metodu ako je već postoji)
+            request.Adapt(entity);
+
+
+            await _context.SaveChangesAsync();
+
+            // --- OVO JE KLJUČNO ---
+            // Sada ponovo učitaj order sa svim navigacijama!
+            var entityWithNavs = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.ProgressImages).ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.Review)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (entityWithNavs == null)
+                return null;
+
+            // Mapiraj DTO (Mapster ili AutoMapper)
+            return _mapper.Map<OrderResponse>(entityWithNavs); // ili entityWithNavs.Adapt<OrderResponse>() za Mapster
+        }
+
         public override async Task<PagedResult<OrderResponse>> GetAsync(OrderSearchObject search)
          {
             var query = _context.Orders
+                .Include(o => o.User)
                 .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
                 .Include(o => o.Review)
                 .AsQueryable();
 
@@ -49,6 +83,7 @@ namespace StoneCarveManager.Services.Services
 
             var list = await query.ToListAsync();
             var items = list.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+            //var items = list.Adapt<List<OrderResponse>>(); // <-- OVO JE ISPAVNO ZA MAPSTER
 
             return new PagedResult<OrderResponse>
             {
@@ -61,7 +96,9 @@ namespace StoneCarveManager.Services.Services
          public override async Task<OrderResponse?> GetByIdAsync(int id)
             {
                 var order = await _context.Orders
+                    .Include(o => o.User)
                     .Include(o => o.ProgressImages)
+                        .ThenInclude(pi => pi.UploadedByUser)
                     .Include(o => o.Review)
                     .FirstOrDefaultAsync(o => o.Id == id);
 
@@ -200,6 +237,7 @@ namespace StoneCarveManager.Services.Services
             // Upload file using file service (container name 'order-progress' chosen)
             var imageUrl = await _fileService.UploadAsync(request.File, "order-progress", null, cancellationToken);
 
+
             var progressImage = new OrderProgressImage
             {
                 OrderId = orderId,
@@ -212,7 +250,40 @@ namespace StoneCarveManager.Services.Services
             _context.OrderProgressImages.Add(progressImage);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return _mapper.Map<OrderProgressImageResponse>(progressImage);
+
+            // read again w user
+            var piWithUser = await _context.OrderProgressImages
+                .Include(p => p.UploadedByUser)
+                .FirstOrDefaultAsync(p => p.Id == progressImage.Id, cancellationToken);
+
+            return _mapper.Map<OrderProgressImageResponse>(piWithUser);
+
+            //return _mapper.Map<OrderProgressImageResponse>(progressImage);
+        }
+
+        public async Task<bool> DeleteOrderProgressImageAsync(int id, CancellationToken cancellationToken = default)
+        {
+            var pi = await _context.OrderProgressImages.FindAsync(new object[] { id }, cancellationToken);
+            if (pi == null)
+                return false;
+
+            // Delete blob using file service if ImageUrl is not null/empty
+            if (!string.IsNullOrWhiteSpace(pi.ImageUrl))
+            {
+                try
+                {
+                    await _fileService.DeleteAsync(pi.ImageUrl, "order-progress", cancellationToken);
+                }
+                catch
+                {
+                    // Log or ignore blob delete failures; continue to remove DB record
+                }
+            }
+
+            _context.OrderProgressImages.Remove(pi);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return true;
         }
 
         private string GenerateOrderNumber()

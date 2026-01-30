@@ -18,6 +18,7 @@ namespace StoneCarveManager.Services.Database.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? LastLoginAt { get; set; }
+        public DateTime? DateOfBirth { get; set; }
         public virtual ICollection<UserRole> UserRoles { get; set; }
 
 

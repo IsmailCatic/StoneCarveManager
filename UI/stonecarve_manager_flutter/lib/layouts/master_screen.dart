@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stonecarve_manager_flutter/screens/orders_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/products_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/materials_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/categories_screen.dart';
@@ -61,6 +62,17 @@ class _MasterScreenState extends State<MasterScreen> {
                   MaterialPageRoute(
                     builder: (context) => const DashboardScreen(),
                   ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long),
+              title: const Text('Orders'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OrdersScreen()),
                 );
               },
             ),

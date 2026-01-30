@@ -390,34 +390,32 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     try {
                       if (product == null) {
                         await _productProvider.createProduct(newProduct);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Product added successfully'),
-                            ),
-                          );
-                        }
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Product added successfully'),
+                          ),
+                        );
                       } else {
                         await _productProvider.updateProduct(
                           product.id!,
                           newProduct,
                         );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Product updated successfully'),
-                            ),
-                          );
-                        }
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Product updated successfully'),
+                          ),
+                        );
                       }
+                      if (!mounted) return;
                       Navigator.of(context).pop();
                       _loadProducts();
                     } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
                   child: Text(product == null ? 'Add' : 'Update'),
@@ -446,22 +444,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
               onPressed: () async {
                 try {
                   await _productProvider.deleteProduct(product.id!);
+                  if (!mounted) return;
                   Navigator.of(context).pop();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Product deleted successfully'),
-                      ),
-                    );
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Product deleted successfully'),
+                    ),
+                  );
                   _loadProducts();
                 } catch (e) {
+                  if (!mounted) return;
                   Navigator.of(context).pop();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error deleting product: $e')),
-                    );
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting product: $e')),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

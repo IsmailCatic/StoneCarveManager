@@ -50,7 +50,7 @@ namespace StoneCarveManager.Services.Services
                 Email = model.Email,
                 UserName = model.Email,
                 //ProfilePicture = model.ProfilePictureBytes,
-                //DateOfBirth = model.DateOfBirth,
+                DateOfBirth = model.DateOfBirth,
                 //CountryId = model.CountryId,
                 //CityId = model.CityId,
                 //GenderId = model.GenderId,

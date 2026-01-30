@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/dashboard_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -192,7 +193,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () {
-                          // TODO: Navigate to register screen
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
                         },
                         child: const Text(
                           'Don\'t have an account? Register here',

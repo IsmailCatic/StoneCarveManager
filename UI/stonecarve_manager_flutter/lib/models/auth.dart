@@ -14,7 +14,6 @@ class RegisterRequest {
   String? lastName;
   String? email;
   String? password;
-  String? profilePicture;
   DateTime? dateOfBirth;
 
   RegisterRequest({
@@ -22,7 +21,6 @@ class RegisterRequest {
     this.lastName,
     this.email,
     this.password,
-    this.profilePicture,
     this.dateOfBirth,
   });
 
@@ -32,7 +30,6 @@ class RegisterRequest {
       'lastName': lastName,
       'email': email,
       'password': password,
-      'profilePicture': profilePicture,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
     };
   }

@@ -12,5 +12,8 @@ namespace StoneCarveManager.Services.IServices
        : ICRUDService<OrderResponse, OrderSearchObject, OrderInsertRequest, OrderUpdateRequest>
     {
         Task<OrderProgressImageResponse> AddOrderProgressImageAsync(int orderId, OrderProgressImageUploadRequest request, CancellationToken cancellationToken = default);
+
+        // Delete an order progress image by id. Returns true if deleted, false if not found.
+        Task<bool> DeleteOrderProgressImageAsync(int id, CancellationToken cancellationToken = default);
     }
 }

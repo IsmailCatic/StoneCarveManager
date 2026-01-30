@@ -3,9 +3,16 @@ using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses.StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
 using StoneCarveManager.Services.IServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
+using StoneCarveManager.Model.Requests;
+using StoneCarveManager.Model.Responses;
 
 namespace StoneCarveManagerWebAPI.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class OrderController
            : BaseCRUDController<OrderResponse, OrderSearchObject, OrderInsertRequest, OrderUpdateRequest>
     {
@@ -24,6 +31,15 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var result = await _orderService.AddOrderProgressImageAsync(orderId, request, cancellationToken);
             return Ok(result);
+        }
+
+        [HttpDelete("progress-images/{id}")]
+        public async Task<IActionResult> DeleteProgressImage(int id, CancellationToken cancellationToken)
+        {
+            var deleted = await _orderService.DeleteOrderProgressImageAsync(id, cancellationToken);
+            if (!deleted)
+                return NotFound();
+            return NoContent();
         }
 
         [HttpGet("{orderId}/review")]

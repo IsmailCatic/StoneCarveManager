@@ -13,6 +13,7 @@ class UsersScreen extends StatefulWidget {
 class _UsersScreenState extends State<UsersScreen> {
   final UserProvider _userProvider = UserProvider();
   List<User> _users = [];
+  List<User> _filteredUsers = [];
   bool _isLoading = true;
   String _searchQuery = '';
   List<String> _availableRoles = [];
@@ -44,19 +45,12 @@ class _UsersScreenState extends State<UsersScreen> {
     setState(() {
       _isLoading = true;
     });
-
     try {
-      if (_searchQuery.isEmpty) {
-        final result = await _userProvider.get();
-        setState(() {
-          _users = result.items ?? [];
-        });
-      } else {
-        final result = await _userProvider.searchUsers(_searchQuery);
-        setState(() {
-          _users = result;
-        });
-      }
+      final result = await _userProvider.get();
+      setState(() {
+        _users = result.items ?? [];
+        _filteredUsers = _users;
+      });
     } catch (e) {
       // handle error
     } finally {
@@ -102,8 +96,15 @@ class _UsersScreenState extends State<UsersScreen> {
               onChanged: (value) {
                 setState(() {
                   _searchQuery = value;
+                  _filteredUsers = _users.where((user) {
+                    final query = value.toLowerCase();
+                    return user.displayName.toLowerCase().contains(query) ||
+                        (user.email?.toLowerCase().contains(query) ?? false) ||
+                        user.roles.any(
+                          (role) => role.toLowerCase().contains(query),
+                        );
+                  }).toList();
                 });
-                _loadUsers();
               },
             ),
             const SizedBox(height: 16),
@@ -136,12 +137,12 @@ class _UsersScreenState extends State<UsersScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _users.isEmpty
+                  : _filteredUsers.isEmpty
                   ? const Center(child: Text('No users found'))
                   : ListView.builder(
-                      itemCount: _users.length,
+                      itemCount: _filteredUsers.length,
                       itemBuilder: (context, index) {
-                        final user = _users[index];
+                        final user = _filteredUsers[index];
                         return Card(
                           elevation: 2,
                           margin: const EdgeInsets.only(bottom: 8),
@@ -281,6 +282,7 @@ class _UsersScreenState extends State<UsersScreen> {
       text: user?.lastName ?? '',
     );
     final emailController = TextEditingController(text: user?.email ?? '');
+    final passwordController = TextEditingController();
     // final usernameController = TextEditingController(
     //   text: user?.username ?? '',
     // );
@@ -291,12 +293,10 @@ class _UsersScreenState extends State<UsersScreen> {
     // List of all possible roles
     final List<String> availableRoles = _availableRoles;
 
-    // If user has a role, use the first one; otherwise, set to 'User'
-    List<String> selectedRoles = (user?.roles != null && user!.roles.isNotEmpty)
-        ? List<String>.from(user.roles)
-        : _availableRoles.isNotEmpty
-        ? [availableRoles.first]
-        : ['User'];
+    // Use a single role string for creation
+    String selectedRole = (user?.roles != null && user!.roles.isNotEmpty)
+        ? user.roles.first
+        : (_availableRoles.isNotEmpty ? availableRoles.first : 'User');
     bool isActive = user?.isActive ?? true;
     bool isBlocked = user?.isBlocked ?? false;
 
@@ -335,6 +335,16 @@ class _UsersScreenState extends State<UsersScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
+                      if (user == null) ...[
+                        TextField(
+                          controller: passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'Password *',
+                          ),
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       TextField(
                         controller: emailController,
                         decoration: const InputDecoration(labelText: 'Email *'),
@@ -359,13 +369,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
-                        value:
-                            selectedRoles.isNotEmpty &&
-                                _availableRoles.contains(selectedRoles.first)
-                            ? selectedRoles.first
-                            : (_availableRoles.isNotEmpty
-                                  ? _availableRoles.first
-                                  : 'User'),
+                        value: selectedRole,
                         decoration: const InputDecoration(labelText: 'Role'),
                         items: _availableRoles
                             .map(
@@ -377,7 +381,7 @@ class _UsersScreenState extends State<UsersScreen> {
                             .toList(),
                         onChanged: (value) {
                           setState(() {
-                            selectedRoles = [value!];
+                            selectedRole = value!;
                           });
                         },
                       ),
@@ -413,7 +417,8 @@ class _UsersScreenState extends State<UsersScreen> {
                   onPressed: () async {
                     if (firstNameController.text.isEmpty ||
                         lastNameController.text.isEmpty ||
-                        emailController.text.isEmpty) {
+                        emailController.text.isEmpty ||
+                        (user == null && passwordController.text.isEmpty)) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Please fill in required fields'),
@@ -427,15 +432,14 @@ class _UsersScreenState extends State<UsersScreen> {
                       firstName: firstNameController.text,
                       lastName: lastNameController.text,
                       email: emailController.text,
-                      // username: usernameController.text,
+                      password: user == null ? passwordController.text : null,
                       phoneNumber: phoneController.text.isEmpty
                           ? null
                           : phoneController.text,
-
-                      // role: selectedRole,
                       isActive: isActive,
                       isBlocked: isBlocked,
-                      roles: selectedRoles,
+                      roles: user?.roles ?? [],
+                      role: selectedRole,
                     );
 
                     try {
@@ -499,24 +503,24 @@ class _UsersScreenState extends State<UsersScreen> {
               onPressed: () async {
                 try {
                   await _userProvider.blockUser(user.id!, isBlocking);
+                  if (!mounted) return;
                   Navigator.of(context).pop();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'User ${isBlocking ? 'blocked' : 'unblocked'} successfully',
-                        ),
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'User ${isBlocking ? 'blocked' : 'unblocked'} successfully',
                       ),
-                    );
-                  }
+                    ),
+                  );
                   _loadUsers();
                 } catch (e) {
+                  if (!mounted) return;
                   Navigator.of(context).pop();
-                  if (mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
               style: ElevatedButton.styleFrom(

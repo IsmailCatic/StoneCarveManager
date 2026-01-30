@@ -17,14 +17,26 @@ class UserProvider extends BaseProvider<User> {
   }
 
   Future<User> createUser(User user) async {
-    return await insert(user.toJson());
+    // Use the special endpoint and correct payload for user creation
+    var url = "http://localhost:5021/api/User/add-user";
+    var headers = createHeaders();
+    var jsonRequest = jsonEncode(user.toInsertJson());
+    var response = await http.post(
+      Uri.parse(url),
+      headers: headers,
+      body: jsonRequest,
+    );
+    if (isValidResponse(response)) {
+      var data = jsonDecode(response.body);
+      return fromJson(data);
+    } else {
+      throw Exception("Failed to create user: ${response.body}");
+    }
   }
 
   // Future<User> createUser(User user) async {
   //   return await insert(user.toInsertJson());
   // }
-
-  
 
   Future<User> updateUser(int id, User user) async {
     return await update(id, user.toJson());

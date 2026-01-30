@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StoneCarveManager.Model.Responses;
+using StoneCarveManager.Model.Responses.StoneCarveManager.Model.Responses;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.Extensions;
@@ -35,13 +36,9 @@ namespace StoneCarveManagerWebAPI.Extensions
 
             // 1. Konfiguracija Mapster-a
             var config = TypeAdapterConfig.GlobalSettings;
+            config.RegisterMapsterMappings();
 
-            // Custom mapping za User → UserDTO
-            config.NewConfig<User, UserDTO>()
-                .Map(dest => dest.Roles, src => src.UserRoles.Select(ur => ur.RoleId.ToString()));
-            // ovdje kasnije možeš spojiti sa Role tablicom u Services ako želiš imena
-            config.NewConfig<BlogPost, BlogPostResponse>()
-                 .Map(dest => dest.CategoryName, src => src.Category.Name);
+
 
             // 2. Registracija IMapper u DI
             builder.Services.AddSingleton(config);

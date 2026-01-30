@@ -133,8 +133,8 @@ namespace StoneCarveManager.Services.Services
                 LastName = insertRequest.LastName,
                 Email = insertRequest.Email,
                 UserName = insertRequest.Email,
-                IsActive = true,
-                IsBlocked = false,
+                IsActive = insertRequest.IsActive,
+                IsBlocked = insertRequest.IsBlocked,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -145,12 +145,16 @@ namespace StoneCarveManager.Services.Services
                 throw new Exception($"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
 
+            var role = await _roleManager.FindByNameAsync(insertRequest.Role);
+            if (role == null) throw new Exception($"Role '{insertRequest.Role}' does not exist");
+            //await _userManager.AddToRoleAsync(newUser, role.Name);
+
             // Add the user to the default "User" role
-            var role = await _roleManager.FindByNameAsync(Roles.User);
-            if (role == null)
-            {
-                throw new Exception("Default role 'User' does not exist");
-            }
+            //var role = await _roleManager.FindByNameAsync(Roles.User);
+            //if (role == null)
+            //{
+            //    throw new Exception("Default role 'User' does not exist");
+            //}
 
             var userAddedToRole = await _userManager.AddToRoleAsync(newUser, role.Name);
             if (!userAddedToRole.Succeeded)

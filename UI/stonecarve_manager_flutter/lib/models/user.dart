@@ -11,6 +11,7 @@ class User {
   DateTime? createdAt;
   DateTime? lastLoginAt;
   List<String> roles;
+  String? role; // for insert
 
   User({
     this.id,
@@ -25,6 +26,7 @@ class User {
     this.createdAt,
     this.lastLoginAt,
     required this.roles,
+    this.role,
   });
 
   User.fromJson(Map<String, dynamic> json, {required this.roles}) {
@@ -71,6 +73,7 @@ class User {
     "profileImageUrl": profileImageUrl,
     "isActive": isActive,
     "isBlocked": isBlocked,
+    "role": role,
   };
 
   String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();

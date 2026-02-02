@@ -13,6 +13,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: 'Dashboard',
+      currentRoute: '/',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

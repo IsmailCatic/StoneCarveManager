@@ -75,7 +75,7 @@ namespace StoneCarveManager.Services.Services
             if (product == null)
                 throw new KeyNotFoundException("Product not found");
 
-            var imageUrl = await _fileService.UploadAsync(request.File, "product-images");
+            var imageUrl = await _fileService.UploadAsync(request.File, "product-images", null, cancellationToken);
 
             if (request.IsPrimary)
             {

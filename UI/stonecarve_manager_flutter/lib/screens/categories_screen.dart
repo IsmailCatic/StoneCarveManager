@@ -48,6 +48,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: 'Categories',
+      currentRoute: '/categories',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -82,49 +83,67 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       itemBuilder: (context, index) {
                         final category = _categories[index];
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 6,
+                          ),
                           child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
                             leading: CircleAvatar(
+                              radius: 20,
                               child: Icon(
                                 category.parentCategoryId == null
                                     ? Icons.category
                                     : Icons.subdirectory_arrow_right,
+                                size: 20,
                               ),
                             ),
-                            title: Text(category.name ?? 'Unnamed Category'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            title: Text(
+                              category.name ?? 'Unnamed Category',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle: Text(
+                              category.description ?? 'No description',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(category.description ?? 'No description'),
-                                if (category.parentCategoryId != null)
-                                  Text(
-                                    'Parent ID: ${category.parentCategoryId}',
+                                if (category.isActive == true)
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green,
+                                    size: 16,
                                   ),
-                                Text(
-                                  'Status: ${category.isActive == true ? 'Active' : 'Inactive'}',
+                                PopupMenuButton(
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'subcategory',
+                                      child: Text('Add Subcategory'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete'),
+                                    ),
+                                  ],
+                                  onSelected: (value) {
+                                    // TODO: Implement edit/delete functionality
+                                  },
                                 ),
                               ],
                             ),
-                            trailing: PopupMenuButton(
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Edit'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'subcategory',
-                                  child: Text('Add Subcategory'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete'),
-                                ),
-                              ],
-                              onSelected: (value) {
-                                // TODO: Implement edit/delete functionality
-                              },
-                            ),
-                            isThreeLine: true,
                           ),
                         );
                       },

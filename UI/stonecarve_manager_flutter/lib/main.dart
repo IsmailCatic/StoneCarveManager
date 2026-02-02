@@ -2,19 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/login_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/dashboard_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/portfolio_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/products_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/materials_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/categories_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/blog_post_list_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/orders_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/users_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/analytics_screen.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Potrebno za async operacije prije runApp
 
-  WidgetsFlutterBinding.ensureInitialized();  // Potrebno za async operacije prije runApp
-  
   // Učitaj token iz storage prije pokretanja app-a
   await AuthProvider.loadToken();
-  
+
   runApp(const StoneCarveManagerApp());
-  
 }
 
 class StoneCarveManagerApp extends StatelessWidget {
@@ -43,9 +46,14 @@ class StoneCarveManagerApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/': (context) => const DashboardScreen(),
+        '/orders': (context) => const OrdersScreen(),
         '/products': (context) => const ProductsScreen(),
         '/materials': (context) => const MaterialsScreen(),
         '/categories': (context) => const CategoriesScreen(),
+        '/users': (context) => const UsersScreen(),
+        '/portfolio': (context) => const PortfolioScreen(),
+        '/blog': (context) => BlogPostListScreen(authProvider: AuthProvider()),
+        '/analytics': (context) => const AnalyticsScreen(),
       },
     );
   }

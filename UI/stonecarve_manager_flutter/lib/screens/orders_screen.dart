@@ -49,6 +49,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: 'Orders',
+      currentRoute: '/orders',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

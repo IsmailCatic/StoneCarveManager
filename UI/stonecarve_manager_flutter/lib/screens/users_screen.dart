@@ -64,6 +64,7 @@ class _UsersScreenState extends State<UsersScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: 'Users',
+      currentRoute: '/users',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

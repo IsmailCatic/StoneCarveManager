@@ -48,6 +48,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: 'Products',
+      currentRoute: '/products',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

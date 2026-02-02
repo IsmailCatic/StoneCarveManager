@@ -70,7 +70,7 @@ namespace StoneCarveManager.Services.Services
             var blogPost = await _context.BlogPosts.Include(bp => bp.Images).FirstOrDefaultAsync(bp => bp.Id == blogPostId, cancellationToken);
             if (blogPost == null) throw new KeyNotFoundException("Blog post not found");
 
-            var imageUrl = await _fileService.UploadAsync(request.File, "blog-images");
+            var imageUrl = await _fileService.UploadAsync(request.File, "blog-images", null, cancellationToken);
 
             var entity = new BlogImage
             {
@@ -93,6 +93,8 @@ namespace StoneCarveManager.Services.Services
                 UploadedAt = entity.UploadedAt,
                 BlogPostId = entity.BlogPostId
             };
+
+
         }
 
         protected override IQueryable<BlogPost> ApplyFilter(IQueryable<BlogPost> query, BlogPostSearchObject? search)

@@ -49,6 +49,7 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: 'Materials',
+      currentRoute: '/materials',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -81,75 +82,255 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                   : GridView.builder(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.8,
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.85,
                           ),
                       itemCount: _materials.length,
                       itemBuilder: (context, index) {
                         final material = _materials[index];
                         return Card(
-                          elevation: 4,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.terrain, size: 40),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
+                          elevation: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(4),
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.terrain,
+                                    size: 64,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
                                         material.name ?? 'Unknown Material',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '\$${material.pricePerUnit?.toStringAsFixed(2) ?? '0.00'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.green[700],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Stock: ${material.quantityInStock ?? 0}',
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                      const Spacer(),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.edit,
+                                              size: 18,
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () async {
+                                              // Implement edit functionality
+                                              final updatedMaterial = await showDialog<stone_material.StoneMaterial>(
+                                                context: context,
+                                                builder: (context) {
+                                                  final nameController =
+                                                      TextEditingController(
+                                                        text: material.name,
+                                                      );
+                                                  final priceController =
+                                                      TextEditingController(
+                                                        text:
+                                                            material
+                                                                .pricePerUnit
+                                                                ?.toString() ??
+                                                            '',
+                                                      );
+                                                  final quantityController =
+                                                      TextEditingController(
+                                                        text:
+                                                            material
+                                                                .quantityInStock
+                                                                ?.toString() ??
+                                                            '',
+                                                      );
+                                                  return AlertDialog(
+                                                    title: const Text(
+                                                      'Edit Material',
+                                                    ),
+                                                    content: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        TextField(
+                                                          controller:
+                                                              nameController,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                labelText:
+                                                                    'Name',
+                                                              ),
+                                                        ),
+                                                        TextField(
+                                                          controller:
+                                                              priceController,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                labelText:
+                                                                    'Price per Unit',
+                                                              ),
+                                                          keyboardType:
+                                                              TextInputType.numberWithOptions(
+                                                                decimal: true,
+                                                              ),
+                                                        ),
+                                                        TextField(
+                                                          controller:
+                                                              quantityController,
+                                                          decoration:
+                                                              const InputDecoration(
+                                                                labelText:
+                                                                    'Quantity in Stock',
+                                                              ),
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .number,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                            ),
+                                                        child: const Text(
+                                                          'Cancel',
+                                                        ),
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () {
+                                                          final updated = stone_material.StoneMaterial(
+                                                            id: material.id,
+                                                            name: nameController
+                                                                .text,
+                                                            pricePerUnit:
+                                                                double.tryParse(
+                                                                  priceController
+                                                                      .text,
+                                                                ) ??
+                                                                0,
+                                                            quantityInStock:
+                                                                int.tryParse(
+                                                                  quantityController
+                                                                      .text,
+                                                                ) ??
+                                                                0,
+                                                          );
+                                                          Navigator.pop(
+                                                            context,
+                                                            updated,
+                                                          );
+                                                        },
+                                                        child: const Text(
+                                                          'Save',
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                              if (updatedMaterial != null) {
+                                                await _materialProvider.update(
+                                                  material.id!,
+                                                  updatedMaterial,
+                                                );
+                                                _loadMaterials();
+                                              }
+                                            },
+                                          ),
+                                          const SizedBox(width: 4),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              size: 18,
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () async {
+                                              // Implement delete functionality
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text(
+                                                    'Delete Material',
+                                                  ),
+                                                  content: const Text(
+                                                    'Are you sure you want to delete this material?',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                            false,
+                                                          ),
+                                                      child: const Text(
+                                                        'Cancel',
+                                                      ),
+                                                    ),
+                                                    ElevatedButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                            true,
+                                                          ),
+                                                      child: const Text(
+                                                        'Delete',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                await _materialProvider.delete(
+                                                  material.id!,
+                                                );
+                                                _loadMaterials();
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  material.description ?? 'No description',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Price: \$${material.pricePerUnit?.toStringAsFixed(2) ?? '0.00'}/${material.unit ?? 'unit'}',
-                                ),
-                                Text(
-                                  'Stock: ${material.quantityInStock ?? 0} ${material.unit ?? ''}',
-                                ),
-                                Text(
-                                  'Available: ${material.isAvailable == true ? 'Yes' : 'No'}',
-                                ),
-                                const Spacer(),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit),
-                                      onPressed: () {
-                                        // TODO: Implement edit functionality
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete),
-                                      onPressed: () {
-                                        // TODO: Implement delete functionality
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         );
                       },

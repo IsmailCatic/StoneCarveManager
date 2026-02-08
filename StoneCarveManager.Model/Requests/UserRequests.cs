@@ -31,6 +31,8 @@ namespace StoneCarveManager.Model.Requests
             public string? ProfileImageUrl { get; set; }
             public bool? IsActive { get; set; }
             public bool? IsBlocked { get; set; }
+            public string Role { get; set; }
+
         }
 
     }

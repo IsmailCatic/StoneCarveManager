@@ -13,5 +13,12 @@ namespace StoneCarveManager.Services.IServices
         Task<ProductImageResponse> AddProductImageAsync(int productId, ProductImageUploadRequest request, CancellationToken cancellationToken = default);
 
         Task DeleteProductImageAsync(int productId, int imageId, CancellationToken cancellationToken = default);
+
+        // State machine methods
+        ProductResponse Activate(int id);
+        ProductResponse Hide(int id);
+        ProductResponse MakeService(int id);
+        ProductResponse AddToPortfolio(int id);
+        List<string> AllowedActions(int id);
     }
 }

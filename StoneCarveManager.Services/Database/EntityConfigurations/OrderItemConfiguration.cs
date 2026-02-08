@@ -28,7 +28,6 @@ namespace StoneCarveManager.Services.Database.EntityConfigurations
                 .HasColumnType("decimal(18,2)")
                 .HasDefaultValue(0);
 
-            builder.Ignore(x => x.Total);
 
             // Relationships
             builder.HasOne(x => x.Order)

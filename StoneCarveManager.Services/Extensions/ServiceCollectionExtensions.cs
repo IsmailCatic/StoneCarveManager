@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.IServices;
 using StoneCarveManager.Services.Services;
+using StoneCarveManager.Services.ProductStateMachine;
 
 namespace StoneCarveManager.Services.Extensions
 {
@@ -35,6 +36,24 @@ namespace StoneCarveManager.Services.Extensions
             services.AddScoped<IRoleService, RoleService>();
 
             services.AddScoped<IOrderService, OrderService>();
+            
+            // Register Cart service
+            services.AddScoped<ICartService, CartService>();
+            
+            // Register Payment service
+            services.AddScoped<IPaymentService, PaymentService>();
+            
+            // Register Checkout service
+            services.AddScoped<ICheckoutService, CheckoutService>();
+
+            // Register Product State Machine
+            services.AddTransient<BaseProductState>();
+            services.AddTransient<InitialProductState>();
+            services.AddTransient<DraftProductState>();
+            services.AddTransient<ActiveProductState>();
+            services.AddTransient<ServiceProductState>();
+            services.AddTransient<PortfolioProductState>();
+            services.AddTransient<HiddenProductState>();
         }
     }
 }

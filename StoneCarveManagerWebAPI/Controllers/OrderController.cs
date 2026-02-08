@@ -81,6 +81,38 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Get orders filtered by date range for better performance with large datasets
+        /// </summary>
+        /// <param name="startDate">Start date (inclusive)</param>
+        /// <param name="endDate">End date (inclusive)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of orders within the specified date range</returns>
+        [HttpGet("by-date-range")]
+        public async Task<ActionResult<List<OrderResponse>>> GetOrdersByDateRange(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            CancellationToken cancellationToken = default)
+        {
+            var orders = await _orderService.GetOrdersByDateRangeAsync(startDate, endDate, cancellationToken);
+            return Ok(orders);
+        }
+
+        /// <summary>
+        /// Get monthly summary with pre-aggregated order data and revenue for a specific year
+        /// </summary>
+        /// <param name="year">Year to get summary for (e.g., 2024)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Monthly breakdown with order counts, revenue, and detailed orders per month</returns>
+        [HttpGet("monthly-summary")]
+        public async Task<ActionResult<OrderMonthlySummaryResponse>> GetMonthlySummary(
+            [FromQuery] int year,
+            CancellationToken cancellationToken = default)
+        {
+            var summary = await _orderService.GetMonthlySummaryAsync(year, cancellationToken);
+            return Ok(summary);
+        }
+
     }
 
 }

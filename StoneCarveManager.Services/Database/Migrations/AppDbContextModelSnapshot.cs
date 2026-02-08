@@ -814,6 +814,9 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("TransactionId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -846,6 +849,13 @@ namespace StoneCarveManager.Services.Database.Migrations
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
+                    b.Property<string>("ClientChallenge")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("CompletionYear")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -871,6 +881,10 @@ namespace StoneCarveManager.Services.Database.Migrations
                     b.Property<bool>("IsInPortfolio")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<int>("MaterialId")
                         .HasColumnType("int");
 
@@ -878,6 +892,14 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OurSolution")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PortfolioDescription")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
@@ -889,10 +911,21 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .HasColumnType("nvarchar(1000)")
                         .HasDefaultValue("draft");
 
+                    b.Property<int?>("ProjectDuration")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProjectOutcome")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<int>("StockQuantity")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("TechniquesUsed")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1257,7 +1290,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         new
                         {
                             Id = -1,
-                            CreatedAt = new DateTime(2026, 1, 29, 16, 0, 46, 856, DateTimeKind.Utc).AddTicks(3597),
+                            CreatedAt = new DateTime(2026, 2, 3, 11, 22, 57, 838, DateTimeKind.Utc).AddTicks(4380),
                             Description = "",
                             IsActive = true,
                             Name = "Admin",
@@ -1266,7 +1299,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         new
                         {
                             Id = -2,
-                            CreatedAt = new DateTime(2026, 1, 29, 16, 0, 46, 856, DateTimeKind.Utc).AddTicks(3599),
+                            CreatedAt = new DateTime(2026, 2, 3, 11, 22, 57, 838, DateTimeKind.Utc).AddTicks(4384),
                             Description = "",
                             IsActive = true,
                             Name = "Employee",
@@ -1275,7 +1308,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         new
                         {
                             Id = -3,
-                            CreatedAt = new DateTime(2026, 1, 29, 16, 0, 46, 856, DateTimeKind.Utc).AddTicks(3601),
+                            CreatedAt = new DateTime(2026, 2, 3, 11, 22, 57, 838, DateTimeKind.Utc).AddTicks(4385),
                             Description = "",
                             IsActive = true,
                             Name = "User",
@@ -1394,8 +1427,8 @@ namespace StoneCarveManager.Services.Database.Migrations
                         {
                             Id = -999,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "3bcf7534-f21f-43a8-9f42-990c7b4fb0cc",
-                            CreatedAt = new DateTime(2026, 1, 29, 16, 0, 46, 757, DateTimeKind.Utc).AddTicks(2497),
+                            ConcurrencyStamp = "0f7514d0-c13b-4a7e-a0e6-1c8475208fb2",
+                            CreatedAt = new DateTime(2026, 2, 3, 11, 22, 57, 778, DateTimeKind.Utc).AddTicks(1595),
                             Email = "ismail.catic@edu.fit.ba",
                             EmailConfirmed = true,
                             FirstName = "Ismail",
@@ -1405,9 +1438,9 @@ namespace StoneCarveManager.Services.Database.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "ISMAIL.CATIC@EDU.FIT.BA",
                             NormalizedUserName = "ISMAIL.CATIC@EDU.FIT.BA",
-                            PasswordHash = "AQAAAAIAAYagAAAAEG8VQsrrn23WLjyswovV9FoJ2cquTAD9oPtb6wfVgwOCawIr66Z/XD0rYL0YPJSriw==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEGAm4grnBBCbjXrhrQNZ3A4zgzb43USFpHxoiSvhm0KCcIAqth5LeabiVkdsOyhtBQ==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "73ed3ae4-1921-45ee-b4a5-6e808183c1f0",
+                            SecurityStamp = "b2ad5d1b-c06c-4663-bf40-d134ff4f8e32",
                             TwoFactorEnabled = false,
                             UserName = "ismail.catic@edu.fit.ba"
                         });
@@ -1441,7 +1474,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         {
                             UserId = -999,
                             RoleId = -1,
-                            DateAssigned = new DateTime(2026, 1, 29, 16, 0, 46, 856, DateTimeKind.Utc).AddTicks(3660)
+                            DateAssigned = new DateTime(2026, 2, 3, 11, 22, 57, 838, DateTimeKind.Utc).AddTicks(4416)
                         });
                 });
 

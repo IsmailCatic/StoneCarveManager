@@ -14,11 +14,14 @@ namespace StoneCarveManager.Services.Database.Entities
 
         public decimal Amount { get; set; }
 
-        public PaymentMethod Method { get; set; }
+        public string Method { get; set; } = "stripe"; // stripe, cash, bank_transfer
 
-        public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
+        public string Status { get; set; } = "pending"; // pending, succeeded, failed, cancelled, refunded
 
         public string? TransactionId { get; set; }
+        
+        public string? StripePaymentIntentId { get; set; }
+        
         public string? FailureReason { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -28,21 +31,5 @@ namespace StoneCarveManager.Services.Database.Entities
         // Foreign Key
         public int OrderId { get; set; }
         public Order Order { get; set; } = null!;
-    }
-
-    public enum PaymentMethod
-    {
-        CreditCard = 1,
-        BankTransfer = 2,
-        Cash = 3,
-        PayPal = 4
-    }
-
-    public enum PaymentStatus
-    {
-        Pending = 1,
-        Completed = 2,
-        Failed = 3,
-        Refunded = 4
     }
 }

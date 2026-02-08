@@ -1,6 +1,7 @@
 ﻿using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
 using StoneCarveManager.Services.Database.Context;
@@ -266,7 +267,8 @@ namespace StoneCarveManager.Services.Services
 
         public async Task<UserDTO> UpdateAsync(int id, UserUpdateRequest updateRequest, CancellationToken cancellationToken)
         {
-            var user = await _context.Users
+            var user = await _context.Users.Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
             if (user == null)
@@ -291,6 +293,24 @@ namespace StoneCarveManager.Services.Services
 
             if (updateRequest.IsBlocked.HasValue)
                 user.IsBlocked = updateRequest.IsBlocked.Value;
+
+
+            if (!string.IsNullOrWhiteSpace(updateRequest.Role))
+            {
+                var SelectedRole = await _context.Roles.FirstOrDefaultAsync(x => x.Name.ToLower() == updateRequest.Role.ToLower());
+                if(SelectedRole != null)
+                {
+                    user.UserRoles.Clear();
+                    user.UserRoles.Add(new UserRole
+                    {
+                        UserId = user.Id,
+                        RoleId = SelectedRole.Id
+                    });
+                }
+            }
+
+
+
 
             await _context.SaveChangesAsync(cancellationToken);
 

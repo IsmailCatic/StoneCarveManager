@@ -22,7 +22,8 @@ namespace StoneCarveManager.Model.Responses
 
             public OrderStatus Status { get; set; }
 
-            public decimal TotalAmount { get; set; }
+            //public decimal TotalAmount { get; set; }
+            public decimal TotalAmount => OrderItems.Sum(i => i.TotalPrice);
 
             public string? CustomerNotes { get; set; }
 
@@ -51,6 +52,7 @@ namespace StoneCarveManager.Model.Responses
             public string? ClientName { get; set; }
             public string? ClientEmail { get; set; }
             public ProductReviewResponse? Review { get; set; }
+
             public List<OrderProgressImageResponse> ProgressImages { get; set; } = new();
         }
     }

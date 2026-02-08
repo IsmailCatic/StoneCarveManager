@@ -7,5 +7,6 @@ namespace StoneCarveManager.Model.SearchObjects
         public int? CategoryId { get; set; }
         public int? MaterialId { get; set; }
         public bool? IsActive { get; set; }
+        public string? ProductState { get; set; }
     }
 }

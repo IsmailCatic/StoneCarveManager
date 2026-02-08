@@ -35,5 +35,15 @@ namespace StoneCarveManager.Model.Requests
 
         [StringLength(50)]
         public string? ProductState { get; set; }
+
+
+        public string? PortfolioDescription { get; set; }
+        public string? ClientChallenge { get; set; }
+        public string? OurSolution { get; set; }
+        public string? ProjectOutcome { get; set; }
+        public string? Location { get; set; }
+        public int? CompletionYear { get; set; }
+        public int? ProjectDuration { get; set; }
+        public string? TechniquesUsed { get; set; }
     }
 }

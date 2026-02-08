@@ -1,5 +1,6 @@
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
@@ -7,6 +8,7 @@ using StoneCarveManager.Services.Base;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
+using StoneCarveManager.Services.ProductStateMachine;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -15,10 +17,91 @@ namespace StoneCarveManager.Services.Services
           IProductService
     {
         private readonly IFileService _fileService;
-        public ProductService(AppDbContext context, IMapper mapper, IFileService fileService    )
+        private readonly ILogger<ProductService> _logger;
+        public BaseProductState BaseProductState { get; set; }
+
+        public ProductService(AppDbContext context, IMapper mapper, IFileService fileService, BaseProductState baseProductState, ILogger<ProductService> logger)
             : base(context, mapper)
         {
             _fileService = fileService;
+            BaseProductState = baseProductState;
+            _logger = logger;
+        }
+
+        public override async Task<ProductResponse> CreateAsync(ProductInsertRequest request)
+        {
+            var state = BaseProductState.CreateState("initial");
+            return state.Insert(request);
+        }
+
+        public override async Task<ProductResponse?> UpdateAsync(int id, ProductUpdateRequest request)
+        {
+            var entity = await _context.Products.FindAsync(id);
+            if (entity == null)
+                return null;
+
+            var state = BaseProductState.CreateState(entity.ProductState);
+            return state.Update(id, request);
+        }
+
+        public ProductResponse Activate(int id)
+        {
+            var entity = _context.Products.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Product with ID {id} not found");
+
+            var state = BaseProductState.CreateState(entity.ProductState);
+            return state.Activate(id);
+        }
+
+        public ProductResponse Hide(int id)
+        {
+            var entity = _context.Products.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Product with ID {id} not found");
+
+            var state = BaseProductState.CreateState(entity.ProductState);
+            return state.Hide(id);
+        }
+
+        public ProductResponse MakeService(int id)
+        {
+            var entity = _context.Products.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Product with ID {id} not found");
+
+            var state = BaseProductState.CreateState(entity.ProductState);
+            return state.MakeService(id);
+        }
+
+        public ProductResponse AddToPortfolio(int id)
+        {
+            var entity = _context.Products.Find(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"Product with ID {id} not found");
+
+            var state = BaseProductState.CreateState(entity.ProductState);
+            return state.AddToPortfolio(id);
+        }
+
+        public List<string> AllowedActions(int id)
+        {
+            _logger.LogInformation($"Allowed actions called for: {id}");
+
+            if (id <= 0)
+            {
+                var state = BaseProductState.CreateState("initial");
+                return state.AllowedActions(null);
+            }
+            else
+            {
+                var entity = _context.Products.Find(id);
+                if (entity == null)
+                    throw new KeyNotFoundException($"Product with ID {id} not found");
+
+                var state = BaseProductState.CreateState(entity.ProductState);
+                return state.AllowedActions(entity);
+            }
         }
 
         public override async Task<PagedResult<ProductResponse>> GetAsync(ProductSearchObject search)
@@ -152,6 +235,12 @@ namespace StoneCarveManager.Services.Services
             if (search.IsActive.HasValue)
             {
                 query = query.Where(p => p.IsActive == search.IsActive.Value);
+            }
+
+            // Filter by ProductState
+            if (!string.IsNullOrWhiteSpace(search.ProductState))
+            {
+                query = query.Where(p => p.ProductState == search.ProductState);
             }
 
             return query;

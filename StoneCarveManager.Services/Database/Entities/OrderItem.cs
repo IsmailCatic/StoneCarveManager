@@ -25,6 +25,9 @@ namespace StoneCarveManager.Services.Database.Entities
         public Product Product { get; set; } = null!;
 
         // Calculated total for this item
-        public decimal Total => Quantity * UnitPrice - Discount;
+        //public decimal Total => Quantity * UnitPrice - Discount;
+
+        [NotMapped]
+        public decimal TotalPrice => Quantity * UnitPrice - Discount;
     }
 }

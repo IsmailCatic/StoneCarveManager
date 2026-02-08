@@ -30,6 +30,30 @@ namespace StoneCarveManager.Services.Services
             _fileService = fileService;
         }
 
+        // OVERRIDE CreateAsync - KRITIČNO ZA MAPIRANJE!
+        public override async Task<OrderResponse> CreateAsync(OrderInsertRequest request)
+        {
+            var entity = new Order();
+            MapInsertToEntity(entity, request);
+
+            await BeforeInsert(entity, request);
+
+            _context.Orders.Add(entity);
+            await _context.SaveChangesAsync();
+
+            // KLJUČNO: Učitaj sve navigacije nakon insert-a
+            var entityWithNavs = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.Review)
+                .FirstOrDefaultAsync(o => o.Id == entity.Id);
+
+            return _mapper.Map<OrderResponse>(entityWithNavs!);
+        }
+
         public override async Task<OrderResponse?> UpdateAsync(int id, OrderUpdateRequest request)
         {
             // Ovo iz base: nađi entitet, mapiraj promjene iz requesta, SaveChanges itd.
@@ -48,6 +72,8 @@ namespace StoneCarveManager.Services.Services
             // Sada ponovo učitaj order sa svim navigacijama!
             var entityWithNavs = await _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages).ThenInclude(pi => pi.UploadedByUser)
                 .Include(o => o.Review)
                 .FirstOrDefaultAsync(o => o.Id == id);
@@ -63,6 +89,8 @@ namespace StoneCarveManager.Services.Services
          {
             var query = _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
                     .ThenInclude(pi => pi.UploadedByUser)
                 .Include(o => o.Review)
@@ -97,6 +125,8 @@ namespace StoneCarveManager.Services.Services
             {
                 var order = await _context.Orders
                     .Include(o => o.User)
+                    .Include(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Product)
                     .Include(o => o.ProgressImages)
                         .ThenInclude(pi => pi.UploadedByUser)
                     .Include(o => o.Review)
@@ -173,7 +203,7 @@ namespace StoneCarveManager.Services.Services
                         Discount = 0m
                     };
                     entity.OrderItems.Add(oi);
-                    entity.TotalAmount += oi.Total;
+                    entity.TotalAmount += oi.Quantity * oi.UnitPrice; // Fix: Calculate total
                 }
             }
 
@@ -284,6 +314,66 @@ namespace StoneCarveManager.Services.Services
             await _context.SaveChangesAsync(cancellationToken);
 
             return true;
+        }
+
+        public async Task<List<OrderResponse>> GetOrdersByDateRangeAsync(
+            DateTime startDate, 
+            DateTime endDate, 
+            CancellationToken cancellationToken = default)
+        {
+            var orders = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.Review)
+                .Where(o => o.OrderDate >= startDate && o.OrderDate <= endDate)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync(cancellationToken);
+
+            return orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+        }
+
+        public async Task<OrderMonthlySummaryResponse> GetMonthlySummaryAsync(
+            int year, 
+            CancellationToken cancellationToken = default)
+        {
+            var orders = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.Review)
+                .Where(o => o.OrderDate.Year == year)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync(cancellationToken);
+
+            var orderResponses = orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+
+            var monthlyGroups = orderResponses
+                .GroupBy(o => o.OrderDate.Month)
+                .Select(g => new MonthSummary
+                {
+                    Month = g.Key,
+                    OrderCount = g.Count(),
+                    TotalRevenue = g.Sum(o => o.TotalAmount),
+                    Orders = g.OrderByDescending(o => o.OrderDate).ToList()
+                })
+                .OrderBy(m => m.Month)
+                .ToList();
+
+            return new OrderMonthlySummaryResponse
+            {
+                Year = year,
+                Months = monthlyGroups,
+                YearTotal = new YearTotalSummary
+                {
+                    OrderCount = orderResponses.Count,
+                    TotalRevenue = orderResponses.Sum(o => o.TotalAmount)
+                }
+            };
         }
 
         private string GenerateOrderNumber()

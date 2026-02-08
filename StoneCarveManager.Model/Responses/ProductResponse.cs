@@ -26,5 +26,15 @@ namespace StoneCarveManager.Model.Responses
         public double AverageRating { get; set; }
         public List<ProductImageResponse> Images { get; set; } = new();
         public List<ProductReviewResponse> Reviews { get; set; } = new();
+
+
+        public string? PortfolioDescription { get; set; }
+        public string? ClientChallenge { get; set; }
+        public string? OurSolution { get; set; }
+        public string? ProjectOutcome { get; set; }
+        public string? Location { get; set; }
+        public int? CompletionYear { get; set; }
+        public int? ProjectDuration { get; set; }
+        public string? TechniquesUsed { get; set; }
     }
 }

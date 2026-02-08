@@ -46,6 +46,9 @@ namespace StoneCarveManagerWebAPI.Extensions
                 .NewConfig()
                 .IgnoreNullValues(true);
 
+            TypeAdapterConfig<OrderItem, OrderItemResponse>.NewConfig()
+                 .Map(dest => dest.TotalPrice, src => src.TotalPrice);
+
             // OrderProgressImage -> OrderProgressImageResponse
             //config.NewConfig<OrderProgressImage, OrderProgressImageResponse>()
             //    .Map(dest => dest.UploadedByUserName,

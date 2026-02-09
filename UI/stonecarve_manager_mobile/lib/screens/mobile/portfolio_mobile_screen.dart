@@ -178,15 +178,13 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
         selected: isSelected,
         onSelected: (_) => onTap(),
         backgroundColor: Colors.white,
-        selectedColor: Colors.green[700],
+        selectedColor: Colors.blue,
         labelStyle: TextStyle(
           color: isSelected ? Colors.white : Colors.black87,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           fontSize: 13,
         ),
-        side: BorderSide(
-          color: isSelected ? Colors.green[700]! : Colors.grey[300]!,
-        ),
+        side: BorderSide(color: isSelected ? Colors.blue : Colors.grey[300]!),
         checkmarkColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
@@ -200,12 +198,9 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
-          'StoneCarve Manager',
+          'Portfolio',
           style: TextStyle(
             color: Colors.black87,
             fontSize: 18,
@@ -214,7 +209,7 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87),
+            icon: const Icon(Icons.filter_list, color: Colors.black87),
             onPressed: () {},
           ),
         ],
@@ -222,30 +217,6 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Portfolio',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Explore our completed stone carving projects',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-
           // Category Filter
           Container(
             color: Colors.white,

@@ -6,7 +6,6 @@ import '../models/blog_image_upload_request.dart';
 import '../providers/blog_post_provider.dart';
 import '../utils/constants.dart';
 import '../providers/auth_provider.dart';
-import 'blog_post_form_screen.dart';
 
 class BlogPostDetailScreen extends StatefulWidget {
   final AuthProvider authProvider;
@@ -202,66 +201,7 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Blog Post Details'),
-        actions: [
-          if (_post != null)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BlogPostFormScreen(
-                      authProvider: widget.authProvider,
-                      existingPost: _post,
-                    ),
-                  ),
-                );
-                if (result == true) _fetch();
-              },
-            ),
-          if (_post != null)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Post'),
-                    content: const Text(
-                      'Are you sure you want to delete this blog post?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  try {
-                    await _provider.deleteBlogPost(context, _post!.id);
-                    if (mounted) {
-                      Navigator.of(context).pop(true);
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error deleting post: $e')),
-                      );
-                    }
-                  }
-                }
-              },
-            ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Blog Post Details')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

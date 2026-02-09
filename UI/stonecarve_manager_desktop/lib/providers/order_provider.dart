@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
+import 'package:stonecarve_manager_flutter/models/order_update_request.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 
 class OrderProvider extends BaseProvider<Order> {
   OrderProvider() : super("Order");
@@ -94,6 +96,40 @@ class OrderProvider extends BaseProvider<Order> {
       return Review.fromJson(jsonDecode(response.body));
     } else {
       throw Exception("Failed to add review: ${response.body}");
+    }
+  }
+
+  /// Update order status (Admin/Employee only)
+  Future<Order> updateOrderStatus(
+    int orderId,
+    int newStatus, {
+    String? comment,
+  }) async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final request = UpdateOrderStatusRequest(
+      newStatus: newStatus,
+      comment: comment,
+    );
+
+    final response = await http.patch(
+      Uri.parse('http://localhost:5021/api/Order/$orderId/status'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(request.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      return Order.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied - Admin/Employee only');
+    } else if (response.statusCode == 404) {
+      throw Exception('Order not found');
+    } else {
+      throw Exception('Failed to update order status: ${response.body}');
     }
   }
 }

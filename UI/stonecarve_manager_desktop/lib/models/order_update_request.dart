@@ -72,3 +72,14 @@ class OrderItemUpdateRequest {
     if (specifications != null) 'specifications': specifications,
   };
 }
+
+class UpdateOrderStatusRequest {
+  final int newStatus;
+  final String? comment;
+
+  UpdateOrderStatusRequest({required this.newStatus, this.comment});
+
+  Map<String, dynamic> toJson() {
+    return {'newStatus': newStatus, if (comment != null) 'comment': comment};
+  }
+}

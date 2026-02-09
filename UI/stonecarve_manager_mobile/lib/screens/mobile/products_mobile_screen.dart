@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/models/product.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/product_card.dart';
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/cart_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -23,7 +26,6 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedSort = 'default';
   Set<int> _favoriteProductIds = {};
-  Map<int, int> _cartItems = {}; // productId -> quantity
 
   // Filter options
   final List<Map<String, dynamic>> _sortOptions = [
@@ -155,9 +157,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
   void _addToCart(Product product) {
     if (product.id == null) return;
 
-    setState(() {
-      _cartItems[product.id!] = (_cartItems[product.id!] ?? 0) + 1;
-    });
+    context.read<CartProvider>().addItem(product);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -167,7 +167,10 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
         action: SnackBarAction(
           label: 'VIEW CART',
           onPressed: () {
-            // Navigate to cart screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CartScreen()),
+            );
           },
         ),
       ),
@@ -176,19 +179,12 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cartItemCount = _cartItems.values.fold(0, (sum, qty) => sum + qty);
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.black87),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
-        ),
+        automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -211,41 +207,52 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
           ],
         ),
         actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.black87,
-                ),
-                onPressed: () {},
-              ),
-              if (cartItemCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[700],
-                      shape: BoxShape.circle,
+          Consumer<CartProvider>(
+            builder: (context, cart, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.shopping_cart_outlined,
+                      color: Colors.black87,
                     ),
-                    constraints: const BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
-                    ),
-                    child: Text(
-                      '$cartItemCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
+                    },
                   ),
-                ),
-            ],
+                  if (cart.itemCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '${cart.itemCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -299,7 +306,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
                         });
                       },
                       backgroundColor: Colors.white,
-                      selectedColor: Colors.green[700],
+                      selectedColor: Colors.blue,
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.black87,
                         fontWeight: isSelected
@@ -307,9 +314,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
                             : FontWeight.normal,
                       ),
                       side: BorderSide(
-                        color: isSelected
-                            ? Colors.green[700]!
-                            : Colors.grey[300]!,
+                        color: isSelected ? Colors.blue : Colors.grey[300]!,
                       ),
                       checkmarkColor: Colors.white,
                     ),

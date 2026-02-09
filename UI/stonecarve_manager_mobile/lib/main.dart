@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/login_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/mobile_home_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/mobile/products_mobile_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/api_test_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/products_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/services_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/materials_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/categories_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/cart_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/checkout_shipping_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/checkout_payment_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/checkout_confirmation_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/blog_post_list_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/orders_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/orders_monthly_view_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/users_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/analytics_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/portfolio_modern_screen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Potrebno za async operacije prije runApp
+  WidgetsFlutterBinding.ensureInitialized();
 
-  // Učitaj token iz storage prije pokretanja app-a
+  // Load token from storage before running app
   await AuthProvider.loadToken();
 
   runApp(const StoneCarveManagerApp());
@@ -30,41 +25,60 @@ class StoneCarveManagerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'StoneCarve Manager',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(centerTitle: true, elevation: 2),
-        cardTheme: const CardThemeData(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+    return MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => CartProvider())],
+      child: MaterialApp(
+        title: 'StoneCarve Manager',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blue,
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+          cardTheme: const CardThemeData(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
           ),
         ),
+        initialRoute: '/login',
+        onGenerateRoute: (settings) {
+          switch (settings.name) {
+            case '/login':
+              return MaterialPageRoute(builder: (_) => const LoginScreen());
+            case '/home':
+              return MaterialPageRoute(
+                builder: (_) => const MobileHomeScreen(),
+              );
+            case '/cart':
+              return MaterialPageRoute(builder: (_) => const CartScreen());
+            case '/checkout-shipping':
+              return MaterialPageRoute(
+                builder: (_) => const CheckoutShippingScreen(),
+              );
+            case '/checkout-payment':
+              return MaterialPageRoute(
+                builder: (_) => const CheckoutPaymentScreen(),
+              );
+            case '/checkout-confirmation':
+              return MaterialPageRoute(
+                builder: (_) => const CheckoutConfirmationScreen(),
+              );
+            case '/api-test':
+              return MaterialPageRoute(builder: (_) => const ApiTestScreen());
+            case '/blog':
+              return MaterialPageRoute(
+                builder: (_) =>
+                    BlogPostListScreen(authProvider: AuthProvider()),
+              );
+            default:
+              return MaterialPageRoute(builder: (_) => const LoginScreen());
+          }
+        },
       ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const MobileHomeScreen(),
-        '/products-mobile': (context) => const ProductsMobileScreen(),
-        '/portfolio-mobile': (context) => const PortfolioMobileScreen(),
-        '/api-test': (context) => const ApiTestScreen(),
-        '/orders': (context) => const OrdersScreen(),
-        '/orders/monthly': (context) => const OrdersMonthlyViewScreen(),
-        '/products': (context) => const ProductsScreen(),
-        '/services': (context) => const ServicesScreen(),
-        '/materials': (context) => const MaterialsScreen(),
-        '/categories': (context) => const CategoriesScreen(),
-        '/users': (context) => const UsersScreen(),
-        '/portfolio': (context) => const PortfolioModernScreen(),
-        '/blog': (context) => BlogPostListScreen(authProvider: AuthProvider()),
-        '/analytics': (context) => const AnalyticsScreen(),
-      },
     );
   }
 }

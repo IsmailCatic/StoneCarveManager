@@ -12,26 +12,19 @@ namespace StoneCarveManagerWebAPI.Controllers
     public class PaymentController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public PaymentController(IPaymentService paymentService)
+        public PaymentController(IPaymentService paymentService, ICurrentUserService currentUserService)
         {
             _paymentService = paymentService;
-        }
-
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst("userid")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-                throw new UnauthorizedAccessException("User not authenticated");
-
-            return userId;
+            _currentUserService = currentUserService;
         }
 
         [HttpPost("create-intent")]
         [Authorize]
         public async Task<IActionResult> CreatePaymentIntent([FromBody] CreatePaymentIntentRequest request, CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var paymentIntent = await _paymentService.CreatePaymentIntentAsync(userId, request, cancellationToken);
             return Ok(paymentIntent);
         }

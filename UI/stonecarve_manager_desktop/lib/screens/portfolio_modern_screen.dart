@@ -133,12 +133,14 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
       currentRoute: '/portfolio',
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildHeader(),
-                _buildFilters(),
-                Expanded(child: _buildPortfolioGrid()),
-              ],
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildFilters(),
+                  _buildPortfolioGrid(),
+                ],
+              ),
             ),
     );
   }
@@ -381,7 +383,8 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
 
   Widget _buildPortfolioGrid() {
     if (_filteredItems.isEmpty) {
-      return Center(
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 100.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -411,17 +414,28 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(24),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 3 : 2,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: _filteredItems.length,
-      itemBuilder: (context, index) {
-        return _buildPortfolioCard(_filteredItems[index]);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 1200 ? 3 : 2;
+        final itemWidth =
+            (constraints.maxWidth - (24 * (crossAxisCount + 1))) /
+            crossAxisCount;
+        final itemHeight = itemWidth / 0.75;
+
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Wrap(
+            spacing: 24,
+            runSpacing: 24,
+            children: _filteredItems.map((item) {
+              return SizedBox(
+                width: itemWidth,
+                height: itemHeight,
+                child: _buildPortfolioCard(item),
+              );
+            }).toList(),
+          ),
+        );
       },
     );
   }

@@ -18,6 +18,7 @@ class Order {
   final DateTime? deliveryDate;
   final Review? review;
   final List<ProgressImage> progressImages;
+  final List<OrderStatusHistory> statusHistory;
   final String? clientName;
   final String? clientEmail;
 
@@ -62,6 +63,7 @@ class Order {
     this.deliveryDate,
     this.review,
     required this.progressImages,
+    required this.statusHistory,
     this.clientName,
     this.clientEmail,
   });
@@ -100,6 +102,11 @@ class Order {
             ?.map((e) => ProgressImage.fromJson(e))
             .toList() ??
         [],
+    statusHistory:
+        (json['statusHistory'] as List?)
+            ?.map((e) => OrderStatusHistory.fromJson(e))
+            .toList() ??
+        [],
     clientName: json['clientName'],
     clientEmail: json['clientEmail'],
   );
@@ -126,6 +133,7 @@ class Order {
     'deliveryDate': deliveryDate?.toIso8601String(),
     'review': review?.toJson(),
     'progressImages': progressImages.map((e) => e.toJson()).toList(),
+    'statusHistory': statusHistory.map((e) => e.toJson()).toList(),
   };
 }
 
@@ -277,4 +285,130 @@ class ProgressImage {
     'uploadedByUserId': uploadedByUserId,
     'uploadedByUserName': uploadedByUserName,
   };
+}
+
+class CreateOrderRequest {
+  // userId is NOT sent from frontend - backend extracts it from JWT token
+  final List<CreateOrderItemRequest> orderItems;
+  final String? deliveryAddress;
+  final String? deliveryCity;
+  final String? deliveryZipCode;
+  final String? deliveryCountry;
+  final String? deliveryState;
+  final String? customerNotes;
+  final String? adminNotes;
+  final String? attachmentUrl;
+  final DateTime? estimatedCompletionDate;
+  final DateTime? deliveryDate;
+  final int? assignedEmployeeId;
+  final String? clientName;
+  final String? clientEmail;
+
+  CreateOrderRequest({
+    required this.orderItems,
+    this.deliveryAddress,
+    this.deliveryCity,
+    this.deliveryZipCode,
+    this.deliveryCountry,
+    this.deliveryState,
+    this.customerNotes,
+    this.adminNotes,
+    this.attachmentUrl,
+    this.estimatedCompletionDate,
+    this.deliveryDate,
+    this.assignedEmployeeId,
+    this.clientName,
+    this.clientEmail,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      // 'userId' is NOT included - backend gets it from JWT token
+      'items': orderItems.map((item) => item.toJson()).toList(),
+      'deliveryAddress': deliveryAddress,
+      'deliveryCity': deliveryCity,
+      'deliveryZipCode': deliveryZipCode,
+      'customerNotes': customerNotes,
+      'adminNotes': adminNotes,
+      'attachmentUrl': attachmentUrl,
+      'estimatedCompletionDate': estimatedCompletionDate?.toIso8601String(),
+      'deliveryDate': deliveryDate?.toIso8601String(),
+      'assignedEmployeeId': assignedEmployeeId,
+    };
+  }
+}
+
+class CreateOrderItemRequest {
+  final int productId;
+  final int quantity;
+  final double unitPrice;
+  final String? specifications;
+
+  CreateOrderItemRequest({
+    required this.productId,
+    required this.quantity,
+    required this.unitPrice,
+    this.specifications,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'productId': productId,
+      'quantity': quantity,
+      'unitPrice': unitPrice,
+      'specifications': specifications,
+    };
+  }
+}
+
+class OrderStatusHistory {
+  final int id;
+  final int oldStatus;
+  final int newStatus;
+  final String oldStatusDisplay;
+  final String newStatusDisplay;
+  final String? comment;
+  final DateTime changedAt;
+  final int? changedByUserId;
+  final String? changedByUserName;
+
+  OrderStatusHistory({
+    required this.id,
+    required this.oldStatus,
+    required this.newStatus,
+    required this.oldStatusDisplay,
+    required this.newStatusDisplay,
+    this.comment,
+    required this.changedAt,
+    this.changedByUserId,
+    this.changedByUserName,
+  });
+
+  factory OrderStatusHistory.fromJson(Map<String, dynamic> json) {
+    return OrderStatusHistory(
+      id: json['id'],
+      oldStatus: json['oldStatus'],
+      newStatus: json['newStatus'],
+      oldStatusDisplay: json['oldStatusDisplay'],
+      newStatusDisplay: json['newStatusDisplay'],
+      comment: json['comment'],
+      changedAt: DateTime.parse(json['changedAt']),
+      changedByUserId: json['changedByUserId'],
+      changedByUserName: json['changedByUserName'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'oldStatus': oldStatus,
+      'newStatus': newStatus,
+      'oldStatusDisplay': oldStatusDisplay,
+      'newStatusDisplay': newStatusDisplay,
+      'comment': comment,
+      'changedAt': changedAt.toIso8601String(),
+      'changedByUserId': changedByUserId,
+      'changedByUserName': changedByUserName,
+    };
+  }
 }

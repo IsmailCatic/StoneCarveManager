@@ -80,13 +80,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   : _products.isEmpty
                   ? const Center(child: Text('No products found'))
                   : GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.8,
-                          ),
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: MediaQuery.of(context).size.width > 1400
+                            ? 4
+                            : 3,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.85,
+                      ),
                       itemCount: _products.length,
                       itemBuilder: (context, index) {
                         final product = _products[index];
@@ -96,93 +98,196 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             ? product.images!.last.imageUrl
                             : null;
                         return Card(
-                          elevation: 4,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => _showEditProductDialog(product),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Product image at the top
-                                SizedBox(
-                                  height: 100,
-                                  width: double.infinity,
-                                  child:
-                                      latestImageUrl != null &&
-                                          latestImageUrl.isNotEmpty
-                                      ? Image.network(
-                                          latestImageUrl,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  const Icon(
-                                                    Icons.broken_image,
-                                                    size: 60,
-                                                  ),
-                                        )
-                                      : const Center(
-                                          child: Icon(
-                                            Icons.image_not_supported,
-                                            size: 60,
-                                          ),
-                                        ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
+                                Stack(
                                   children: [
-                                    const Icon(Icons.inventory, size: 40),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        product.name ?? 'Unknown Product',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
+                                    SizedBox(
+                                      height: 140,
+                                      width: double.infinity,
+                                      child:
+                                          latestImageUrl != null &&
+                                              latestImageUrl.isNotEmpty
+                                          ? Image.network(
+                                              latestImageUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => Container(
+                                                    color: Colors.grey[200],
+                                                    child: const Icon(
+                                                      Icons.broken_image,
+                                                      size: 48,
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                            )
+                                          : Container(
+                                              color: Colors.grey[100],
+                                              child: Icon(
+                                                Icons.image_not_supported,
+                                                size: 48,
+                                                color: Colors.grey[400],
+                                              ),
                                             ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                    ),
+                                    // State chip overlay
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: ProductStateChip(
+                                        state: product.productState,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                ProductStateChip(state: product.productState),
-                                const SizedBox(height: 4),
-                                Text(
-                                  product.description ?? 'No description',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                // Product details
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product.name ?? 'Unknown Product',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          product.description ??
+                                              'No description',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '\$${product.price?.toStringAsFixed(2) ?? '0.00'}',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green[700],
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    product.stockQuantity !=
+                                                            null &&
+                                                        product.stockQuantity! >
+                                                            0
+                                                    ? Colors.green[50]
+                                                    : Colors.red[50],
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                'Stock: ${product.stockQuantity ?? 0}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      product.stockQuantity !=
+                                                              null &&
+                                                          product.stockQuantity! >
+                                                              0
+                                                      ? Colors.green[700]
+                                                      : Colors.red[700],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Price: \$${product.price?.toStringAsFixed(2) ?? '0.00'}',
-                                ),
-                                Text('Stock: ${product.stockQuantity ?? 0}'),
-                                const Spacer(),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.swap_horiz),
-                                      tooltip: 'Manage State',
-                                      onPressed: () =>
-                                          _showStateManagementDialog(product),
+                                // Action buttons
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[50],
+                                    border: Border(
+                                      top: BorderSide(color: Colors.grey[200]!),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit),
-                                      tooltip: 'Edit',
-                                      onPressed: () =>
-                                          _showEditProductDialog(product),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete),
-                                      tooltip: 'Delete',
-                                      onPressed: () =>
-                                          _confirmDeleteProduct(product),
-                                    ),
-                                  ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.swap_horiz,
+                                          size: 20,
+                                          color: Colors.blue[700],
+                                        ),
+                                        tooltip: 'Manage State',
+                                        onPressed: () =>
+                                            _showStateManagementDialog(product),
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 24,
+                                        color: Colors.grey[300],
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.edit,
+                                          size: 20,
+                                          color: Colors.orange[700],
+                                        ),
+                                        tooltip: 'Edit',
+                                        onPressed: () =>
+                                            _showEditProductDialog(product),
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 24,
+                                        color: Colors.grey[300],
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.delete,
+                                          size: 20,
+                                          color: Colors.red[700],
+                                        ),
+                                        tooltip: 'Delete',
+                                        onPressed: () =>
+                                            _confirmDeleteProduct(product),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

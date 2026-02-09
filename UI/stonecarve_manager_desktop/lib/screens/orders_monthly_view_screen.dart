@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
-import 'order_details_screen.dart';
+import 'order_details_screen.dart' show OrderDetailsScreen;
 
 class OrdersMonthlyViewScreen extends StatefulWidget {
   const OrdersMonthlyViewScreen({super.key});
@@ -35,7 +35,7 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
 
       final result = await _orderProvider.get();
       setState(() {
-        _orders = (result.items as List<Order>?) ?? [];
+        _orders = result.items ?? [];
         _organizeOrdersByMonth();
         _isLoading = false;
       });

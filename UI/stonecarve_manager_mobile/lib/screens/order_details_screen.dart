@@ -105,6 +105,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           review: order.review,
           progressImages: progressImages,
           clientName: order.clientName,
+          statusHistory: [],
         ),
       );
       setState(() {

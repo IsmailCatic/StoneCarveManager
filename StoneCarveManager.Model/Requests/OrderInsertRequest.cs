@@ -8,8 +8,6 @@ namespace StoneCarveManager.Model.Requests
 {
     public class OrderInsertRequest
     {
-        public int UserId { get; set; }
-
         public int? AssignedEmployeeId { get; set; }
 
         public string? CustomerNotes { get; set; }

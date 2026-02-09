@@ -10,7 +10,7 @@ class ProductStateChip extends StatelessWidget {
       case 'draft':
         return Colors.grey;
       case 'active':
-        return Colors.green;
+        return Colors.blue;
       case 'service':
         return Colors.blue;
       case 'portfolio':

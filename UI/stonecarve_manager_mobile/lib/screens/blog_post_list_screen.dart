@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/blog_post.dart';
 import '../providers/blog_post_provider.dart';
-import '../models/blog_post_requests.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 import '../widgets/app_drawer.dart';
-import 'blog_post_form_screen.dart';
 import 'blog_post_detail_screen.dart';
 
 class BlogPostListScreen extends StatefulWidget {
@@ -295,19 +293,6 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
                 },
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  BlogPostFormScreen(authProvider: widget.authProvider),
-            ),
-          );
-          if (result == true) _fetchPosts();
-        },
-        child: const Icon(Icons.add),
-        tooltip: 'Add Blog Post',
-      ),
     );
   }
 }

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Services.IServices;
-using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,25 +14,18 @@ namespace StoneCarveManagerWebAPI.Controllers
     public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public CartController(ICartService cartService)
+        public CartController(ICartService cartService, ICurrentUserService currentUserService)
         {
             _cartService = cartService;
-        }
-
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst("userid")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-                throw new UnauthorizedAccessException("User not authenticated");
-            
-            return userId;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCart(CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var cart = await _cartService.GetCartByUserIdAsync(userId, cancellationToken);
             return Ok(cart);
         }
@@ -41,7 +33,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("items")]
         public async Task<IActionResult> AddToCart([FromBody] AddToCartRequest request, CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var cartItem = await _cartService.AddToCartAsync(userId, request, cancellationToken);
             return Ok(cartItem);
         }
@@ -49,7 +41,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPut("items/{cartItemId}")]
         public async Task<IActionResult> UpdateCartItem(int cartItemId, [FromBody] UpdateCartItemRequest request, CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var cartItem = await _cartService.UpdateCartItemAsync(userId, cartItemId, request, cancellationToken);
             return Ok(cartItem);
         }
@@ -57,7 +49,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpDelete("items/{cartItemId}")]
         public async Task<IActionResult> RemoveFromCart(int cartItemId, CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var result = await _cartService.RemoveFromCartAsync(userId, cartItemId, cancellationToken);
             
             if (!result)
@@ -69,7 +61,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpDelete("clear")]
         public async Task<IActionResult> ClearCart(CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var result = await _cartService.ClearCartAsync(userId, cancellationToken);
             
             if (!result)
@@ -81,7 +73,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("recalculate")]
         public async Task<IActionResult> RecalculateCart(CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var cart = await _cartService.RecalculateCartAsync(userId, cancellationToken);
             return Ok(cart);
         }

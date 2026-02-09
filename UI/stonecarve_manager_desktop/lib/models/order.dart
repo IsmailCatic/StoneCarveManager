@@ -18,6 +18,7 @@ class Order {
   final DateTime? deliveryDate;
   final Review? review;
   final List<ProgressImage> progressImages;
+  final List<OrderStatusHistory> statusHistory;
   final String? clientName;
   final String? clientEmail;
 
@@ -62,6 +63,7 @@ class Order {
     this.deliveryDate,
     this.review,
     required this.progressImages,
+    this.statusHistory = const [],
     this.clientName,
     this.clientEmail,
   });
@@ -100,6 +102,11 @@ class Order {
             ?.map((e) => ProgressImage.fromJson(e))
             .toList() ??
         [],
+    statusHistory:
+        (json['statusHistory'] as List?)
+            ?.map((e) => OrderStatusHistory.fromJson(e))
+            .toList() ??
+        [],
     clientName: json['clientName'],
     clientEmail: json['clientEmail'],
   );
@@ -121,6 +128,7 @@ class Order {
     'assignedEmployeeId': assignedEmployeeId,
     'orderItems': orderItems.map((e) => e.toJson()).toList(),
     'deliveryAddress': deliveryAddress,
+    'statusHistory': statusHistory.map((e) => e.toJson()).toList(),
     'deliveryCity': deliveryCity,
     'deliveryZipCode': deliveryZipCode,
     'deliveryDate': deliveryDate?.toIso8601String(),
@@ -276,5 +284,53 @@ class ProgressImage {
     'orderId': orderId,
     'uploadedByUserId': uploadedByUserId,
     'uploadedByUserName': uploadedByUserName,
+  };
+}
+
+class OrderStatusHistory {
+  final int id;
+  final int orderId;
+  final int oldStatus;
+  final int newStatus;
+  final String? comment;
+  final DateTime changedAt;
+  final int? changedByUserId;
+  final String? changedByUserName;
+
+  OrderStatusHistory({
+    required this.id,
+    required this.orderId,
+    required this.oldStatus,
+    required this.newStatus,
+    this.comment,
+    required this.changedAt,
+    this.changedByUserId,
+    this.changedByUserName,
+  });
+
+  String get oldStatusDisplay => Order.statusToString(oldStatus);
+  String get newStatusDisplay => Order.statusToString(newStatus);
+
+  factory OrderStatusHistory.fromJson(Map<String, dynamic> json) =>
+      OrderStatusHistory(
+        id: json['id'],
+        orderId: json['orderId'],
+        oldStatus: json['oldStatus'],
+        newStatus: json['newStatus'],
+        comment: json['comment'],
+        changedAt: DateTime.parse(json['changedAt']),
+        changedByUserId: json['changedByUserId'],
+        changedByUserName: json['changedByUserName'],
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'orderId': orderId,
+    'oldStatus': oldStatus,
+    'newStatus': newStatus,
+    'comment': comment,
+    'changedAt': changedAt.toIso8601String(),
+    'changedByUserId': changedByUserId,
+    'changedByUserName': changedByUserName,
   };
 }

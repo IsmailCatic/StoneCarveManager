@@ -54,6 +54,9 @@ namespace StoneCarveManager.Model.Responses
             public ProductReviewResponse? Review { get; set; }
 
             public List<OrderProgressImageResponse> ProgressImages { get; set; } = new();
+            
+            // Status history timeline for tracking order progress
+            public List<OrderStatusHistoryResponse> StatusHistory { get; set; } = new();
         }
     }
 }

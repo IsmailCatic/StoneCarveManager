@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
+using Microsoft.AspNetCore.Authorization;
 
 namespace StoneCarveManagerWebAPI.Controllers
 {
@@ -18,15 +19,154 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly IOrderService _orderService;
         private readonly IProductReviewService _reviewService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public OrderController(IOrderService service, IProductReviewService reviewService) : base(service)
+        public OrderController(IOrderService service, IProductReviewService reviewService, ICurrentUserService currentUserService) : base(service)
         {
             _orderService = service;
             _reviewService = reviewService;
+            _currentUserService = currentUserService;
         }
 
+        /// <summary>
+        /// Get all orders for the currently authenticated user
+        /// Perfect for frontend "My Orders" page with status tracking
+        /// </summary>
+        /// <param name="search">Optional search parameters (status filter, date range, etc.)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Paged list of user's orders with status and progress images</returns>
+        [HttpGet("my-orders")]
+        [Authorize]
+        public async Task<ActionResult<PagedResult<OrderResponse>>> GetMyOrders(
+            [FromQuery] OrderSearchObject? search,
+            CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUserService.GetUserId();
+            
+            // Create search object if null
+            search ??= new OrderSearchObject();
+            
+            // Override UserId to ensure user can only see their own orders
+            search.UserId = userId;
+            
+            var result = await _orderService.GetAsync(search);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Get active orders (not completed/delivered) for current user
+        /// </summary>
+        [HttpGet("my-orders/active")]
+        [Authorize]
+        public async Task<ActionResult<PagedResult<OrderResponse>>> GetMyActiveOrders(
+            [FromQuery] OrderSearchObject? search,
+            CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUserService.GetUserId();
+            
+            search ??= new OrderSearchObject();
+            search.UserId = userId;
+            
+            // Filter out completed/delivered orders
+            // You can adjust this based on your OrderStatus enum values
+            search.RetrieveAll = true; // Get all active orders without pagination
+            
+            var result = await _orderService.GetAsync(search);
+            
+            // Filter active orders (Requested, InProgress, etc.)
+            var activeOrders = result.Items?
+                .Where(o => o.Status != OrderStatus.Delivered && o.Status != OrderStatus.Cancelled)
+                .ToList();
+            
+            return Ok(new PagedResult<OrderResponse>
+            {
+                Items = activeOrders,
+                TotalCount = activeOrders?.Count
+            });
+        }
+
+        /// <summary>
+        /// Get order history (completed/delivered) for current user
+        /// </summary>
+        [HttpGet("my-orders/history")]
+        [Authorize]
+        public async Task<ActionResult<PagedResult<OrderResponse>>> GetMyOrderHistory(
+            [FromQuery] OrderSearchObject? search,
+            CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUserService.GetUserId();
+            
+            search ??= new OrderSearchObject();
+            search.UserId = userId;
+            search.RetrieveAll = true;
+            
+            var result = await _orderService.GetAsync(search);
+            
+            // Filter completed/delivered orders
+            var historyOrders = result.Items?
+                .Where(o => o.Status == OrderStatus.Delivered || o.Status == OrderStatus.Cancelled)
+                .ToList();
+            
+            return Ok(new PagedResult<OrderResponse>
+            {
+                Items = historyOrders,
+                TotalCount = historyOrders?.Count
+            });
+        }
+
+        /// <summary>
+        /// Get single order by ID (only if it belongs to current user)
+        /// Perfect for detailed order status page with timeline and progress images
+        /// </summary>
+        [HttpGet("my-orders/{id}")]
+        [Authorize]
+        public async Task<ActionResult<OrderResponse>> GetMyOrderById(int id, CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUserService.GetUserId();
+            var order = await _orderService.GetByIdAsync(id);
+            
+            if (order == null)
+                return NotFound(new { message = "Order not found" });
+            
+            // Security check: ensure order belongs to current user
+            if (order.UserId != userId)
+                return Forbid(); // 403 Forbidden
+            
+            return Ok(order);
+        }
+
+        /// <summary>
+        /// Update order status (Admin/Employee only)
+        /// Automatically creates OrderStatusHistory entry with timestamp and user info
+        /// </summary>
+        /// <param name="id">Order ID</param>
+        /// <param name="request">Status update request with newStatus and optional comment</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Updated order with new status history entry</returns>
+        [HttpPatch("{id}/status")]
+        [Authorize(Roles = "Admin,Employee")]
+        public async Task<IActionResult> UpdateOrderStatus(
+            int id,
+            [FromBody] UpdateOrderStatusRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _orderService.UpdateOrderStatusAsync(
+                id, 
+                request.NewStatus, 
+                request.Comment, 
+                cancellationToken);
+            
+            if (result == null)
+                return NotFound(new { message = "Order not found" });
+            
+            // TODO: Send notification to customer about status change
+            // await _notificationService.NotifyOrderStatusChanged(result);
+            
+            return Ok(result);
+        }
 
         [HttpPost("{orderId}/progress-images")]
+        [Authorize(Roles = "Admin,Employee")]
         public async Task<IActionResult> UploadProgressImage(int orderId, [FromForm] OrderProgressImageUploadRequest request, CancellationToken cancellationToken)
         {
             var result = await _orderService.AddOrderProgressImageAsync(orderId, request, cancellationToken);
@@ -34,6 +174,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpDelete("progress-images/{id}")]
+        [Authorize(Roles = "Admin,Employee")]
         public async Task<IActionResult> DeleteProgressImage(int id, CancellationToken cancellationToken)
         {
             var deleted = await _orderService.DeleteOrderProgressImageAsync(id, cancellationToken);

@@ -14,19 +14,12 @@ namespace StoneCarveManagerWebAPI.Controllers
     public class CheckoutController : ControllerBase
     {
         private readonly ICheckoutService _checkoutService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public CheckoutController(ICheckoutService checkoutService)
+        public CheckoutController(ICheckoutService checkoutService, ICurrentUserService currentUserService)
         {
             _checkoutService = checkoutService;
-        }
-
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst("userid")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-                throw new UnauthorizedAccessException("User not authenticated");
-
-            return userId;
+            _currentUserService = currentUserService;
         }
 
         /// <summary>
@@ -35,7 +28,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpGet("summary")]
         public async Task<IActionResult> GetCheckoutSummary(CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var summary = await _checkoutService.GetCheckoutSummaryAsync(userId, cancellationToken);
             return Ok(summary);
         }
@@ -46,7 +39,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("process")]
         public async Task<IActionResult> ProcessCheckout([FromBody] CheckoutRequest request, CancellationToken cancellationToken)
         {
-            var userId = GetCurrentUserId();
+            var userId = _currentUserService.GetUserId();
             var checkout = await _checkoutService.ProcessCheckoutAsync(userId, request, cancellationToken);
             return Ok(checkout);
         }

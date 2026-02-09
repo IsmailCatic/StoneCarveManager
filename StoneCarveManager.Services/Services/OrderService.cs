@@ -23,11 +23,13 @@ namespace StoneCarveManager.Services.Services
           IOrderService
     {
         private readonly IFileService _fileService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public OrderService(AppDbContext context, IMapper mapper, IFileService fileService)
+        public OrderService(AppDbContext context, IMapper mapper, IFileService fileService, ICurrentUserService currentUserService)
             : base(context, mapper)
         {
             _fileService = fileService;
+            _currentUserService = currentUserService;
         }
 
         // OVERRIDE CreateAsync - KRITIČNO ZA MAPIRANJE!
@@ -35,6 +37,12 @@ namespace StoneCarveManager.Services.Services
         {
             var entity = new Order();
             MapInsertToEntity(entity, request);
+
+            entity.UserId = _currentUserService.GetUserId();
+
+
+            // You can use this userId if needed, for example to log who created the order
+            // or to override the UserId from request if needed
 
             await BeforeInsert(entity, request);
 
@@ -48,6 +56,8 @@ namespace StoneCarveManager.Services.Services
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
                     .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.StatusHistory)
+                    .ThenInclude(sh => sh.ChangedByUser)
                 .Include(o => o.Review)
                 .FirstOrDefaultAsync(o => o.Id == entity.Id);
 
@@ -75,6 +85,8 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages).ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.StatusHistory)
+                    .ThenInclude(sh => sh.ChangedByUser)
                 .Include(o => o.Review)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
@@ -93,6 +105,8 @@ namespace StoneCarveManager.Services.Services
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
                     .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.StatusHistory)
+                    .ThenInclude(sh => sh.ChangedByUser)
                 .Include(o => o.Review)
                 .AsQueryable();
 
@@ -129,6 +143,8 @@ namespace StoneCarveManager.Services.Services
                         .ThenInclude(oi => oi.Product)
                     .Include(o => o.ProgressImages)
                         .ThenInclude(pi => pi.UploadedByUser)
+                    .Include(o => o.StatusHistory)
+                        .ThenInclude(sh => sh.ChangedByUser)
                     .Include(o => o.Review)
                     .FirstOrDefaultAsync(o => o.Id == id);
 
@@ -176,7 +192,6 @@ namespace StoneCarveManager.Services.Services
         protected override Order MapInsertToEntity(Order entity, OrderInsertRequest request)
         {
             // Map primitive properties
-            entity.UserId = request.UserId;
             entity.AssignedEmployeeId = request.AssignedEmployeeId;
             entity.CustomerNotes = request.CustomerNotes;
             entity.AdminNotes = request.AdminNotes;
@@ -212,10 +227,6 @@ namespace StoneCarveManager.Services.Services
 
         protected override async Task BeforeInsert(Order entity, OrderInsertRequest request)
         {
-            // Validate user exists
-            var userExists = await _context.Users.AnyAsync(u => u.Id == request.UserId);
-            if (!userExists)
-                throw new InvalidOperationException($"User with ID {request.UserId} does not exist.");
 
             // Validate products exist for each item
             if (request.Items != null)
@@ -374,6 +385,61 @@ namespace StoneCarveManager.Services.Services
                     TotalRevenue = orderResponses.Sum(o => o.TotalAmount)
                 }
             };
+        }
+
+        /// <summary>
+        /// Update order status and create OrderStatusHistory entry
+        /// Only for Admin/Employee use
+        /// </summary>
+        public async Task<OrderResponse?> UpdateOrderStatusAsync(
+            int orderId, 
+            Model.Requests.OrderStatus newStatus, 
+            string? comment = null,
+            CancellationToken cancellationToken = default)
+        {
+            var order = await _context.Orders
+                .Include(o => o.StatusHistory)
+                .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+            
+            if (order == null)
+                return null;
+            
+            // Get current user (admin/employee who is changing status)
+            var currentUserId = _currentUserService.GetUserId();
+            var oldStatus = order.Status;
+            
+            // Don't create history if status hasn't changed
+            if ((int)oldStatus == (int)newStatus)
+            {
+                return await GetByIdAsync(orderId);
+            }
+            
+            // Update order status (cast to Database.Entities.OrderStatus)
+            order.Status = (Database.Entities.OrderStatus)(int)newStatus;
+            
+            // Create status history record
+            var statusHistory = new OrderStatusHistory
+            {
+                OrderId = orderId,
+                OldStatus = oldStatus,
+                NewStatus = (Database.Entities.OrderStatus)(int)newStatus,
+                Comment = comment,
+                ChangedAt = DateTime.UtcNow,
+                ChangedByUserId = currentUserId
+            };
+            
+            _context.OrderStatusHistories.Add(statusHistory);
+            
+            // If delivered, set completion date
+            if (newStatus == Model.Requests.OrderStatus.Delivered && !order.CompletedAt.HasValue)
+            {
+                order.CompletedAt = DateTime.UtcNow;
+            }
+            
+            await _context.SaveChangesAsync(cancellationToken);
+            
+            // Return updated order with all navigations including new status history
+            return await GetByIdAsync(orderId);
         }
 
         private string GenerateOrderNumber()

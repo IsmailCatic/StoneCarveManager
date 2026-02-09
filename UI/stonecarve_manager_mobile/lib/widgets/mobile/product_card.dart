@@ -80,7 +80,7 @@ class ProductCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green[700],
+                        color: Colors.blue,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -125,7 +125,7 @@ class ProductCard extends StatelessWidget {
 
                   // Add to Cart Button
                   Material(
-                    color: Colors.green[700],
+                    color: Colors.blue,
                     borderRadius: BorderRadius.circular(20),
                     child: InkWell(
                       onTap: onAddToCart,

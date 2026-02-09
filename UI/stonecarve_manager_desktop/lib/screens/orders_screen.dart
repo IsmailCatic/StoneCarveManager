@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
-import 'order_details_screen.dart';
+import 'order_details_screen.dart' show OrderDetailsScreen;
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -30,7 +30,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
       final result = await _orderProvider.get();
       setState(() {
-        _orders = (result.items as List<Order>) ?? [];
+        _orders = result.items ?? [];
         _isLoading = false;
       });
     } catch (e) {

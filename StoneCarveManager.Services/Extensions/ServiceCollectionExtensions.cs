@@ -17,6 +17,9 @@ namespace StoneCarveManager.Services.Extensions
                 options.UseSqlServer(configuration.GetConnectionString("MainDB"));
             });
 
+            // Current User service (must be scoped to access HttpContext)
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
+
             // Authentication & User services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserService, UserService>();

@@ -89,7 +89,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             .map((e) => DailyIncomeEntry.fromJson(e))
             .toList();
         if (dailyIncomeEntries.isNotEmpty) {
-          dailyIncome = dailyIncomeEntries.first.amount;
+          // Calculate the average of all daily income entries
+          final totalIncome = dailyIncomeEntries.fold<double>(
+            0.0,
+            (sum, entry) => sum + entry.amount,
+          );
+          dailyIncome = totalIncome / dailyIncomeEntries.length;
         }
       }
       if (topProductsResp.statusCode == 200) {

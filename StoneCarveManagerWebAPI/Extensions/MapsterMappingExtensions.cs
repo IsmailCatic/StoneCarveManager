@@ -49,6 +49,14 @@ namespace StoneCarveManagerWebAPI.Extensions
             TypeAdapterConfig<OrderItem, OrderItemResponse>.NewConfig()
                  .Map(dest => dest.TotalPrice, src => src.TotalPrice);
 
+            // OrderStatusHistory -> OrderStatusHistoryResponse
+            TypeAdapterConfig<OrderStatusHistory, OrderStatusHistoryResponse>
+                .NewConfig()
+                .Map(dest => dest.ChangedByUserName,
+                     src => src.ChangedByUser != null
+                         ? src.ChangedByUser.FirstName + " " + src.ChangedByUser.LastName
+                         : null);
+
             // OrderProgressImage -> OrderProgressImageResponse
             //config.NewConfig<OrderProgressImage, OrderProgressImageResponse>()
             //    .Map(dest => dest.UploadedByUserName,

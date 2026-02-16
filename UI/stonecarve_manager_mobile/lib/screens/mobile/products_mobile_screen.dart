@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/models/product.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/product_card.dart';
+import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
@@ -184,7 +185,12 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black87),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -406,6 +412,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
           ),
         ],
       ),
+      drawer: const AppDrawerMobile(),
     );
   }
 }

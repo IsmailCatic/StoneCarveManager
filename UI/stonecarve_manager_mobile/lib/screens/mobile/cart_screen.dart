@@ -88,7 +88,9 @@ class CartScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(context, '/products');
+                    },
                     icon: const Icon(Icons.shopping_bag),
                     label: const Text('Continue Shopping'),
                     style: ElevatedButton.styleFrom(

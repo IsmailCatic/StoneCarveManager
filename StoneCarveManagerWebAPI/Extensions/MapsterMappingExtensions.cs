@@ -57,6 +57,11 @@ namespace StoneCarveManagerWebAPI.Extensions
                          ? src.ChangedByUser.FirstName + " " + src.ChangedByUser.LastName
                          : null);
 
+
+            config.NewConfig<OrderItem, OrderItemResponse>()
+                .Map(dest => dest.ProductName, src => src.Product != null ? src.Product.Name : null)
+                .Map(dest => dest.ProductState, src => src.Product != null ? src.Product.ProductState : null); // ✅ NOVO
+
             // OrderProgressImage -> OrderProgressImageResponse
             //config.NewConfig<OrderProgressImage, OrderProgressImageResponse>()
             //    .Map(dest => dest.UploadedByUserName,

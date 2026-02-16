@@ -11,6 +11,7 @@ using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
 using System;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
@@ -30,6 +31,98 @@ namespace StoneCarveManager.Services.Services
         {
             _fileService = fileService;
             _currentUserService = currentUserService;
+        }
+
+        /// <summary>
+        /// Create a custom order without a predefined product
+        /// Automatically creates a custom product and order item
+        /// </summary>
+        public async Task<OrderResponse> CreateCustomOrderAsync(
+            CustomOrderInsertRequest request, 
+            CancellationToken cancellationToken = default)
+        {
+            // 1. Validate category exists
+            var category = await _context.Categories.FindAsync(new object[] { request.CategoryId }, cancellationToken);
+            if (category == null)
+                throw new InvalidOperationException($"Category with ID {request.CategoryId} does not exist.");
+
+            // 2. Validate material exists
+            var material = await _context.Materials.FindAsync(new object[] { request.MaterialId }, cancellationToken);
+            if (material == null)
+                throw new InvalidOperationException($"Material with ID {request.MaterialId} does not exist.");
+
+            var userId = _currentUserService.GetUserId();
+
+            // 3. Create a custom product for this order
+            var customProduct = new Product
+            {
+                Name = $"Custom {category.Name} - {DateTime.UtcNow:yyyyMMdd}",
+                Description = request.Description,
+                Price = request.EstimatedPrice ?? material.PricePerUnit, // Use estimated or calculate from material
+                StockQuantity = 0, // Custom products are not in stock
+                Dimensions = request.Dimensions,
+                EstimatedDays = 30, // Default for custom work, can be adjusted by admin later
+                CategoryId = request.CategoryId,
+                MaterialId = request.MaterialId,
+                ProductState = "custom_order",
+                IsActive = true,
+                IsInPortfolio = false, // Not in portfolio yet (can be added after completion)
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Products.Add(customProduct);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // 4. Create the order
+            var order = new Order
+            {
+                UserId = userId,
+                OrderNumber = GenerateOrderNumber(),
+                OrderDate = DateTime.UtcNow,
+                Status = Database.Entities.OrderStatus.Pending, // Custom orders start as Pending
+                CustomerNotes = request.CustomerNotes,
+                DeliveryAddress = request.DeliveryAddress,
+                DeliveryCity = request.DeliveryCity,
+                DeliveryZipCode = request.DeliveryZipCode,
+                DeliveryDate = request.DeliveryDate,
+                TotalAmount = customProduct.Price
+            };
+
+            _context.Orders.Add(order);
+
+            // 5. Create order item linking to the custom product
+            var orderItem = new OrderItem
+            {
+                Order = order,
+                ProductId = customProduct.Id,
+                Quantity = 1, // Custom orders typically have quantity 1
+                UnitPrice = customProduct.Price,
+                Discount = 0m
+            };
+
+            _context.OrderItems.Add(orderItem);
+
+            // 6. Save reference images if provided
+            if (request.ReferenceImageUrls != null && request.ReferenceImageUrls.Any())
+            {
+                foreach (var imageUrl in request.ReferenceImageUrls)
+                {
+                    var productImage = new ProductImage
+                    {
+                        ProductId = customProduct.Id,
+                        ImageUrl = imageUrl,
+                        AltText = "Customer reference image",
+                        IsPrimary = false,
+                        DisplayOrder = 0
+                    };
+                    _context.ProductImages.Add(productImage);
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // 7. Return the created order with all details
+            return await GetByIdAsync(order.Id);
         }
 
         // OVERRIDE CreateAsync - KRITIČNO ZA MAPIRANJE!
@@ -440,6 +533,62 @@ namespace StoneCarveManager.Services.Services
             
             // Return updated order with all navigations including new status history
             return await GetByIdAsync(orderId);
+        }
+
+        /// <summary>
+        /// Upload a reference sketch/image for custom order
+        /// Uploads to Azure Blob Storage container "custom-order-sketches"
+        /// </summary>
+        public async Task<string> UploadCustomOrderSketchAsync(
+            CustomOrderSketchUploadRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            // Validate file
+            if (request.File == null || request.File.Length == 0)
+                throw new ArgumentException("File is required");
+
+            // Validate file type
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+            var extension = Path.GetExtension(request.File.FileName).ToLowerInvariant();
+            
+            if (!allowedExtensions.Contains(extension))
+                throw new ArgumentException("Only JPG, PNG, and PDF files are allowed");
+
+            // Validate file size (max 10MB)
+            if (request.File.Length > 10 * 1024 * 1024)
+                throw new ArgumentException("File size must be less than 10MB");
+
+            // Upload to Azure Blob Storage
+            var imageUrl = await _fileService.UploadAsync(
+                request.File,
+                "custom-order-sketches",  // ✅ Container name
+                null,                      // Auto-generate filename
+                cancellationToken
+            );
+
+            return imageUrl;
+        }
+
+        /// <summary>
+        /// Delete a custom order sketch from Azure Blob Storage
+        /// </summary>
+        public async Task<bool> DeleteCustomOrderSketchAsync(
+            string url,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            try
+            {
+                await _fileService.DeleteAsync(url, "custom-order-sketches", cancellationToken);
+                return true;
+            }
+            catch
+            {
+                // Log error if needed
+                return false;
+            }
         }
 
         private string GenerateOrderNumber()

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/product.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/portfolio_card.dart';
+import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:http/http.dart' as http;
@@ -198,7 +199,12 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black87),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: const Text(
           'Portfolio',
           style: TextStyle(
@@ -368,6 +374,7 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
           ),
         ],
       ),
+      drawer: const AppDrawerMobile(),
     );
   }
 }

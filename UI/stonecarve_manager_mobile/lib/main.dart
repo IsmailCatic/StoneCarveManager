@@ -9,7 +9,12 @@ import 'package:stonecarve_manager_mobile/screens/mobile/cart_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/checkout_shipping_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/checkout_payment_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/checkout_confirmation_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/blog_post_list_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/reviews_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/blog_mobile_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/products_mobile_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/my_orders_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_mobile_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/custom_order_form_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,8 +76,23 @@ class StoneCarveManagerApp extends StatelessWidget {
               return MaterialPageRoute(builder: (_) => const ApiTestScreen());
             case '/blog':
               return MaterialPageRoute(
-                builder: (_) =>
-                    BlogPostListScreen(authProvider: AuthProvider()),
+                builder: (_) => const BlogMobileScreen(),
+              );
+            case '/reviews':
+              return MaterialPageRoute(builder: (_) => const ReviewsScreen());
+            case '/products':
+              return MaterialPageRoute(
+                builder: (_) => const ProductsMobileScreen(),
+              );
+            case '/orders':
+              return MaterialPageRoute(builder: (_) => const MyOrdersScreen());
+            case '/portfolio':
+              return MaterialPageRoute(
+                builder: (_) => const PortfolioMobileScreen(),
+              );
+            case '/custom-order':
+              return MaterialPageRoute(
+                builder: (_) => const CustomOrderFormScreen(),
               );
             default:
               return MaterialPageRoute(builder: (_) => const LoginScreen());

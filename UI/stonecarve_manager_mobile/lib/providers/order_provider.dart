@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
+import 'package:stonecarve_manager_mobile/models/custom_order_request.dart';
+import 'package:stonecarve_manager_mobile/config/api_config.dart';
 
 class OrderProvider extends BaseProvider<Order> {
   OrderProvider() : super("Order");
@@ -66,7 +69,7 @@ class OrderProvider extends BaseProvider<Order> {
     String? description,
     int? uploadedByUserId,
   }) async {
-    var url = "http://localhost:5021/api/Order/$orderId/progress-images";
+    var url = "${ApiConfig.apiBaseUrl}Order/$orderId/progress-images";
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers.addAll(createHeaders());
     request.files.add(await http.MultipartFile.fromPath('file', filePath));
@@ -86,7 +89,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Order> markOrderCompleted(int id) async {
-    var url = "http://localhost:5021/api/Order/$id/mark-completed";
+    var url = "${ApiConfig.apiBaseUrl}Order/$id/mark-completed";
     var response = await http.patch(Uri.parse(url), headers: createHeaders());
     if (isValidResponse(response)) {
       return fromJson(jsonDecode(response.body));
@@ -96,7 +99,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Review?> getOrderReview(int orderId) async {
-    var url = "http://localhost:5021/api/Order/$orderId/review";
+    var url = "${ApiConfig.apiBaseUrl}Order/$orderId/review";
     var response = await http.get(Uri.parse(url), headers: createHeaders());
     if (isValidResponse(response)) {
       if (response.body.isEmpty) return null;
@@ -107,7 +110,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Review> addOrderReview(int orderId, Review review) async {
-    var url = "http://localhost:5021/api/Order/$orderId/review";
+    var url = "${ApiConfig.apiBaseUrl}Order/$orderId/review";
     var response = await http.post(
       Uri.parse(url),
       headers: createHeaders(),
@@ -222,6 +225,130 @@ class OrderProvider extends BaseProvider<Order> {
       throw Exception('Order not found');
     } else {
       throw Exception('Failed to load order details: ${response.body}');
+    }
+  }
+
+  // ============================================
+  // CUSTOM ORDER METHODS
+  // ============================================
+
+  /// Upload custom order sketch/reference image
+  /// Returns the URL of the uploaded image
+  Future<String> uploadCustomSketch(File file, {String? description}) async {
+    var url = "${ApiConfig.apiBaseUrl}Order/custom/upload-sketch";
+    var request = http.MultipartRequest('POST', Uri.parse(url));
+
+    // Add auth header
+    request.headers.addAll(createHeaders());
+
+    // Add file
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    // Add description if provided
+    if (description != null && description.isNotEmpty) {
+      request.fields['description'] = description;
+    }
+
+    print('[OrderProvider] Uploading custom sketch: ${file.path}');
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    print('[OrderProvider] Upload response: ${response.statusCode}');
+
+    if (isValidResponse(response)) {
+      final data = jsonDecode(response.body);
+      var imageUrl = data['url'] as String;
+
+      // Handle spaces in URL
+      imageUrl = imageUrl.replaceAll(' ', '%20');
+
+      // If URL is relative, prefix with base URL
+      if (!imageUrl.startsWith('http')) {
+        // Remove leading slash if present to avoid double slashes
+        if (imageUrl.startsWith('/')) {
+          imageUrl = imageUrl.substring(1);
+        }
+        imageUrl = '${ApiConfig.baseUrl}/$imageUrl';
+      }
+
+      print('[OrderProvider] Sketch uploaded successfully: $imageUrl');
+      return imageUrl;
+    } else {
+      throw Exception("Failed to upload sketch: ${response.body}");
+    }
+  }
+
+  /// Create custom order
+  /// First uploads all sketches, then creates the custom order with URLs
+  static Future<Order> createCustomOrder(
+    CustomOrderRequest request,
+    List<File> sketchFiles,
+  ) async {
+    final headers = await AuthProvider.getAuthHeaders();
+    final provider = OrderProvider();
+
+    try {
+      print('[OrderProvider] Starting custom order creation');
+      print(
+        '[OrderProvider] Number of sketches to upload: ${sketchFiles.length}',
+      );
+
+      // 1. Upload all sketches first
+      final uploadedUrls = <String>[];
+      for (int i = 0; i < sketchFiles.length; i++) {
+        final file = sketchFiles[i];
+        print(
+          '[OrderProvider] Uploading sketch ${i + 1}/${sketchFiles.length}',
+        );
+        final url = await provider.uploadCustomSketch(file);
+        uploadedUrls.add(url);
+      }
+
+      print('[OrderProvider] All sketches uploaded: $uploadedUrls');
+
+      // 2. Create request with uploaded URLs
+      final requestWithUrls = CustomOrderRequest(
+        categoryId: request.categoryId,
+        materialId: request.materialId,
+        dimensions: request.dimensions,
+        description: request.description,
+        customerNotes: request.customerNotes,
+        referenceImageUrls: uploadedUrls,
+        estimatedPrice: request.estimatedPrice,
+        deliveryAddress: request.deliveryAddress,
+        deliveryCity: request.deliveryCity,
+        deliveryZipCode: request.deliveryZipCode,
+        deliveryDate: request.deliveryDate,
+      );
+
+      // 3. Create custom order
+      final uri = Uri.parse('${ApiConfig.apiBaseUrl}Order/custom');
+
+      print('[OrderProvider] Creating custom order at: $uri');
+      print('[OrderProvider] Request body: ${requestWithUrls.toJson()}');
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(requestWithUrls.toJson()),
+      );
+
+      print('[OrderProvider] Custom order response: ${response.statusCode}');
+      print('[OrderProvider] Response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final order = Order.fromJson(jsonDecode(response.body));
+        print(
+          '[OrderProvider] Custom order created successfully: Order #${order.id}',
+        );
+        return order;
+      } else {
+        throw Exception('Failed to create custom order: ${response.body}');
+      }
+    } catch (e) {
+      print('[OrderProvider] Error creating custom order: $e');
+      rethrow;
     }
   }
 }

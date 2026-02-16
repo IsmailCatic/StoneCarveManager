@@ -5,6 +5,7 @@ import 'package:stonecarve_manager_flutter/providers/project_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/product_state_chip.dart';
 import 'package:stonecarve_manager_flutter/widgets/product_action_buttons.dart';
 import 'package:stonecarve_manager_flutter/screens/add_product_screen.dart';
+import 'package:stonecarve_manager_flutter/widgets/optimized_image.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -81,6 +82,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ? const Center(child: Text('No products found'))
                   : GridView.builder(
                       padding: const EdgeInsets.all(16),
+                      // Performance optimizations
+                      cacheExtent: 200,
+                      addAutomaticKeepAlives: true,
+                      addRepaintBoundaries: true,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: MediaQuery.of(context).size.width > 1400
                             ? 4
@@ -117,22 +122,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                       child:
                                           latestImageUrl != null &&
                                               latestImageUrl.isNotEmpty
-                                          ? Image.network(
-                                              latestImageUrl,
+                                          ? OptimizedImage(
+                                              imageUrl: latestImageUrl,
                                               fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => Container(
-                                                    color: Colors.grey[200],
-                                                    child: const Icon(
-                                                      Icons.broken_image,
-                                                      size: 48,
-                                                      color: Colors.grey,
-                                                    ),
-                                                  ),
+                                              height: 140,
+                                              width: double.infinity,
+                                              errorWidget: Container(
+                                                color: Colors.grey[200],
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                  size: 48,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                             )
                                           : Container(
                                               color: Colors.grey[100],

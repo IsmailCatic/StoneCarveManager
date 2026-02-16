@@ -1,4 +1,5 @@
 // lib/utils/constants.dart
+import '../config/api_config.dart';
 
-const String kApiUrl =
-    'http://localhost:5021/api'; // TODO: Replace with your actual API URL or load from env/config
+// Use ApiConfig for proper platform support (Android emulator, iOS simulator, etc.)
+final String kApiUrl = ApiConfig.apiBaseUrl.replaceAll(RegExp(r'/$'), '');

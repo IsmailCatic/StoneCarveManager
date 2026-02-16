@@ -55,6 +55,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
 
     try {
       final provider = CategoryProvider();
+
       if (widget.category == null) {
         await provider.createCategory(data);
       } else {
@@ -62,9 +63,12 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Category saved successfully!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Category saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.of(context).pop(true);
       }
     } catch (e) {
@@ -152,7 +156,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                             onChanged: (v) =>
                                 setState(() => _parentCategoryId = v),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 24),
                           SwitchListTile(
                             title: Text("Active"),
                             value: _isActive,

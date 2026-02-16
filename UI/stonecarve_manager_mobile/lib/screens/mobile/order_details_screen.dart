@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
 import 'package:stonecarve_manager_mobile/providers/order_provider.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/add_review_screen.dart';
 import 'package:intl/intl.dart';
 
 class OrderDetailsScreen extends StatefulWidget {
@@ -175,8 +176,216 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ),
               const SizedBox(height: 12),
               _buildOrderItems(),
+              const SizedBox(height: 20),
+
+              // Review Section
+              if (_order!.status == 3) ...[
+                const Text(
+                  'Your Review',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildReviewSection(),
+                const SizedBox(height: 20),
+              ],
+
+              // Bottom padding for floating button
+              const SizedBox(height: 80),
             ],
           ),
+        ),
+      ),
+      floatingActionButton: _shouldShowReviewButton()
+          ? FloatingActionButton.extended(
+              onPressed: _openAddReview,
+              backgroundColor: Colors.blue,
+              icon: const Icon(Icons.star, color: Colors.white),
+              label: const Text(
+                'Leave Review',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
+  bool _shouldShowReviewButton() {
+    // Show button only if order is completed (status 3) and no review exists
+    return _order!.status == 3 && _order!.review == null;
+  }
+
+  Future<void> _openAddReview() async {
+    final productId = _order!.orderItems.isNotEmpty
+        ? _order!.orderItems.first.productId
+        : null;
+    final productName = _order!.orderItems.isNotEmpty
+        ? _order!.orderItems.first.productName
+        : null;
+
+    final result = await Navigator.push<Review>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddReviewScreen(
+          orderId: _order!.id,
+          productId: productId,
+          productName: productName,
+        ),
+      ),
+    );
+
+    // Reload order details if review was added
+    if (result != null) {
+      _loadOrderDetails();
+    }
+  }
+
+  Widget _buildReviewSection() {
+    if (_order!.review == null) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Icon(
+                Icons.rate_review_outlined,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No review yet',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Share your experience with this order',
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _openAddReview,
+                icon: const Icon(Icons.star),
+                label: const Text('Leave Review'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final review = _order!.review!;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ...List.generate(5, (index) {
+                  return Icon(
+                    index < review.rating ? Icons.star : Icons.star_border,
+                    size: 24,
+                    color: index < review.rating
+                        ? Colors.amber
+                        : Colors.grey[300],
+                  );
+                }),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.check_circle, size: 14, color: Colors.green),
+                      SizedBox(width: 4),
+                      Text(
+                        'Reviewed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              review.comment,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colors.blue,
+                  child: Text(
+                    review.userName?.substring(0, 1).toUpperCase() ?? 'U',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  review.userName ?? 'Anonymous',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 6),
+                Text(
+                  _formatDate(review.createdAt),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

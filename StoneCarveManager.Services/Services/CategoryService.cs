@@ -9,8 +9,10 @@ using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace StoneCarveManager.Services.Services
@@ -19,9 +21,12 @@ namespace StoneCarveManager.Services.Services
          : BaseCRUDService<CategoryResponse, CategorySearchObject, Category, CategoryInsertRequest, CategoryUpdateRequest>,
            ICategoryService
     {
-        public CategoryService(AppDbContext context, IMapper mapper)
+        private readonly IFileService _fileService;
+
+        public CategoryService(AppDbContext context, IMapper mapper, IFileService fileService)
             : base(context, mapper)
         {
+            _fileService = fileService;
         }
 
         // ✅ Override filter logic
@@ -99,6 +104,97 @@ namespace StoneCarveManager.Services.Services
             }
 
             await base.BeforeDelete(entity);
+        }
+
+        /// <summary>
+        /// Upload category image to Azure Blob Storage
+        /// Replaces existing image if present
+        /// </summary>
+        public async Task<string> UploadCategoryImageAsync(
+            int categoryId,
+            CategoryImageUploadRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var category = await _context.Categories.FindAsync(new object[] { categoryId }, cancellationToken);
+            
+            if (category == null)
+                throw new KeyNotFoundException($"Category with ID {categoryId} not found.");
+
+            // Validate file
+            if (request.File == null || request.File.Length == 0)
+                throw new ArgumentException("File is required");
+
+            // Validate file type
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var extension = Path.GetExtension(request.File.FileName).ToLowerInvariant();
+            
+            if (!allowedExtensions.Contains(extension))
+                throw new ArgumentException("Only JPG and PNG files are allowed");
+
+            // Validate file size (max 5MB)
+            if (request.File.Length > 5 * 1024 * 1024)
+                throw new ArgumentException("File size must be less than 5MB");
+
+            // Delete old image if exists
+            if (!string.IsNullOrWhiteSpace(category.ImageUrl))
+            {
+                try
+                {
+                    await _fileService.DeleteAsync(category.ImageUrl, "category-images", cancellationToken);
+                }
+                catch
+                {
+                    // Log error but continue with upload
+                }
+            }
+
+            // Upload new image
+            var imageUrl = await _fileService.UploadAsync(
+                request.File,
+                "category-images",  // ✅ Container name
+                null,                // Auto-generate filename
+                cancellationToken
+            );
+
+            // Update category record
+            category.ImageUrl = imageUrl;
+            category.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return imageUrl;
+        }
+
+        /// <summary>
+        /// Delete category image from Azure Blob Storage
+        /// </summary>
+        public async Task<bool> DeleteCategoryImageAsync(
+            int categoryId,
+            CancellationToken cancellationToken = default)
+        {
+            var category = await _context.Categories.FindAsync(new object[] { categoryId }, cancellationToken);
+            
+            if (category == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(category.ImageUrl))
+                return false;
+
+            try
+            {
+                await _fileService.DeleteAsync(category.ImageUrl, "category-images", cancellationToken);
+                
+                category.ImageUrl = null;
+                category.UpdatedAt = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync(cancellationToken);
+                
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

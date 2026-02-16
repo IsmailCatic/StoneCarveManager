@@ -52,6 +52,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
 
     try {
       final provider = MaterialProvider();
+
       if (widget.material == null) {
         await provider.createMaterial(data);
       } else {
@@ -59,9 +60,12 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Material saved successfully!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Material saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.of(context).pop(true);
       }
     } catch (e) {
@@ -183,7 +187,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     SwitchListTile(
                       title: Text("Available"),
                       value: _isAvailable,

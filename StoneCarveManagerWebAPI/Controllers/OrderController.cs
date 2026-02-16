@@ -135,14 +135,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(order);
         }
 
-        /// <summary>
-        /// Update order status (Admin/Employee only)
-        /// Automatically creates OrderStatusHistory entry with timestamp and user info
-        /// </summary>
-        /// <param name="id">Order ID</param>
-        /// <param name="request">Status update request with newStatus and optional comment</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Updated order with new status history entry</returns>
         [HttpPatch("{id}/status")]
         [Authorize(Roles = "Admin,Employee")]
         public async Task<IActionResult> UpdateOrderStatus(
@@ -200,7 +192,6 @@ namespace StoneCarveManagerWebAPI.Controllers
 
 
 
-
         // Example custom endpoint: mark order as completed
         [HttpPatch("{id}/mark-completed")]
         public async Task<IActionResult> MarkCompleted(int id)
@@ -222,13 +213,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get orders filtered by date range for better performance with large datasets
-        /// </summary>
-        /// <param name="startDate">Start date (inclusive)</param>
-        /// <param name="endDate">End date (inclusive)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of orders within the specified date range</returns>
         [HttpGet("by-date-range")]
         public async Task<ActionResult<List<OrderResponse>>> GetOrdersByDateRange(
             [FromQuery] DateTime startDate,
@@ -239,12 +223,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(orders);
         }
 
-        /// <summary>
-        /// Get monthly summary with pre-aggregated order data and revenue for a specific year
-        /// </summary>
-        /// <param name="year">Year to get summary for (e.g., 2024)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Monthly breakdown with order counts, revenue, and detailed orders per month</returns>
         [HttpGet("monthly-summary")]
         public async Task<ActionResult<OrderMonthlySummaryResponse>> GetMonthlySummary(
             [FromQuery] int year,
@@ -254,6 +232,78 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(summary);
         }
 
+        /// Create a custom stone carving order (no predefined product)
+        /// Customer specifies work type, material, dimensions, and description
+        /// Perfect for unique, one-of-a-kind projects
+        /// <returns>Created order with generated order number</returns>
+        [HttpPost("custom")]
+        [Authorize]
+        public async Task<ActionResult<OrderResponse>> CreateCustomOrder(
+            [FromBody] CustomOrderInsertRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _orderService.CreateCustomOrderAsync(request, cancellationToken);
+            
+            if (result == null)
+                return BadRequest(new { message = "Failed to create custom order" });
+            
+            return CreatedAtAction(nameof(GetMyOrderById), new { id = result.Id }, result);
+        }
+
+        /// Get all custom orders (Admin/Employee only)
+        /// Orders where product.productState == "custom_order"
+        [HttpGet("custom-orders")]
+        [Authorize(Roles = "Admin,Employee")]
+        public async Task<ActionResult<PagedResult<OrderResponse>>> GetCustomOrders(
+            [FromQuery] OrderSearchObject? search,
+            CancellationToken cancellationToken = default)
+        {
+            search ??= new OrderSearchObject();
+            
+            var result = await _orderService.GetAsync(search);
+            
+            // Filter only custom orders
+            var customOrders = result.Items?
+                .Where(o => o.OrderItems.Any(oi => oi.ProductState == "custom_order"))
+                .ToList();
+            
+            return Ok(new PagedResult<OrderResponse>
+            {
+                Items = customOrders,
+                TotalCount = customOrders?.Count
+            });
+        }
+
+        /// Upload a reference sketch/image for a custom order
+        /// Returns the URL of the uploaded image to be included in CustomOrderInsertRequest
+        /// <returns>URL of the uploaded sketch</returns>
+        [HttpPost("custom/upload-sketch")]
+        [Authorize]
+        public async Task<IActionResult> UploadCustomOrderSketch(
+            [FromForm] CustomOrderSketchUploadRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var imageUrl = await _orderService.UploadCustomOrderSketchAsync(request, cancellationToken);
+            
+            return Ok(new { url = imageUrl });
+        }
+
+        /// <summary>
+        /// Delete a previously uploaded custom order sketch
+        /// </summary>
+        [HttpDelete("custom/delete-sketch")]
+        [Authorize]
+        public async Task<IActionResult> DeleteCustomOrderSketch(
+            [FromQuery] string url,
+            CancellationToken cancellationToken = default)
+        {
+            var deleted = await _orderService.DeleteCustomOrderSketchAsync(url, cancellationToken);
+            
+            if (!deleted)
+                return NotFound(new { message = "Sketch not found" });
+            
+            return NoContent();
+        }
     }
 
 }

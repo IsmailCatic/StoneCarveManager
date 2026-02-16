@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /StoneCarveManagerWebAPI/Documentation
+/UI/stonecarve_manager_desktop/PERFORMANCE_OPTIMIZATIONS.md

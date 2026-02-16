@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
 import 'package:stonecarve_manager_mobile/providers/order_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/order_details_screen.dart';
+import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key});
@@ -62,7 +63,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.black87),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -207,6 +213,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
           ),
         ],
       ),
+      drawer: const AppDrawerMobile(),
     );
   }
 

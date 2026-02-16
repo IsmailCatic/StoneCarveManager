@@ -10,10 +10,12 @@ namespace StoneCarveManagerWebAPI.Controllers
         : BaseCRUDController<ProductReviewResponse, ProductReviewSearchObject, ProductReviewInsertRequest, ProductReviewUpdateRequest>
     {
         private readonly IProductReviewService _productReviewService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ProductReviewController(IProductReviewService service) : base(service)
+        public ProductReviewController(IProductReviewService service, ICurrentUserService currentUserService) : base(service)
         {
             _productReviewService = service;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet("/api/product/{productId}/reviews")]
@@ -23,14 +25,22 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(reviews);
         }
 
-        // Novi review za proizvod (User je iz autorizacije, OrderId je opcionalan)
-        //[HttpPost("/api/product/{productId}/reviews")]
-        //public async Task<IActionResult> AddProductReview(int productId, ProductReviewInsertRequest request)
-        //{
-        //    request.ProductId = productId;
-        //    var review = await _productReviewService.InsertAsync(request);
-        //    return Ok(review);
-        //}
+        /// <summary>
+        /// Add review for a product
+        /// UserId is automatically extracted from JWT token
+        /// </summary>
+        [HttpPost("/api/product/{productId}/reviews")]
+        public async Task<IActionResult> AddProductReview(int productId, [FromBody] ProductReviewInsertRequest request)
+        {
+            // Automatically set userId from JWT token
+            request.UserId = _currentUserService.GetUserId();
+            
+            // Set productId from URL
+            request.ProductId = productId;
+            
+            var review = await _productReviewService.InsertAsync(request);
+            return Ok(review);
+        }
 
         [HttpPatch("{id}/approve")]
         public async Task<IActionResult> Approve(int id)

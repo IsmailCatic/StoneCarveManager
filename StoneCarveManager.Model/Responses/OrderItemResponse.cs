@@ -19,6 +19,11 @@ namespace StoneCarveManager.Model.Responses
         public decimal UnitPrice { get; set; }
 
         public decimal TotalPrice { get; set; }
+
+        public decimal Discount { get; set; }
+        public string? Specifications { get; set; }
+
+        public string? ProductState { get; set; }  // "custom_order", "available", "portfolio", e
     }
 
 }

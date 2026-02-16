@@ -4,6 +4,9 @@ import 'package:stonecarve_manager_flutter/models/material.dart'
     as stone_material;
 import 'package:stonecarve_manager_flutter/providers/stone_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/add_material_screen.dart';
+import 'package:stonecarve_manager_flutter/widgets/optimized_image.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class MaterialsScreen extends StatefulWidget {
   const MaterialsScreen({super.key});
@@ -42,6 +45,65 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error loading materials: $e')));
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadImage(
+    stone_material.StoneMaterial material,
+  ) async {
+    if (material.id == null) return;
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      try {
+        await _materialProvider.uploadMaterialImage(
+          material.id!,
+          File(pickedFile.path),
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image uploaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadMaterials();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteImage(stone_material.StoneMaterial material) async {
+    if (material.id == null ||
+        material.imageUrl == null ||
+        material.imageUrl!.isEmpty)
+      return;
+
+    try {
+      await _materialProvider.deleteMaterialImage(material.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image deleted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadMaterials();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting image: $e')));
       }
     }
   }
@@ -89,6 +151,10 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                   : _materials.isEmpty
                   ? const Center(child: Text('No materials found'))
                   : GridView.builder(
+                      // Performance optimizations
+                      cacheExtent: 200,
+                      addAutomaticKeepAlives: true,
+                      addRepaintBoundaries: true,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
@@ -113,11 +179,27 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                                       top: Radius.circular(4),
                                     ),
                                   ),
-                                  child: const Icon(
-                                    Icons.terrain,
-                                    size: 64,
-                                    color: Colors.grey,
-                                  ),
+                                  child: material.imageUrl != null
+                                      ? ClipRRect(
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(4),
+                                              ),
+                                          child: OptimizedImage(
+                                            imageUrl: material.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            errorWidget: const Icon(
+                                              Icons.terrain,
+                                              size: 64,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.terrain,
+                                          size: 64,
+                                          color: Colors.grey,
+                                        ),
                                 ),
                               ),
                               Expanded(
@@ -155,6 +237,89 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.end,
                                         children: [
+                                          // Image upload/delete button
+                                          IconButton(
+                                            icon: Icon(
+                                              (material.imageUrl != null &&
+                                                      material
+                                                          .imageUrl!
+                                                          .isNotEmpty)
+                                                  ? Icons.hide_image
+                                                  : Icons.add_photo_alternate,
+                                              size: 18,
+                                              color:
+                                                  (material.imageUrl != null &&
+                                                      material
+                                                          .imageUrl!
+                                                          .isNotEmpty)
+                                                  ? Colors.orange
+                                                  : Colors.blue,
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            tooltip:
+                                                (material.imageUrl != null &&
+                                                    material
+                                                        .imageUrl!
+                                                        .isNotEmpty)
+                                                ? 'Delete Image'
+                                                : 'Add Image',
+                                            onPressed: () async {
+                                              if (material.imageUrl != null &&
+                                                  material
+                                                      .imageUrl!
+                                                      .isNotEmpty) {
+                                                // Delete image
+                                                final confirm = await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) => AlertDialog(
+                                                    title: const Text(
+                                                      'Delete Image',
+                                                    ),
+                                                    content: const Text(
+                                                      'Are you sure you want to delete this image?',
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                              false,
+                                                            ),
+                                                        child: const Text(
+                                                          'Cancel',
+                                                        ),
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                              true,
+                                                            ),
+                                                        style:
+                                                            ElevatedButton.styleFrom(
+                                                              backgroundColor:
+                                                                  Colors.red,
+                                                            ),
+                                                        child: const Text(
+                                                          'Delete',
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                                if (confirm == true) {
+                                                  await _deleteImage(material);
+                                                }
+                                              } else {
+                                                // Upload image
+                                                await _pickAndUploadImage(
+                                                  material,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                          const SizedBox(width: 4),
                                           IconButton(
                                             icon: const Icon(
                                               Icons.edit,
@@ -163,121 +328,17 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
                                             onPressed: () async {
-                                              // Implement edit functionality
-                                              final updatedMaterial = await showDialog<stone_material.StoneMaterial>(
-                                                context: context,
-                                                builder: (context) {
-                                                  final nameController =
-                                                      TextEditingController(
-                                                        text: material.name,
-                                                      );
-                                                  final priceController =
-                                                      TextEditingController(
-                                                        text:
-                                                            material
-                                                                .pricePerUnit
-                                                                ?.toString() ??
-                                                            '',
-                                                      );
-                                                  final quantityController =
-                                                      TextEditingController(
-                                                        text:
-                                                            material
-                                                                .quantityInStock
-                                                                ?.toString() ??
-                                                            '',
-                                                      );
-                                                  return AlertDialog(
-                                                    title: const Text(
-                                                      'Edit Material',
+                                              final result =
+                                                  await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          AddMaterialScreen(
+                                                            material: material,
+                                                          ),
                                                     ),
-                                                    content: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        TextField(
-                                                          controller:
-                                                              nameController,
-                                                          decoration:
-                                                              const InputDecoration(
-                                                                labelText:
-                                                                    'Name',
-                                                              ),
-                                                        ),
-                                                        TextField(
-                                                          controller:
-                                                              priceController,
-                                                          decoration:
-                                                              const InputDecoration(
-                                                                labelText:
-                                                                    'Price per Unit',
-                                                              ),
-                                                          keyboardType:
-                                                              TextInputType.numberWithOptions(
-                                                                decimal: true,
-                                                              ),
-                                                        ),
-                                                        TextField(
-                                                          controller:
-                                                              quantityController,
-                                                          decoration:
-                                                              const InputDecoration(
-                                                                labelText:
-                                                                    'Quantity in Stock',
-                                                              ),
-                                                          keyboardType:
-                                                              TextInputType
-                                                                  .number,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                              context,
-                                                            ),
-                                                        child: const Text(
-                                                          'Cancel',
-                                                        ),
-                                                      ),
-                                                      ElevatedButton(
-                                                        onPressed: () {
-                                                          final updated = stone_material.StoneMaterial(
-                                                            id: material.id,
-                                                            name: nameController
-                                                                .text,
-                                                            pricePerUnit:
-                                                                double.tryParse(
-                                                                  priceController
-                                                                      .text,
-                                                                ) ??
-                                                                0,
-                                                            quantityInStock:
-                                                                int.tryParse(
-                                                                  quantityController
-                                                                      .text,
-                                                                ) ??
-                                                                0,
-                                                          );
-                                                          Navigator.pop(
-                                                            context,
-                                                            updated,
-                                                          );
-                                                        },
-                                                        child: const Text(
-                                                          'Save',
-                                                        ),
-                                                      ),
-                                                    ],
                                                   );
-                                                },
-                                              );
-                                              if (updatedMaterial != null) {
-                                                await _materialProvider.update(
-                                                  material.id!,
-                                                  updatedMaterial,
-                                                );
+                                              if (result == true) {
                                                 _loadMaterials();
                                               }
                                             },
@@ -291,15 +352,14 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
                                             onPressed: () async {
-                                              // Implement delete functionality
                                               final confirm = await showDialog<bool>(
                                                 context: context,
                                                 builder: (context) => AlertDialog(
                                                   title: const Text(
                                                     'Delete Material',
                                                   ),
-                                                  content: const Text(
-                                                    'Are you sure you want to delete this material?',
+                                                  content: Text(
+                                                    'Are you sure you want to delete "${material.name}"?\nThis action cannot be undone.',
                                                   ),
                                                   actions: [
                                                     TextButton(
@@ -318,6 +378,11 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                                                             context,
                                                             true,
                                                           ),
+                                                      style:
+                                                          ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ),
                                                       child: const Text(
                                                         'Delete',
                                                       ),
@@ -326,10 +391,36 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
                                                 ),
                                               );
                                               if (confirm == true) {
-                                                await _materialProvider.delete(
-                                                  material.id!,
-                                                );
-                                                _loadMaterials();
+                                                try {
+                                                  await _materialProvider
+                                                      .delete(material.id!);
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Material deleted successfully',
+                                                        ),
+                                                      ),
+                                                    );
+                                                    _loadMaterials();
+                                                  }
+                                                } catch (e) {
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'Error deleting material: $e',
+                                                        ),
+                                                        backgroundColor:
+                                                            Colors.red,
+                                                      ),
+                                                    );
+                                                  }
+                                                }
                                               }
                                             },
                                           ),

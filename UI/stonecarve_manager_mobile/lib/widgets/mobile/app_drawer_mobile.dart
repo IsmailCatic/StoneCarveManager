@@ -76,6 +76,18 @@ class AppDrawerMobile extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.favorite),
+            title: const Text('My Favorites'),
+            onTap: () {
+              final currentRoute = ModalRoute.of(context)?.settings.name;
+              Navigator.pop(context);
+
+              if (currentRoute != '/favorites') {
+                Navigator.pushNamed(context, '/favorites');
+              }
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.rate_review),
             title: const Text('Reviews & Ratings'),
             onTap: () {

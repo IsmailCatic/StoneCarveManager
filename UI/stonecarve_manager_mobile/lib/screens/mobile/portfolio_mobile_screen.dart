@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/product.dart';
+import 'package:stonecarve_manager_mobile/models/category.dart';
+import 'package:stonecarve_manager_mobile/models/material.dart'
+    as stone_material;
 import 'package:stonecarve_manager_mobile/widgets/mobile/portfolio_card.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/category_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/stone_provider.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_detail_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -15,8 +21,13 @@ class PortfolioMobileScreen extends StatefulWidget {
 }
 
 class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
+  final CategoryProvider _categoryProvider = CategoryProvider();
+  final MaterialProvider _materialProvider = MaterialProvider();
+
   List<Product> _projects = [];
   List<Product> _filteredProjects = [];
+  List<Category> _categories = [];
+  List<stone_material.StoneMaterial> _materials = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -70,6 +81,9 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
     });
 
     try {
+      // Load categories and materials first
+      await Future.wait([_loadCategories(), _loadMaterials()]);
+
       final url = '${BaseProvider.baseUrl}/api/Product/portfolio';
       print('[PortfolioMobile] Fetching from: $url');
       print(
@@ -90,8 +104,29 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         final List<dynamic> items = jsonResponse['items'] ?? [];
         print('[PortfolioMobile] Loaded ${items.length} portfolio items');
+
+        var projects = items.map((json) => Product.fromJson(json)).toList();
+
+        // Map category and material names from loaded lists
+        for (var item in projects) {
+          if (item.categoryId != null) {
+            final category = _categories.firstWhere(
+              (cat) => cat.id == item.categoryId,
+              orElse: () => Category(id: null, name: null),
+            );
+            item.categoryName = category.name;
+          }
+          if (item.materialId != null) {
+            final material = _materials.firstWhere(
+              (mat) => mat.id == item.materialId,
+              orElse: () => stone_material.StoneMaterial(id: null, name: null),
+            );
+            item.materialName = material.name;
+          }
+        }
+
         setState(() {
-          _projects = items.map((json) => Product.fromJson(json)).toList();
+          _projects = projects;
           _filteredProjects = List.from(_projects);
           _isLoading = false;
         });
@@ -107,6 +142,24 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
         _errorMessage = 'Error: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final result = await _categoryProvider.get();
+      setState(() => _categories = result.items ?? []);
+    } catch (e) {
+      print('Error loading categories: $e');
+    }
+  }
+
+  Future<void> _loadMaterials() async {
+    try {
+      final result = await _materialProvider.get();
+      setState(() => _materials = result.items ?? []);
+    } catch (e) {
+      print('Error loading materials: $e');
     }
   }
 
@@ -365,7 +418,13 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
                         return PortfolioCard(
                           project: project,
                           onTap: () {
-                            // Navigate to portfolio detail screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PortfolioDetailScreen(product: project),
+                              ),
+                            );
                           },
                         );
                       },

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/favorites_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/mobile_home_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/register_screen.dart';
 
@@ -40,6 +42,16 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
+        // Sync favorites with backend after successful login
+        final favoritesProvider = context.read<FavoritesProvider>();
+        favoritesProvider.syncWithBackend().then((success) {
+          if (success) {
+            debugPrint('[Login] Favorites synced successfully');
+          } else {
+            debugPrint('[Login] Favorites sync failed, using local cache');
+          }
+        });
+
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const MobileHomeScreen()),
         );

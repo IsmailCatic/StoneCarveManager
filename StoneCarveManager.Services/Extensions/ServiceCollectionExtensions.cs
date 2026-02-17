@@ -48,6 +48,9 @@ namespace StoneCarveManager.Services.Extensions
             
             // Register Checkout service
             services.AddScoped<ICheckoutService, CheckoutService>();
+            
+            // Register Favorite service
+            services.AddScoped<IFavoriteService, FavoriteService>();
 
             // Register Product State Machine
             services.AddTransient<BaseProductState>();

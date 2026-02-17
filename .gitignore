@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /StoneCarveManagerWebAPI/Documentation
 /UI/stonecarve_manager_desktop/PERFORMANCE_OPTIMIZATIONS.md
+/UI/stonecarve_manager_mobile/FAVORITES_BACKEND_IMPLEMENTATION.md
+/UI/stonecarve_manager_mobile/FAVORITES_IMPLEMENTATION_COMPLETE.md

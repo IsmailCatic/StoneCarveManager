@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/favorites_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/login_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/mobile_home_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/api_test_screen.dart';
@@ -12,6 +13,7 @@ import 'package:stonecarve_manager_mobile/screens/mobile/checkout_confirmation_s
 import 'package:stonecarve_manager_mobile/screens/mobile/reviews_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/blog_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/products_mobile_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/favorites_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/my_orders_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/custom_order_form_screen.dart';
@@ -22,16 +24,25 @@ Future<void> main() async {
   // Load token from storage before running app
   await AuthProvider.loadToken();
 
-  runApp(const StoneCarveManagerApp());
+  // Initialize favorites provider
+  final favoritesProvider = FavoritesProvider();
+  await favoritesProvider.loadFavorites();
+
+  runApp(StoneCarveManagerApp(favoritesProvider: favoritesProvider));
 }
 
 class StoneCarveManagerApp extends StatelessWidget {
-  const StoneCarveManagerApp({super.key});
+  final FavoritesProvider favoritesProvider;
+
+  const StoneCarveManagerApp({super.key, required this.favoritesProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => CartProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider.value(value: favoritesProvider),
+      ],
       child: MaterialApp(
         title: 'StoneCarve Manager',
         debugShowCheckedModeBanner: false,
@@ -84,6 +95,8 @@ class StoneCarveManagerApp extends StatelessWidget {
               return MaterialPageRoute(
                 builder: (_) => const ProductsMobileScreen(),
               );
+            case '/favorites':
+              return MaterialPageRoute(builder: (_) => const FavoritesScreen());
             case '/orders':
               return MaterialPageRoute(builder: (_) => const MyOrdersScreen());
             case '/portfolio':

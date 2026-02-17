@@ -6,6 +6,7 @@ import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart'
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
+import 'package:stonecarve_manager_mobile/providers/favorites_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/cart_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -26,7 +27,6 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
   // Search and filter state
   final TextEditingController _searchController = TextEditingController();
   String _selectedSort = 'default';
-  Set<int> _favoriteProductIds = {};
 
   // Filter options
   final List<Map<String, dynamic>> _sortOptions = [
@@ -133,21 +133,16 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
     }
   }
 
-  void _toggleFavorite(int productId) {
-    setState(() {
-      if (_favoriteProductIds.contains(productId)) {
-        _favoriteProductIds.remove(productId);
-      } else {
-        _favoriteProductIds.add(productId);
-      }
-    });
+  Future<void> _toggleFavorite(int productId) async {
+    final favoritesProvider = context.read<FavoritesProvider>();
+    final isNowFavorite = await favoritesProvider.toggleFavorite(productId);
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _favoriteProductIds.contains(productId)
-              ? 'Added to favorites'
-              : 'Removed from favorites',
+          isNowFavorite ? 'Added to favorites' : 'Removed from favorites',
         ),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
@@ -237,7 +232,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
                       top: 8,
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Colors.blue,
                           shape: BoxShape.circle,
                         ),
@@ -388,23 +383,28 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
                   )
                 : RefreshIndicator(
                     onRefresh: _fetchProducts,
-                    child: ListView.builder(
-                      itemCount: _filteredProducts.length,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemBuilder: (context, index) {
-                        final product = _filteredProducts[index];
-                        final isFavorite = _favoriteProductIds.contains(
-                          product.id,
-                        );
+                    child: Consumer<FavoritesProvider>(
+                      builder: (context, favoritesProvider, child) {
+                        return ListView.builder(
+                          itemCount: _filteredProducts.length,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemBuilder: (context, index) {
+                            final product = _filteredProducts[index];
+                            final isFavorite = favoritesProvider.isFavorite(
+                              product.id,
+                            );
 
-                        return ProductCard(
-                          product: product,
-                          isFavorite: isFavorite,
-                          onTap: () {
-                            // Navigate to product details
+                            return ProductCard(
+                              product: product,
+                              isFavorite: isFavorite,
+                              onTap: () {
+                                // Navigate to product details
+                              },
+                              onToggleFavorite: () =>
+                                  _toggleFavorite(product.id!),
+                              onAddToCart: () => _addToCart(product),
+                            );
                           },
-                          onToggleFavorite: () => _toggleFavorite(product.id!),
-                          onAddToCart: () => _addToCart(product),
                         );
                       },
                     ),

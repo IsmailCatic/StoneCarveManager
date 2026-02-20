@@ -164,4 +164,88 @@ class AuthProvider {
       // Ako imaš i druge podatke, možeš ih učitati ovdje, ali za sada samo token
     }
   }
+
+  // Request password reset - sends verification code to email
+  static Future<String> requestPasswordReset(String email) async {
+    try {
+      print('[AuthProvider] 📤 Requesting password reset for: $email');
+
+      final response = await http.post(
+        Uri.parse('${_baseUrl}auth/request-password-reset'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      print(
+        '[AuthProvider] Password reset request: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['message'] ??
+            'If an account exists with this email, a verification code has been sent.';
+      } else if (response.statusCode == 400) {
+        throw Exception('Invalid email format');
+      } else {
+        throw Exception('Error sending request: ${response.body}');
+      }
+    } catch (e) {
+      print('[AuthProvider] Password reset request error: $e');
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('Connection refused')) {
+        throw Exception('Unable to connect to server');
+      }
+      rethrow;
+    }
+  }
+
+  // Reset password using verification code
+  static Future<String> resetPassword({
+    required String email,
+    required String verificationCode,
+    required String newPassword,
+  }) async {
+    try {
+      final requestBody = {
+        'email': email,
+        'verificationCode': verificationCode,
+        'newPassword': newPassword,
+      };
+
+      print('[AuthProvider] 📤 Sending password reset request:');
+      print('   Email: $email');
+      print('   VerificationCode: $verificationCode');
+      print('   Request body: ${jsonEncode(requestBody)}');
+
+      final response = await http.post(
+        Uri.parse('${_baseUrl}auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      print(
+        '[AuthProvider] Password reset: ${response.statusCode} - ${response.body}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['message'] ??
+            'Password changed successfully. You can now log in with your new password.';
+      } else if (response.statusCode == 400) {
+        final data = jsonDecode(response.body);
+        throw Exception(
+          data['message'] ?? 'Invalid verification code or request',
+        );
+      } else {
+        throw Exception('Error resetting password: ${response.body}');
+      }
+    } catch (e) {
+      print('[AuthProvider] Password reset error: $e');
+      if (e.toString().contains('Failed host lookup') ||
+          e.toString().contains('Connection refused')) {
+        throw Exception('Unable to connect to server');
+      }
+      rethrow;
+    }
+  }
 }

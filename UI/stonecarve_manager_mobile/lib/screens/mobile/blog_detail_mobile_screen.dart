@@ -40,6 +40,17 @@ class _BlogDetailMobileScreenState extends State<BlogDetailMobileScreen> {
         _post = post;
         _isLoading = false;
       });
+
+      // Increment view count - MOBILE APP END-USER VIEW TRACKING
+      // Desktop admin views do NOT increment the counter
+      // Runs asynchronously without blocking UI
+      _provider.incrementViewCount(widget.postId).then((success) {
+        if (success) {
+          print(
+            '✅ [BlogDetailMobile] View count incremented for post ${widget.postId}',
+          );
+        }
+      });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();

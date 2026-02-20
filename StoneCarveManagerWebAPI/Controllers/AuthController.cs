@@ -79,50 +79,53 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            // Jednostavno vraćamo OK - logout je client-side (brisanje tokena iz localStorage/cookies)
             return Ok(new { message = "Logged out successfully" });
         }
 
+        // ✅ NEW: Request password reset
+        [HttpPost("request-password-reset")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequestRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                return BadRequest(new { message = "Email is required." });
+            }
 
-        //[HttpPost("logout")]
-        //public async Task<IActionResult> Logout()
-        //{
-        //    // Step 1: Try to get user from token (works for valid tokens)
-        //    var userId = _currentUser.Id;
+            var result = await _authService.RequestPasswordResetAsync(request.Email);
+            
+            // Always return success for security reasons (don't reveal if user exists)
+            return Ok(new 
+            { 
+                message = "If an account exists with this email, a password reset link has been sent." 
+            });
+        }
 
-        //    if (userId.HasValue)
-        //    {
-        //        await _userSessionService.TrackLogoutAsync(userId.Value);
-        //        return Ok(new { message = "Logged out successfully" });
-        //    }
+        // ✅ NEW: Confirm password reset with verification code
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] PasswordResetConfirmRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Email) || 
+                string.IsNullOrWhiteSpace(request.VerificationCode) || 
+                string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                return BadRequest(new { message = "All fields are required." });
+            }
 
-        //    // Step 2: For expired tokens, try to extract userId from the expired token
-        //    try
-        //    {
-        //        var authHeader = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-        //        if (!string.IsNullOrEmpty(authHeader))
-        //        {
-        //            // Try to decode the token even if expired
-        //            var handler = new JwtSecurityTokenHandler();
-        //            var jsonToken = handler.ReadToken(authHeader) as JwtSecurityToken;
+            // Validate verification code format (6 digits)
+            if (!System.Text.RegularExpressions.Regex.IsMatch(request.VerificationCode, @"^\d{6}$"))
+            {
+                return BadRequest(new { message = "Invalid verification code format. Must be 6 digits." });
+            }
 
-        //            // Extract user ID from token claims
-        //            var userIdClaim = jsonToken?.Claims.FirstOrDefault(c => c.Type == "userid");
-        //            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int tokenUserId))
-        //            {
-        //                await _userSessionService.TrackLogoutAsync(tokenUserId);
-        //                return Ok(new { message = "Logged out successfully using token claims" });
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // Token parsing failed, continue to next step
-        //        Console.WriteLine($"Token parsing failed: {ex.Message}");
-        //    }
-
-        //    // Step 3: Just acknowledge logout without tracking it
-        //    return Ok(new { message = "Logged out client-side only" });
-        //}
+            try
+            {
+                var result = await _authService.ResetPasswordAsync(request.Email, request.VerificationCode, request.NewPassword);
+                return Ok(new { message = "Password has been successfully changed. You can now log in with your new password." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

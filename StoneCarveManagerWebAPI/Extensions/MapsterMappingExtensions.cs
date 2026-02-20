@@ -70,6 +70,13 @@ namespace StoneCarveManagerWebAPI.Extensions
             //         : null);
 
             // Dodaj dalje custom profile ako treba...
+
+            // ✅ Category -> CategoryResponse (Hierarchical)
+            config.NewConfig<Category, CategoryResponse>()
+                .Map(dest => dest.ProductCount, src => src.Products.Count)
+                .Map(dest => dest.ParentCategoryName, src => src.ParentCategory != null ? src.ParentCategory.Name : null)
+                .Map(dest => dest.ChildCategoryCount, src => src.ChildCategories.Count)
+                .Map(dest => dest.ChildCategories, src => src.ChildCategories);
         }
     }
 }

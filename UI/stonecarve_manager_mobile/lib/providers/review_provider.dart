@@ -96,31 +96,27 @@ class ReviewProvider {
     final headers = await AuthProvider.getAuthHeaders();
 
     try {
-      // Get all products with their reviews
-      final productsUri = Uri.parse('${BaseProvider.baseUrl}/api/Product');
-      final productsResponse = await http.get(productsUri, headers: headers);
+      // Use dedicated ProductReview endpoint that returns all reviews with userName
+      final uri = Uri.parse('${BaseProvider.baseUrl}/api/ProductReview');
 
-      if (productsResponse.statusCode != 200) {
-        throw Exception('Failed to load products');
+      print('[ReviewProvider] Fetching from: $uri');
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load reviews: ${response.statusCode}');
       }
 
-      final productsData = jsonDecode(productsResponse.body);
-      final products = (productsData['items'] as List);
+      final data = jsonDecode(response.body);
 
-      // Collect all reviews from all products
-      List<Review> allReviews = [];
+      // Backend returns paginated result with "items" array
+      final List<Review> allReviews = [];
 
-      for (var product in products) {
-        if (product['reviews'] != null && product['reviews'] is List) {
-          final reviews = (product['reviews'] as List)
-              .map((json) => Review.fromJson(json))
-              .toList();
-          allReviews.addAll(reviews);
-        }
+      if (data['items'] != null && data['items'] is List) {
+        allReviews.addAll(
+          (data['items'] as List).map((json) => Review.fromJson(json)).toList(),
+        );
       }
-
-      // Sort by date (newest first)
-      allReviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       print('[ReviewProvider] Loaded ${allReviews.length} total reviews');
 

@@ -30,11 +30,8 @@ namespace StoneCarveManager.Services.Base
             var query = _context.Set<TEntity>().AsQueryable();
             query = ApplyFilter(query, search);
 
-            int? totalCount = null;
-            if (search.IncludeTotalCount)
-            {
-                totalCount = await query.CountAsync();
-            }
+            // ✅ Uvijek računaj total count
+            int? totalCount = await query.CountAsync();
 
             if (!search.RetrieveAll)
             {
@@ -47,8 +44,6 @@ namespace StoneCarveManager.Services.Base
                     query = query.Take(search.PageSize.Value);
                 }
             }
-
-
 
             var list = await query.ToListAsync();
             return new PagedResult<T>

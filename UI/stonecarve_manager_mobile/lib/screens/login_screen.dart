@@ -20,6 +20,35 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Check if user is already authenticated and auto-redirect
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    // Add small delay so UI can render before checking
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (!mounted) return;
+
+    if (AuthProvider.isAuthenticated()) {
+      print('[Login] 🔄 User already authenticated, redirecting to home...');
+
+      // Load favorites in background (don't await - non-blocking)
+      final favoritesProvider = context.read<FavoritesProvider>();
+      favoritesProvider.loadFavorites().then((_) {
+        print('[Login] ✅ Background favorites sync completed');
+      });
+
+      // Navigate to home immediately
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const MobileHomeScreen()),
+      );
+    }
+  }
+
+  @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
@@ -42,16 +71,13 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
-        // Sync favorites with backend after successful login
         final favoritesProvider = context.read<FavoritesProvider>();
-        favoritesProvider.syncWithBackend().then((success) {
-          if (success) {
-            debugPrint('[Login] Favorites synced successfully');
-          } else {
-            debugPrint('[Login] Favorites sync failed, using local cache');
-          }
-        });
 
+        // Now load favorites (cache + backend) after successful login
+        debugPrint('[Login] Loading favorites after login...');
+        await favoritesProvider.loadFavorites();
+
+        // Navigate to home
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const MobileHomeScreen()),
         );
@@ -174,7 +200,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         onFieldSubmitted: (_) => _handleLogin(),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 8),
+                      // Forgot Password link
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pushNamed('/forgot-password');
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

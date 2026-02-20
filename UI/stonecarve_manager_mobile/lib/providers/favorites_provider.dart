@@ -56,22 +56,36 @@ class FavoritesProvider with ChangeNotifier {
   }
 
   /// Initialize favorites - tries backend first, falls back to local cache
-  /// Should be called when app starts
+  /// Should be called AFTER successful login
   Future<void> loadFavorites() async {
     try {
+      debugPrint('[FavoritesProvider] 🔄 Loading favorites...');
+
       // First, load from local cache for instant UI
       await _loadFromLocalStorage();
       _isInitialized = true;
       notifyListeners();
 
-      // Then try to sync with backend if authenticated
+      // Then sync with backend if authenticated
       if (AuthProvider.isAuthenticated()) {
-        await _fetchFromBackend();
+        debugPrint(
+          '[FavoritesProvider] ✅ Authenticated - syncing with backend',
+        );
+        // Don't await - let it run in background
+        _fetchFromBackend()
+            .then((_) {
+              debugPrint('[FavoritesProvider] ✅ Background sync completed');
+            })
+            .catchError((e) {
+              debugPrint('[FavoritesProvider] ❌ Background sync failed: $e');
+            });
       } else {
-        debugPrint('[FavoritesProvider] Not authenticated, using local cache');
+        debugPrint(
+          '[FavoritesProvider] ⚠️ Not authenticated, using local cache only',
+        );
       }
     } catch (e) {
-      debugPrint('[FavoritesProvider] Error loading favorites: $e');
+      debugPrint('[FavoritesProvider] ❌ Error loading favorites: $e');
       _lastError = e.toString();
       _isInitialized = true;
       notifyListeners();

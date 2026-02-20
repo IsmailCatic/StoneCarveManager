@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/user.dart';
 import 'package:stonecarve_manager_flutter/providers/user_provider.dart';
+import 'package:stonecarve_manager_flutter/widgets/user_profile_avatar.dart';
 import '../utils/validators.dart';
 
 class UsersScreen extends StatefulWidget {
@@ -149,12 +150,11 @@ class _UsersScreenState extends State<UsersScreen> {
                           elevation: 2,
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: _getUserStatusColor(user),
-                              child: Text(
-                                user.displayName.substring(0, 1).toUpperCase(),
-                                style: const TextStyle(color: Colors.white),
-                              ),
+                            leading: UserProfileAvatar(
+                              imageUrl: user.profileImageUrl,
+                              firstName: user.firstName ?? '',
+                              lastName: user.lastName ?? '',
+                              radius: 24,
                             ),
                             title: Text(
                               user.displayName,
@@ -413,69 +413,69 @@ class _UsersScreenState extends State<UsersScreen> {
                         ),
                       ],
                     ),
+                  ),
                 ),
               ),
-            ),
-            actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  // Validate form
-                  if (!_formKey.currentState!.validate()) {
-                    return;
-                  }
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Validate form
+                    if (!_formKey.currentState!.validate()) {
+                      return;
+                    }
 
-                  final newUser = User(
-                    id: user?.id,
-                    firstName: firstNameController.text,
-                    lastName: lastNameController.text,
-                    email: emailController.text,
-                    password: user == null ? passwordController.text : null,
-                    phoneNumber: phoneController.text.isEmpty
-                        ? null
-                        : phoneController.text,
-                    isActive: isActive,
-                    isBlocked: isBlocked,
-                    roles: user?.roles ?? [],
-                    role: selectedRole,
-                  );
+                    final newUser = User(
+                      id: user?.id,
+                      firstName: firstNameController.text,
+                      lastName: lastNameController.text,
+                      email: emailController.text,
+                      password: user == null ? passwordController.text : null,
+                      phoneNumber: phoneController.text.isEmpty
+                          ? null
+                          : phoneController.text,
+                      isActive: isActive,
+                      isBlocked: isBlocked,
+                      roles: user?.roles ?? [],
+                      role: selectedRole,
+                    );
 
-                  try {
-                    if (user == null) {
-                      await _userProvider.createUser(newUser);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('User added successfully'),
-                          ),
-                        );
+                    try {
+                      if (user == null) {
+                        await _userProvider.createUser(newUser);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User added successfully'),
+                            ),
+                          );
+                        }
+                      } else {
+                        await _userProvider.updateUser(user.id!, newUser);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User updated successfully'),
+                            ),
+                          );
+                        }
                       }
-                    } else {
-                      await _userProvider.updateUser(user.id!, newUser);
+                      Navigator.of(context).pop();
+                      _loadUsers();
+                    } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('User updated successfully'),
-                          ),
-                        );
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
                       }
                     }
-                    Navigator.of(context).pop();
-                    _loadUsers();
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  }
-                },
-                child: Text(user == null ? 'Add' : 'Update'),
-              ),
-            ],
+                  },
+                  child: Text(user == null ? 'Add' : 'Update'),
+                ),
+              ],
             );
           },
         );

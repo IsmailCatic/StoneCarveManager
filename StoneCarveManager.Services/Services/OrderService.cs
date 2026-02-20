@@ -205,9 +205,8 @@ namespace StoneCarveManager.Services.Services
 
             query = ApplyFilter(query, search);
 
-            int? totalCount = null;
-            if (search.IncludeTotalCount)
-                totalCount = await query.CountAsync();
+            // ✅ Uvijek računaj total count
+            int? totalCount = await query.CountAsync();
 
             if (!search.RetrieveAll)
             {
@@ -218,7 +217,6 @@ namespace StoneCarveManager.Services.Services
 
             var list = await query.ToListAsync();
             var items = list.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
-            //var items = list.Adapt<List<OrderResponse>>(); // <-- OVO JE ISPAVNO ZA MAPSTER
 
             return new PagedResult<OrderResponse>
             {

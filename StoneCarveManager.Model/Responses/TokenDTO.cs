@@ -11,7 +11,8 @@ namespace StoneCarveManager.Model.Responses
         public required string Token { get; set; }
         public int UserId { get; set; }
         public DateTime ValidTo { get; set; }
-        public string[] Role { get; set; }
-
+        
+        // ✅ Promijenjeno sa "Role" na "Roles" (plural) radi konzistencije sa Flutter-om
+        public string[] Roles { get; set; } = Array.Empty<string>();
     }
 }

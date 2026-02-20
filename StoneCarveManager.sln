@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36705.20 d17.14
+VisualStudioVersion = 17.14.36705.20
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManagerWebAPI", "StoneCarveManagerWebAPI\StoneCarveManagerWebAPI.csproj", "{20187BB7-C106-408C-BA76-170F95568598}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManager.Model", "StoneCarveManager.Model\StoneCarveManager.Model.csproj", "{F5DD20F7-F3C9-45AF-A092-66D0324A5078}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManager.Services", "StoneCarveManager.Services\StoneCarveManager.Services.csproj", "{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoneCarveManager.EmailService", "StoneCarveManager.EmailService\StoneCarveManager.EmailService.csproj", "{97AF5B61-9A24-5256-3310-434787CC4156}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D0F664C4-C3E1-4A5C-9B35-D348C8DBA10C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{97AF5B61-9A24-5256-3310-434787CC4156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97AF5B61-9A24-5256-3310-434787CC4156}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97AF5B61-9A24-5256-3310-434787CC4156}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97AF5B61-9A24-5256-3310-434787CC4156}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

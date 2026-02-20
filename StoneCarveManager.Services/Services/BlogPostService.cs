@@ -30,9 +30,8 @@ namespace StoneCarveManager.Services.Services
 
             query = ApplyFilter(query, search);
 
-            int? totalCount = null;
-            if (search.IncludeTotalCount)
-                totalCount = await query.CountAsync();
+            // ✅ Uvijek računaj total count
+            int? totalCount = await query.CountAsync();
 
             if (!search.RetrieveAll)
             {

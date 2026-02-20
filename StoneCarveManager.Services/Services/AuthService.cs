@@ -13,6 +13,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using static StoneCarveManager.Services.Constants;
+using RabbitMQ.Client;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -22,6 +23,11 @@ namespace StoneCarveManager.Services.Services
         private readonly RoleManager<Role> _roleManager;
         private readonly SignInManager<User> _signInManager;
         private readonly IConfiguration _configuration;
+        
+        // ✅ In-memory cache for verification codes (Development only)
+        // TODO: Replace with Redis in production
+        private static readonly Dictionary<string, (string Code, DateTime ExpiresAt)> _verificationCodes 
+            = new Dictionary<string, (string Code, DateTime ExpiresAt)>();
 
         public AuthService(UserManager<User> userManager, SignInManager<User> signInManager,
             IConfiguration configuration, RoleManager<Role> roleManager
@@ -41,22 +47,14 @@ namespace StoneCarveManager.Services.Services
                 throw new System.Exception("User with this email already exists");
             }
 
-
-
             var newUser = new User
             {
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 Email = model.Email,
                 UserName = model.Email,
-                //ProfilePicture = model.ProfilePictureBytes,
                 DateOfBirth = model.DateOfBirth,
-                //CountryId = model.CountryId,
-                //CityId = model.CityId,
-                //GenderId = model.GenderId,
-                //SecurityQuestions = securityQuestions,
             };
-
 
             var result = await _userManager.CreateAsync(newUser, model.Password);
             if (!result.Succeeded)
@@ -64,6 +62,7 @@ namespace StoneCarveManager.Services.Services
                 var combinedErrors = string.Join("\n", result.Errors.Select(e => e.Description));
                 throw new Exception(combinedErrors);
             }
+            
             var role = await _roleManager.FindByNameAsync(Roles.User);
             if (role == null)
             {
@@ -76,12 +75,14 @@ namespace StoneCarveManager.Services.Services
                 throw new System.Exception("User registration failed");
             }
 
-
-            //if (model.ProfilePictureBytes != null)
-            //{
-            //    await _photoService.UploadProfilePictureAsync(newUser.Id, model.ProfilePictureBytes);
-            //}
-
+            // ✅ POŠALJI EMAIL PORUKU PREKO RabbitMQ
+            SendToRabbitMQ(new
+            {
+                Name = $"{newUser.FirstName} {newUser.LastName}",
+                Email = newUser.Email,
+                Role = 3, // Obični korisnik
+                KorisnickoIme = newUser.UserName
+            });
 
             var token = await GenerateJwtTokenAsync(newUser);
 
@@ -95,7 +96,6 @@ namespace StoneCarveManager.Services.Services
             {
                 throw new UnauthorizedAccessException("Invalid username or password");
             }
-
 
             var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: false, lockoutOnFailure: false);
             if (!result.Succeeded)
@@ -132,28 +132,24 @@ namespace StoneCarveManager.Services.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var expiry = DateTime.Now.AddHours(2);
-            //var expiry = DateTime.Now.AddMinutes(1);
 
             var token = new JwtSecurityToken(
-
                 issuer: _configuration["AuthSettings:Issuer"],
                 claims: claims,
                 expires: expiry,
                 signingCredentials: creds
             );
 
-
             var tokenModel = new TokenDTO
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 UserId = user.Id,
                 ValidTo = expiry,
-                Role = userRoles.ToArray(),
+                Roles = userRoles.ToArray(), // ✅ Promijenjeno sa Role na Roles
             };
 
             return tokenModel;
         }
-
 
         public bool ValidateJwtToken(string token)
         {
@@ -169,21 +165,178 @@ namespace StoneCarveManager.Services.Services
                     ValidateIssuer = true,
                     ValidIssuer = _configuration["AuthSettings:Issuer"],
                     ValidateAudience = false,
-                    ValidateLifetime = true, // Ovdje se provjerava istek
-                    ClockSkew = TimeSpan.Zero // Bez dodatnog vremena tolerancije
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
                 return true;
             }
             catch (SecurityTokenExpiredException)
             {
-                // Token timed out
                 return false;
             }
             catch
             {
-                // invalid token
                 return false;
+            }
+        }
+
+        // ✅ NEW: Request password reset with verification code
+        public async Task<bool> RequestPasswordResetAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                // For security reasons, don't reveal if user exists
+                return true;
+            }
+
+            // Generate 6-digit verification code
+            var random = new Random();
+            var verificationCode = random.Next(100000, 999999).ToString();
+
+            // ✅ Store verification code in memory with 1 hour expiration
+            var expiresAt = DateTime.UtcNow.AddHours(1);
+            _verificationCodes[email.ToLower()] = (verificationCode, expiresAt);
+
+            Console.WriteLine($"✅ Stored verification code for {email}: {verificationCode} (expires at {expiresAt})");
+
+            // Send message to RabbitMQ for password reset email with verification code
+            SendPasswordResetToRabbitMQ(new
+            {
+                Name = $"{user.FirstName} {user.LastName}",
+                Email = user.Email,
+                VerificationCode = verificationCode,
+                ResetToken = "",  // Not used anymore
+                ExpiresAt = expiresAt
+            });
+
+            return true;
+        }
+
+        // ✅ NEW: Confirm password reset with verification code
+        public async Task<bool> ResetPasswordAsync(string email, string verificationCode, string newPassword)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                throw new Exception("Invalid password reset request.");
+            }
+
+            // ✅ Validate verification code from memory
+            var emailKey = email.ToLower();
+            
+            if (!_verificationCodes.ContainsKey(emailKey))
+            {
+                throw new Exception("No verification code found. Please request a new one.");
+            }
+
+            var (storedCode, expiresAt) = _verificationCodes[emailKey];
+
+            // Check if code expired
+            if (DateTime.UtcNow > expiresAt)
+            {
+                _verificationCodes.Remove(emailKey);
+                throw new Exception("Verification code has expired. Please request a new one.");
+            }
+
+            // Check if code matches
+            if (storedCode != verificationCode)
+            {
+                throw new Exception("Invalid verification code.");
+            }
+
+            Console.WriteLine($"✅ Verification code valid for {email}. Resetting password...");
+
+            // Remove used code
+            _verificationCodes.Remove(emailKey);
+
+            // Reset password using ASP.NET Identity
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new Exception($"Password reset failed: {errors}");
+            }
+
+            Console.WriteLine($"✅ Password successfully reset for {email}");
+
+            return true;
+        }
+
+        // ✅ HELPER METODA ZA SLANJE PORUKA U RabbitMQ
+        private async void SendToRabbitMQ(object message)
+        {
+            try
+            {
+                var factory = new ConnectionFactory() 
+                { 
+                    HostName = "localhost",
+                    Port = 5672,
+                    UserName = "guest",
+                    Password = "guest"
+                };
+                
+                await using var connection = await factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+                
+                await channel.QueueDeclareAsync(queue: "user-registration",
+                                     durable: false,
+                                     exclusive: false,
+                                     autoDelete: false,
+                                     arguments: null);
+
+                var json = System.Text.Json.JsonSerializer.Serialize(message);
+                var body = Encoding.UTF8.GetBytes(json);
+
+                await channel.BasicPublishAsync(exchange: "",
+                                     routingKey: "user-registration",
+                                     body: body);
+                
+                Console.WriteLine($"✅ Sent message to RabbitMQ: {json}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Failed to send to RabbitMQ: {ex.Message}");
+            }
+        }
+
+        // ✅ NOVI: Helper metoda za slanje password reset poruka u RabbitMQ
+        private async void SendPasswordResetToRabbitMQ(object message)
+        {
+            try
+            {
+                var factory = new ConnectionFactory() 
+                { 
+                    HostName = "localhost",
+                    Port = 5672,
+                    UserName = "guest",
+                    Password = "guest"
+                };
+                
+                await using var connection = await factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+                
+                await channel.QueueDeclareAsync(queue: "password-reset",
+                                     durable: false,
+                                     exclusive: false,
+                                     autoDelete: false,
+                                     arguments: null);
+
+                var json = System.Text.Json.JsonSerializer.Serialize(message);
+                var body = Encoding.UTF8.GetBytes(json);
+
+                await channel.BasicPublishAsync(exchange: "",
+                                     routingKey: "password-reset",
+                                     body: body);
+                
+                Console.WriteLine($"✅ Sent password reset message to RabbitMQ: {json}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Failed to send password reset to RabbitMQ: {ex.Message}");
             }
         }
     }

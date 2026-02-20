@@ -17,5 +17,8 @@ namespace StoneCarveManager.Model.Requests
 
         public string? ImageUrl { get; set; }
         public bool? IsActive { get; set; }
+        
+        // ✅ Support for hierarchical categories (move to different parent)
+        public int? ParentCategoryId { get; set; }
     }
 }

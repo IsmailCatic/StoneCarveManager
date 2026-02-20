@@ -185,10 +185,15 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
       print('🔵 [BlogDetailScreen] Fetching post ${widget.postId}...');
       final post = await _provider.getBlogPost(context, widget.postId);
       print('✅ [BlogDetailScreen] Successfully loaded post: ${post.title}');
+
       setState(() {
         _post = post;
         _loading = false;
       });
+
+      // NOTE: View tracking is NOT implemented in admin app
+      // Admins just view statistics, they don't increment view count
+      // View tracking is implemented in the MOBILE app for end users
     } catch (e, stackTrace) {
       print('❌ [BlogDetailScreen] Error fetching post: $e');
       print('❌ [BlogDetailScreen] Stack trace: $stackTrace');

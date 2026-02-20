@@ -39,11 +39,15 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
+    // Load all data in parallel for better performance
     await Future.wait([
       _loadPortfolioItems(),
       _loadCategories(),
       _loadMaterials(),
     ]);
+
+    // Map category and material names AFTER all data is loaded
+    _mapCategoryAndMaterialNames();
 
     setState(() => _isLoading = false);
   }
@@ -51,23 +55,6 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
   Future<void> _loadPortfolioItems() async {
     try {
       final items = await _productProvider.fetchPortfolioProducts();
-      // Map category and material names from loaded lists
-      for (var item in items) {
-        if (item.categoryId != null) {
-          final category = _categories.firstWhere(
-            (cat) => cat.id == item.categoryId,
-            orElse: () => Category(id: null, name: null),
-          );
-          item.categoryName = category.name;
-        }
-        if (item.materialId != null) {
-          final material = _materials.firstWhere(
-            (mat) => mat.id == item.materialId,
-            orElse: () => stone_material.StoneMaterial(id: null, name: null),
-          );
-          item.materialName = material.name;
-        }
-      }
       setState(() => _portfolioItems = items);
     } catch (e) {
       print('Error loading portfolio: $e');
@@ -89,6 +76,27 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
       setState(() => _materials = result.items ?? []);
     } catch (e) {
       print('Error loading materials: $e');
+    }
+  }
+
+  /// Map category and material names to portfolio items
+  /// This is called AFTER all data is loaded
+  void _mapCategoryAndMaterialNames() {
+    for (var item in _portfolioItems) {
+      if (item.categoryId != null) {
+        final category = _categories.firstWhere(
+          (cat) => cat.id == item.categoryId,
+          orElse: () => Category(id: null, name: null),
+        );
+        item.categoryName = category.name;
+      }
+      if (item.materialId != null) {
+        final material = _materials.firstWhere(
+          (mat) => mat.id == item.materialId,
+          orElse: () => stone_material.StoneMaterial(id: null, name: null),
+        );
+        item.materialName = material.name;
+      }
     }
   }
 

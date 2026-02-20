@@ -14,11 +14,50 @@ class CategoryProvider extends BaseProvider<Category> {
   }
 
   Future<Category> createCategory(Category category) async {
-    return await insert(category.toJson());
+    print('\n=== CATEGORY_PROVIDER createCategory() DEBUG ===');
+    print('Creating category with data:');
+    print('  - category.id: ${category.id}');
+    print('  - category.name: ${category.name}');
+    print('  - category.description: ${category.description}');
+    print('  - category.parentCategoryId: ${category.parentCategoryId}');
+    print('  - category.isActive: ${category.isActive}');
+
+    try {
+      final jsonData = category.toJson();
+      print('Category toJson() result: $jsonData');
+
+      final result = await insert(jsonData);
+      print('Category created successfully: ${result.toJson()}');
+      return result;
+    } catch (e, stackTrace) {
+      print('\n!!! ERROR in createCategory() !!!');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+      rethrow;
+    }
   }
 
   Future<Category> updateCategory(int id, Category category) async {
-    return await update(id, category.toJson());
+    print('\n=== CATEGORY_PROVIDER updateCategory() DEBUG ===');
+    print('Updating category $id with data:');
+    print('  - category.name: ${category.name}');
+    print('  - category.description: ${category.description}');
+    print('  - category.parentCategoryId: ${category.parentCategoryId}');
+    print('  - category.isActive: ${category.isActive}');
+
+    try {
+      final jsonData = category.toJson();
+      print('Category toJson() result: $jsonData');
+
+      final result = await update(id, jsonData);
+      print('Category updated successfully: ${result.toJson()}');
+      return result;
+    } catch (e, stackTrace) {
+      print('\n!!! ERROR in updateCategory() !!!');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+      rethrow;
+    }
   }
 
   Future<List<Category>> getActiveCategories() async {

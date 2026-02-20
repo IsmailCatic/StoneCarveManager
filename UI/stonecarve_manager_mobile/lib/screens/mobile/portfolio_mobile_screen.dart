@@ -20,7 +20,8 @@ class PortfolioMobileScreen extends StatefulWidget {
   State<PortfolioMobileScreen> createState() => _PortfolioMobileScreenState();
 }
 
-class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
+class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
+    with AutomaticKeepAliveClientMixin {
   final CategoryProvider _categoryProvider = CategoryProvider();
   final MaterialProvider _materialProvider = MaterialProvider();
 
@@ -59,13 +60,17 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
   ];
 
   @override
+  bool get wantKeepAlive => true; // Preserve state when switching tabs
+
+  @override
   void initState() {
     super.initState();
     _selectedCategory = 'All';
     _selectedMaterial = 'All';
     _selectedStyle = 'All';
-    _fetchPortfolio();
     _searchController.addListener(_filterProjects);
+    // Fetch portfolio once on initialization
+    _fetchPortfolio();
   }
 
   @override
@@ -247,6 +252,8 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(

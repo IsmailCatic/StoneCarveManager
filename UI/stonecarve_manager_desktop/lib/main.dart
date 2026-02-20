@@ -12,6 +12,9 @@ import 'package:stonecarve_manager_flutter/screens/orders_monthly_view_screen.da
 import 'package:stonecarve_manager_flutter/screens/users_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/analytics_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/portfolio_modern_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/profile_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/forgot_password_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/reset_password_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Potrebno za async operacije prije runApp
@@ -57,6 +60,18 @@ class StoneCarveManagerApp extends StatelessWidget {
         '/portfolio': (context) => const PortfolioModernScreen(),
         '/blog': (context) => BlogPostListScreen(authProvider: AuthProvider()),
         '/analytics': (context) => const AnalyticsScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+      },
+      onGenerateRoute: (settings) {
+        // Handle reset-password route with arguments
+        if (settings.name == '/reset-password') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (context) => ResetPasswordScreen(email: args?['email']),
+          );
+        }
+        return null;
       },
     );
   }

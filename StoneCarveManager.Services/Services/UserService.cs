@@ -14,6 +14,9 @@ using System.Text;
 using System.Threading.Tasks;
 using static StoneCarveManager.Model.Requests.UserRequests;
 using static StoneCarveManager.Services.Constants;
+using RabbitMQ.Client;
+using StoneCarveManager.Model.Requests;
+using System.IO;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -23,14 +26,16 @@ namespace StoneCarveManager.Services.Services
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<Role> _roleManager;
         protected readonly IMapper _mapper;
+        private readonly IFileService _fileService;
 
         public UserService(AppDbContext context, UserManager<User> userManager,
-            RoleManager<Role> roleManager, IMapper mapper)
+            RoleManager<Role> roleManager, IMapper mapper, IFileService fileService)
         {
             _userManager = userManager;
             _context = context;
             _roleManager = roleManager;
             _mapper = mapper;
+            _fileService = fileService;
         }
 
         public async Task<PagedResult<UserDTO>> GetAsync(UserSearchObject search, CancellationToken cancellationToken)
@@ -148,19 +153,25 @@ namespace StoneCarveManager.Services.Services
 
             var role = await _roleManager.FindByNameAsync(insertRequest.Role);
             if (role == null) throw new Exception($"Role '{insertRequest.Role}' does not exist");
-            //await _userManager.AddToRoleAsync(newUser, role.Name);
-
-            // Add the user to the default "User" role
-            //var role = await _roleManager.FindByNameAsync(Roles.User);
-            //if (role == null)
-            //{
-            //    throw new Exception("Default role 'User' does not exist");
-            //}
 
             var userAddedToRole = await _userManager.AddToRoleAsync(newUser, role.Name);
             if (!userAddedToRole.Succeeded)
             {
                 throw new Exception($"Failed to add user to role: {string.Join(", ", userAddedToRole.Errors.Select(e => e.Description))}");
+            }
+
+            // ✅ POŠALJI EMAIL PORUKU PREKO RabbitMQ (samo za Admin i Employee)
+            int roleId = role.Name == Roles.Admin ? 1 : (role.Name == Roles.Employee ? 2 : 3);
+            if (roleId != 3) // Ako nije obični korisnik, pošalji email sa lozinkom
+            {
+                SendToRabbitMQ(new
+                {
+                    Name = $"{newUser.FirstName} {newUser.LastName}",
+                    Email = newUser.Email,
+                    Password = insertRequest.Password, // Šalje se plaintext lozinka u emailu
+                    Role = roleId,
+                    KorisnickoIme = newUser.UserName
+                });
             }
 
             // Fetch user with details using DbContext
@@ -293,7 +304,9 @@ namespace StoneCarveManager.Services.Services
 
             if (updateRequest.IsBlocked.HasValue)
                 user.IsBlocked = updateRequest.IsBlocked.Value;
-
+            
+            if (!string.IsNullOrWhiteSpace(updateRequest.PhoneNumber))
+                user.PhoneNumber = updateRequest.PhoneNumber;
 
             if (!string.IsNullOrWhiteSpace(updateRequest.Role))
             {
@@ -345,6 +358,173 @@ namespace StoneCarveManager.Services.Services
                     .ToList();
                 return dto;
             }).ToList();
+        }
+
+        // ✅ NOVI: Get trenutno ulogovanog korisnika
+        public async Task<UserDTO?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken)
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .Include(u => u.UserRoles)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+            if (user == null)
+                return null;
+
+            return await MapToDTOAsync(user, cancellationToken);
+        }
+
+        // ✅ NOVI: Promjena lozinke
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null)
+            {
+                throw new KeyNotFoundException("User not found.");
+            }
+
+            // Provjeri da li je trenutna lozinka ispravna
+            var currentPasswordValid = await _userManager.CheckPasswordAsync(user, currentPassword);
+            if (!currentPasswordValid)
+            {
+                throw new UnauthorizedAccessException("Current password is incorrect.");
+            }
+
+            // Promijeni lozinku
+            var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new Exception($"Failed to change password: {errors}");
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Upload user profile image to Azure Blob Storage
+        /// Replaces existing image if present
+        /// </summary>
+        public async Task<string> UploadUserProfileImageAsync(
+            int userId,
+            UserProfileImageUploadRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
+
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+
+            // Validate file
+            if (request.File == null || request.File.Length == 0)
+                throw new ArgumentException("File is required");
+
+            // Validate file type
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var extension = Path.GetExtension(request.File.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(extension))
+                throw new ArgumentException("Only JPG and PNG files are allowed");
+
+            // Validate file size (max 5MB)
+            if (request.File.Length > 5 * 1024 * 1024)
+                throw new ArgumentException("File size must be less than 5MB");
+
+            // Delete old image if exists
+            if (!string.IsNullOrWhiteSpace(user.ProfileImageUrl))
+            {
+                try
+                {
+                    await _fileService.DeleteAsync(user.ProfileImageUrl, "user-profile-images", cancellationToken);
+                }
+                catch
+                {
+                    // Log error but continue with upload
+                }
+            }
+
+            // Upload new image
+            var imageUrl = await _fileService.UploadAsync(
+                request.File,
+                "user-profile-images",  // Container name
+                null,                    // Auto-generate filename
+                cancellationToken
+            );
+
+            // Update user record
+            user.ProfileImageUrl = imageUrl;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return imageUrl;
+        }
+
+        /// <summary>
+        /// Delete user profile image from Azure Blob Storage
+        /// </summary>
+        public async Task<bool> DeleteUserProfileImageAsync(
+            int userId,
+            CancellationToken cancellationToken = default)
+        {
+            var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
+
+            if (user == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(user.ProfileImageUrl))
+                return false;
+
+            try
+            {
+                await _fileService.DeleteAsync(user.ProfileImageUrl, "user-profile-images", cancellationToken);
+
+                user.ProfileImageUrl = null;
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // ✅ HELPER METODA ZA SLANJE PORUKA U RabbitMQ
+        private async void SendToRabbitMQ(object message)
+        {
+            try
+            {
+                var factory = new ConnectionFactory() 
+                { 
+                    HostName = "localhost",
+                    Port = 5672,
+                    UserName = "guest",
+                    Password = "guest"
+                };
+                
+                await using var connection = await factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+                
+                await channel.QueueDeclareAsync(queue: "user-registration",
+                                     durable: false,
+                                     exclusive: false,
+                                     autoDelete: false,
+                                     arguments: null);
+
+                var json = System.Text.Json.JsonSerializer.Serialize(message);
+                var body = Encoding.UTF8.GetBytes(json);
+
+                await channel.BasicPublishAsync(exchange: "",
+                                     routingKey: "user-registration",
+                                     body: body);
+                
+                Console.WriteLine($"✅ Sent user creation message to RabbitMQ: {json}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Failed to send to RabbitMQ: {ex.Message}");
+            }
         }
     }
 }

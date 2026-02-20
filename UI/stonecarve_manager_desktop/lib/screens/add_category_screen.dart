@@ -28,22 +28,75 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
   }
 
   Future<void> _fetchCategories() async {
+    print('\n=== ADD_CATEGORY_SCREEN _fetchCategories() DEBUG ===');
+    print('Fetching categories...');
+
     final result = await CategoryProvider().get();
+    print('Categories fetched: ${result.items?.length ?? 0} items');
+
     setState(() {
       _allCategories = result.items ?? [];
       _isLoading = false;
 
-      if (widget.category != null) {
+      if (widget.category?.id != null) {
+        // Editing existing category - populate all fields
+        print('Initializing form for EDIT mode:');
+        print('  - widget.category.id: ${widget.category!.id}');
+        print('  - widget.category.name: ${widget.category!.name}');
+        print(
+          '  - widget.category.description: ${widget.category!.description}',
+        );
+        print(
+          '  - widget.category.parentCategoryId: ${widget.category!.parentCategoryId}',
+        );
+        print('  - widget.category.isActive: ${widget.category!.isActive}');
+
         _nameController.text = widget.category!.name ?? '';
         _descriptionController.text = widget.category!.description ?? '';
         _parentCategoryId = widget.category!.parentCategoryId;
         _isActive = widget.category!.isActive ?? true;
+
+        print('Form initialized with:');
+        print('  - _nameController.text: ${_nameController.text}');
+        print(
+          '  - _descriptionController.text: ${_descriptionController.text}',
+        );
+        print('  - _parentCategoryId: $_parentCategoryId');
+        print('  - _isActive: $_isActive');
+      } else if (widget.category != null) {
+        // Creating subcategory - only set parentCategoryId
+        print('Initializing form for ADD SUBCATEGORY mode:');
+        print(
+          '  - widget.category.parentCategoryId: ${widget.category!.parentCategoryId}',
+        );
+        _parentCategoryId = widget.category!.parentCategoryId;
+        print('  - _parentCategoryId set to: $_parentCategoryId');
+      } else {
+        print('No existing category data (creating new top-level category)');
       }
     });
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    print('\n=== ADD_CATEGORY_SCREEN _save() DEBUG ===');
+    print('Form validation started');
+
+    if (!_formKey.currentState!.validate()) {
+      print('Form validation failed');
+      return;
+    }
+    print('Form validation passed');
+
+    print('Creating Category object:');
+    print('  - id: ${widget.category?.id}');
+    print('  - name: ${_nameController.text.trim()}');
+    print('  - description: ${_descriptionController.text.trim()}');
+    print('  - parentCategoryId: $_parentCategoryId');
+    print('  - isActive: $_isActive');
+    print('  - widget.category: ${widget.category}');
+    print(
+      '  - widget.category?.parentCategoryId: ${widget.category?.parentCategoryId}',
+    );
 
     final data = Category(
       id: widget.category?.id,
@@ -53,14 +106,21 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
       isActive: _isActive,
     );
 
+    print('Category data object created successfully');
+    print('Category toJson: ${data.toJson()}');
+
     try {
       final provider = CategoryProvider();
 
-      if (widget.category == null) {
+      if (widget.category?.id == null) {
+        print('Creating new category (widget.category.id is null)');
         await provider.createCategory(data);
       } else {
+        print('Updating existing category with id: ${widget.category!.id}');
         await provider.updateCategory(widget.category!.id!, data);
       }
+
+      print('Category saved successfully in provider');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +131,11 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
         );
         Navigator.of(context).pop(true);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('\n!!! ERROR in _save() !!!');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -82,9 +146,18 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('\n=== ADD_CATEGORY_SCREEN build() DEBUG ===');
+    print('Current _parentCategoryId: $_parentCategoryId');
+    print(
+      'widget.category?.parentCategoryId: ${widget.category?.parentCategoryId}',
+    );
+    print('_allCategories count: ${_allCategories.length}');
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.category == null ? "Add Category" : "Edit Category"),
+        title: Text(
+          widget.category?.id == null ? "Add Category" : "Edit Category",
+        ),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -132,29 +205,52 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                             maxLines: 3,
                           ),
                           const SizedBox(height: 16),
-                          DropdownButtonFormField<int>(
-                            value: _parentCategoryId,
-                            decoration: InputDecoration(
-                              labelText: "Parent Category (Optional)",
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [
-                              DropdownMenuItem<int>(
-                                value: null,
-                                child: Text("None (Top Level)"),
-                              ),
-                              ..._allCategories
-                                  .where((c) => c.id != widget.category?.id)
-                                  .map(
-                                    (c) => DropdownMenuItem(
-                                      value: c.id,
-                                      child: Text(c.name ?? ""),
-                                    ),
-                                  )
-                                  .toList(),
-                            ],
-                            onChanged: (v) =>
-                                setState(() => _parentCategoryId = v),
+                          Builder(
+                            builder: (context) {
+                              print('\n=== DROPDOWN BUILDER DEBUG ===');
+                              print(
+                                'Building dropdown with _parentCategoryId: $_parentCategoryId',
+                              );
+                              print('Available categories:');
+                              for (var c in _allCategories) {
+                                print('  - id: ${c.id}, name: ${c.name}');
+                              }
+
+                              return DropdownButtonFormField<int>(
+                                value: _parentCategoryId,
+                                decoration: InputDecoration(
+                                  labelText: "Parent Category (Optional)",
+                                  border: OutlineInputBorder(),
+                                  helperText: _parentCategoryId != null
+                                      ? 'Subcategory of: ${_allCategories.firstWhere((c) => c.id == _parentCategoryId, orElse: () => Category()).name ?? "ID $_parentCategoryId"}'
+                                      : 'No parent selected (top-level category)',
+                                ),
+                                items: [
+                                  DropdownMenuItem<int>(
+                                    value: null,
+                                    child: Text("None (Top Level)"),
+                                  ),
+                                  ..._allCategories
+                                      .where((c) => c.id != widget.category?.id)
+                                      .map(
+                                        (c) => DropdownMenuItem(
+                                          value: c.id,
+                                          child: Text(c.name ?? ""),
+                                        ),
+                                      )
+                                      .toList(),
+                                ],
+                                onChanged: (v) {
+                                  print('\n=== DROPDOWN onChanged DEBUG ===');
+                                  print('Previous value: $_parentCategoryId');
+                                  print('New value: $v');
+                                  setState(() => _parentCategoryId = v);
+                                  print(
+                                    'State updated with: $_parentCategoryId',
+                                  );
+                                },
+                              );
+                            },
                           ),
                           const SizedBox(height: 24),
                           SwitchListTile(

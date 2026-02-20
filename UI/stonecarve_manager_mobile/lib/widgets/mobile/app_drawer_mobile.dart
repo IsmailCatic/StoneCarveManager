@@ -1,48 +1,111 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
 
 class AppDrawerMobile extends StatelessWidget {
   const AppDrawerMobile({Key? key}) : super(key: key);
 
+  String _getInitials(String? username) {
+    if (username == null || username.isEmpty) return 'U';
+    final parts = username.split('@')[0].split('.');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return username[0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final username = AuthProvider.username ?? 'Guest';
+    final userRole = AuthProvider.roles?.isNotEmpty == true
+        ? AuthProvider.roles!.first
+        : 'Customer';
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: const [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: Colors.grey),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'StoneCarve Manager',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Mobile App',
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
+          // Profile Header (clickable to go to profile)
+          InkWell(
             onTap: () {
               Navigator.pop(context); // Close drawer
-              // Navigate to home, removing all routes
+              Navigator.pushNamed(context, '/profile');
+            },
+            child: Consumer<ProfileProvider>(
+              builder: (context, profileProvider, child) {
+                final profileImageUrl =
+                    profileProvider.currentUser?.profileImageUrl;
+
+                return UserAccountsDrawerHeader(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue, Colors.blueAccent],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  currentAccountPicture: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: profileImageUrl != null && profileImageUrl.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              profileImageUrl,
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Text(
+                                _getInitials(username),
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Text(
+                            _getInitials(username),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                  ),
+                  accountName: Text(
+                    username.split('@')[0], // Show part before @
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  accountEmail: Row(
+                    children: [
+                      Icon(
+                        userRole.toLowerCase() == 'admin'
+                            ? Icons.admin_panel_settings
+                            : Icons.account_circle,
+                        size: 16,
+                        color: Colors.white70,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(userRole),
+                      const Spacer(),
+                      const Icon(Icons.arrow_forward_ios, size: 16),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Main navigation items
+          ListTile(
+            leading: const Icon(Icons.shopping_bag),
+            title: const Text('Shop'),
+            onTap: () {
+              Navigator.pop(context);
               Navigator.pushNamedAndRemoveUntil(
                 context,
                 '/home',
@@ -50,94 +113,62 @@ class AppDrawerMobile extends StatelessWidget {
               );
             },
           ),
-          const Divider(),
           ListTile(
-            leading: const Icon(Icons.shopping_bag),
-            title: const Text('Products'),
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Portfolio'),
             onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
               Navigator.pop(context);
-
-              if (currentRoute != '/products') {
-                Navigator.pushNamed(context, '/products');
-              }
+              Navigator.pushNamed(context, '/portfolio');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.receipt_long),
+            title: const Text('My Orders'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/orders');
+            },
+          ),
+
+          const Divider(),
+
+          // Secondary actions
           ListTile(
             leading: const Icon(Icons.shopping_cart),
             title: const Text('Shopping Cart'),
             onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
               Navigator.pop(context);
-
-              if (currentRoute != '/cart') {
-                Navigator.pushNamed(context, '/cart');
-              }
+              Navigator.pushNamed(context, '/cart');
             },
           ),
           ListTile(
             leading: const Icon(Icons.favorite),
             title: const Text('My Favorites'),
             onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
               Navigator.pop(context);
-
-              if (currentRoute != '/favorites') {
-                Navigator.pushNamed(context, '/favorites');
-              }
+              Navigator.pushNamed(context, '/favorites');
             },
           ),
           ListTile(
             leading: const Icon(Icons.rate_review),
             title: const Text('Reviews & Ratings'),
             onTap: () {
-              // Check current route before closing drawer
-              final currentRoute = ModalRoute.of(context)?.settings.name;
-              Navigator.pop(context); // Close drawer
-
-              // Only navigate if not already on reviews screen
-              if (currentRoute != '/reviews') {
-                Navigator.pushNamed(context, '/reviews');
-              }
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/reviews');
             },
           ),
           ListTile(
             leading: const Icon(Icons.article),
             title: const Text('Blog'),
             onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
               Navigator.pop(context);
-
-              if (currentRoute != '/blog') {
-                Navigator.pushNamed(context, '/blog');
-              }
+              Navigator.pushNamed(context, '/blog');
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.assignment),
-            title: const Text('My Orders'),
-            onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
-              Navigator.pop(context);
 
-              if (currentRoute != '/orders') {
-                Navigator.pushNamed(context, '/orders');
-              }
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.photo_library),
-            title: const Text('Portfolio'),
-            onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
-              Navigator.pop(context);
-
-              if (currentRoute != '/portfolio') {
-                Navigator.pushNamed(context, '/portfolio');
-              }
-            },
-          ),
           const Divider(),
+
+          // Special actions
           ListTile(
             leading: const Icon(Icons.design_services, color: Colors.blue),
             title: const Text(
@@ -145,15 +176,14 @@ class AppDrawerMobile extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blue),
             ),
             onTap: () {
-              final currentRoute = ModalRoute.of(context)?.settings.name;
               Navigator.pop(context);
-
-              if (currentRoute != '/custom-order') {
-                Navigator.pushNamed(context, '/custom-order');
-              }
+              Navigator.pushNamed(context, '/custom-order');
             },
           ),
+
           const Divider(),
+
+          // Debug & logout
           ListTile(
             leading: const Icon(Icons.bug_report, color: Colors.orange),
             title: const Text('API Test'),
@@ -166,12 +196,8 @@ class AppDrawerMobile extends StatelessWidget {
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Logout', style: TextStyle(color: Colors.red)),
             onTap: () async {
-              Navigator.pop(context); // Close drawer
-
-              // Clear auth state
+              Navigator.pop(context);
               await AuthProvider.logout();
-
-              // Navigate to login and clear all routes
               if (context.mounted) {
                 Navigator.pushNamedAndRemoveUntil(
                   context,

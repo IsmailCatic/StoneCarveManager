@@ -248,6 +248,38 @@ class BlogPostProvider extends BaseProvider {
     }
   }
 
+  /// Increment the view count for a blog post
+  /// This should be called when a user views the post detail
+  /// Returns true if successful, false otherwise (fails silently)
+  Future<bool> incrementViewCount(int postId) async {
+    try {
+      final token = AuthProvider.token;
+      if (token == null) {
+        print('⚠️ [BlogPost] No token available for view tracking');
+        return false;
+      }
+
+      final uri = Uri.parse('$apiUrl/BlogPost/$postId/increment-view-count');
+      print('🔵 [BlogPost] Incrementing view count for post $postId');
+
+      final response = await http.patch(uri, headers: _headers(token));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        print('✅ [BlogPost] View count incremented for post $postId');
+        return true;
+      } else {
+        print(
+          '⚠️ [BlogPost] View increment returned status ${response.statusCode}',
+        );
+        return false;
+      }
+    } catch (e) {
+      // Fail silently - view tracking shouldn't break the user experience
+      print('⚠️ [BlogPost] Error incrementing view count: $e');
+      return false;
+    }
+  }
+
   Map<String, String> _headers(String token, {bool isMultipart = false}) => {
     'Authorization': 'Bearer $token',
     if (!isMultipart) 'Content-Type': 'application/json',

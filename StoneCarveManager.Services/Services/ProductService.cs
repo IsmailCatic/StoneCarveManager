@@ -114,9 +114,8 @@ namespace StoneCarveManager.Services.Services
             // Apply filter & paginaciju kao u bazi
             query = ApplyFilter(query, search);
 
-            int? totalCount = null;
-            if (search.IncludeTotalCount)
-                totalCount = await query.CountAsync();
+            // ? Uvijek ra?unaj total count
+            int? totalCount = await query.CountAsync();
 
             if (!search.RetrieveAll)
             {

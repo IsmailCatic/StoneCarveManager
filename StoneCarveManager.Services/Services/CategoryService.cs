@@ -61,7 +61,7 @@ namespace StoneCarveManager.Services.Services
             return query;
         }
 
-        // ✅ Override BeforeInsert - validation logic
+        // ✅ Override BeforeInsert - validation logic + hierarchical support
         protected override async Task BeforeInsert(Category entity, CategoryInsertRequest request)
         {
             // Check if category with same name exists
@@ -73,10 +73,22 @@ namespace StoneCarveManager.Services.Services
                 throw new InvalidOperationException($"Category '{request.Name}' already exists.");
             }
 
+            // ✅ Validate parent category exists if ParentCategoryId is provided
+            if (request.ParentCategoryId.HasValue)
+            {
+                var parentExists = await _context.Categories
+                    .AnyAsync(c => c.Id == request.ParentCategoryId.Value);
+
+                if (!parentExists)
+                {
+                    throw new InvalidOperationException($"Parent category with ID {request.ParentCategoryId.Value} does not exist.");
+                }
+            }
+
             await base.BeforeInsert(entity, request);
         }
 
-        // ✅ Override BeforeUpdate - validation logic
+        // ✅ Override BeforeUpdate - validation logic + hierarchical support
         protected override async Task BeforeUpdate(Category entity, CategoryUpdateRequest request)
         {
             if (!string.IsNullOrWhiteSpace(request.Name) && request.Name != entity.Name)
@@ -90,20 +102,80 @@ namespace StoneCarveManager.Services.Services
                 }
             }
 
+            // ✅ Validate parent category exists if ParentCategoryId is being updated
+            if (request.ParentCategoryId.HasValue)
+            {
+                // Prevent self-reference
+                if (request.ParentCategoryId.Value == entity.Id)
+                {
+                    throw new InvalidOperationException("Category cannot be its own parent.");
+                }
+
+                var parentExists = await _context.Categories
+                    .AnyAsync(c => c.Id == request.ParentCategoryId.Value);
+
+                if (!parentExists)
+                {
+                    throw new InvalidOperationException($"Parent category with ID {request.ParentCategoryId.Value} does not exist.");
+                }
+
+                // Prevent circular reference (parent cannot be a child of this category)
+                var wouldCreateCircular = await IsCircularReference(entity.Id, request.ParentCategoryId.Value);
+                if (wouldCreateCircular)
+                {
+                    throw new InvalidOperationException("Cannot set parent category: would create circular reference.");
+                }
+            }
+
             await base.BeforeUpdate(entity, request);
         }
 
-        // ✅ Override BeforeDelete - prevent deletion if category has products
+        // ✅ Override BeforeDelete - prevent deletion if category has products or child categories
         protected override async Task BeforeDelete(Category entity)
         {
-            var hasProducts = await _context.Products.AnyAsync(p => p.CategoryId == entity.Id);
+            var hasProducts = await _context.Categories
+                .Where(c => c.Id == entity.Id)
+                .Include(c => c.Products)
+                .SelectMany(c => c.Products)
+                .AnyAsync();
 
             if (hasProducts)
             {
                 throw new InvalidOperationException($"Cannot delete category '{entity.Name}' because it has products.");
             }
 
+            // ✅ Check for child categories
+            var hasChildren = await _context.Categories
+                .AnyAsync(c => c.ParentCategoryId == entity.Id);
+
+            if (hasChildren)
+            {
+                throw new InvalidOperationException($"Cannot delete category '{entity.Name}' because it has subcategories.");
+            }
+
             await base.BeforeDelete(entity);
+        }
+
+        // ✅ Helper method to check for circular references
+        private async Task<bool> IsCircularReference(int categoryId, int proposedParentId)
+        {
+            var currentParentId = proposedParentId;
+
+            while (currentParentId != null)
+            {
+                if (currentParentId == categoryId)
+                    return true; // Circular reference detected
+
+                var parent = await _context.Categories
+                    .Where(c => c.Id == currentParentId)
+                    .Select(c => c.ParentCategoryId)
+                    .FirstOrDefaultAsync();
+
+                currentParentId = parent ?? 0;
+                if (currentParentId == 0) break;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -195,6 +267,51 @@ namespace StoneCarveManager.Services.Services
             {
                 return false;
             }
+        }
+
+        // ✅ Override GetAsync to include hierarchical data
+        public override async Task<PagedResult<CategoryResponse>> GetAsync(CategorySearchObject search)
+        {
+            var query = _context.Categories
+                .Include(c => c.ParentCategory)
+                .Include(c => c.ChildCategories)
+                .Include(c => c.Products)
+                .AsQueryable();
+
+            query = ApplyFilter(query, search);
+
+            int? totalCount = await query.CountAsync();
+
+            if (!search.RetrieveAll)
+            {
+                if (search.Page.HasValue && search.PageSize.HasValue)
+                    query = query.Skip(search.Page.Value * search.PageSize.Value)
+                                 .Take(search.PageSize.Value);
+            }
+
+            var list = await query.ToListAsync();
+            var items = list.Select(c => _mapper.Map<CategoryResponse>(c)).ToList();
+
+            return new PagedResult<CategoryResponse>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
+        }
+
+        // ✅ Override GetByIdAsync to include hierarchical data
+        public override async Task<CategoryResponse?> GetByIdAsync(int id)
+        {
+            var category = await _context.Categories
+                .Include(c => c.ParentCategory)
+                .Include(c => c.ChildCategories)
+                .Include(c => c.Products)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (category == null)
+                return null;
+
+            return _mapper.Map<CategoryResponse>(category);
         }
     }
 }

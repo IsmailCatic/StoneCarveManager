@@ -1,13 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/profile_provider.dart';
+import 'package:stonecarve_manager_flutter/widgets/user_profile_avatar.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   final String currentRoute;
 
   const AppDrawer({Key? key, required this.currentRoute}) : super(key: key);
 
   @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  final ProfileProvider _profileProvider = ProfileProvider();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    if (AuthProvider.isAuthenticated()) {
+      await _profileProvider.fetchCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final currentUser = _profileProvider.currentUser;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -20,24 +53,54 @@ class AppDrawer extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.architecture, size: 48, color: Colors.white),
-                SizedBox(height: 8),
-                Text(
-                  'StoneCarve Manager',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.architecture,
+                      size: 48,
+                      color: Colors.white,
+                    ),
+                    const Spacer(),
+                    if (!_isLoading && currentUser != null)
+                      UserProfileAvatar(
+                        imageUrl: currentUser.profileImageUrl,
+                        firstName: currentUser.firstName,
+                        lastName: currentUser.lastName,
+                        radius: 24,
+                      ),
+                  ],
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Admin Dashboard',
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'StoneCarve Manager',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (!_isLoading && currentUser != null)
+                      Text(
+                        currentUser.email,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      const Text(
+                        'Admin Dashboard',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -46,7 +109,7 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.receipt_long,
             title: 'Orders',
             route: '/orders',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/orders'),
           ),
           Padding(
@@ -55,7 +118,7 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.calendar_view_month,
               title: 'Monthly View',
               route: '/orders/monthly',
-              currentRoute: currentRoute,
+              currentRoute: widget.currentRoute,
               onTap: () => _navigateTo(context, '/orders/monthly'),
             ),
           ),
@@ -63,59 +126,95 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.inventory,
             title: 'Products',
             route: '/products',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/products'),
           ),
           _DrawerItem(
             icon: Icons.build_circle,
             title: 'Services',
             route: '/services',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/services'),
           ),
           _DrawerItem(
             icon: Icons.terrain,
             title: 'Materials',
             route: '/materials',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/materials'),
           ),
           _DrawerItem(
             icon: Icons.category,
             title: 'Categories',
             route: '/categories',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/categories'),
           ),
           _DrawerItem(
             icon: Icons.people,
             title: 'Users',
             route: '/users',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/users'),
           ),
           _DrawerItem(
             icon: Icons.workspaces,
             title: 'Portfolio',
             route: '/portfolio',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/portfolio'),
           ),
           _DrawerItem(
             icon: Icons.article,
             title: 'Blog Posts',
             route: '/blog',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/blog'),
           ),
           _DrawerItem(
             icon: Icons.analytics,
             title: 'Analytics',
             route: '/analytics',
-            currentRoute: currentRoute,
+            currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/analytics'),
           ),
           const Divider(height: 32, thickness: 1),
+          // My Profile with user avatar
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: widget.currentRoute == '/profile'
+                  ? Colors.blue.shade50
+                  : null,
+            ),
+            child: ListTile(
+              leading: currentUser != null
+                  ? UserProfileAvatar(
+                      imageUrl: currentUser.profileImageUrl,
+                      firstName: currentUser.firstName,
+                      lastName: currentUser.lastName,
+                      radius: 18,
+                    )
+                  : const Icon(Icons.account_circle, color: Colors.grey),
+              title: Text(
+                'My Profile',
+                style: TextStyle(
+                  color: widget.currentRoute == '/profile'
+                      ? Colors.blue.shade700
+                      : Colors.grey.shade900,
+                  fontWeight: widget.currentRoute == '/profile'
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              selected: widget.currentRoute == '/profile',
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onTap: () => _navigateTo(context, '/profile'),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.settings, color: Colors.grey),
             title: const Text('Settings'),
@@ -144,7 +243,7 @@ class AppDrawer extends StatelessWidget {
     Navigator.pop(context);
 
     // Don't navigate if already on this route
-    if (currentRoute == route) return;
+    if (widget.currentRoute == route) return;
 
     // Navigate to the route
     Navigator.pushReplacementNamed(context, route);

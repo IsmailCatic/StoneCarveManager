@@ -12,7 +12,7 @@ class MyOrdersScreen extends StatefulWidget {
 }
 
 class _MyOrdersScreenState extends State<MyOrdersScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   List<Order> _activeOrders = [];
   List<Order> _completedOrders = [];
@@ -20,9 +20,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
   String _errorMessage = '';
 
   @override
+  bool get wantKeepAlive => true; // Preserve state when switching tabs
+
+  @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Load orders once on initialization
     _loadOrders();
   }
 
@@ -33,22 +37,32 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
   }
 
   Future<void> _loadOrders() async {
+    if (!mounted) return; // Check before starting
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      final active = await OrderProvider.getMyActiveOrders();
-      final history = await OrderProvider.getMyOrderHistory();
+      // Use Future.wait for parallel execution (faster + single mounted check)
+      final results = await Future.wait([
+        OrderProvider.getMyActiveOrders(),
+        OrderProvider.getMyOrderHistory(),
+      ]);
+
+      if (!mounted) return; // Check after async operations
 
       setState(() {
-        _activeOrders = active;
-        _completedOrders = history;
+        _activeOrders = results[0];
+        _completedOrders = results[1];
         _isLoading = false;
       });
     } catch (e) {
       print('[MyOrdersScreen] Error: $e');
+
+      if (!mounted) return; // Check before setState in catch
+
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -58,6 +72,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(

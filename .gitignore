@@ -365,3 +365,13 @@ FodyWeavers.xsd
 /UI/stonecarve_manager_desktop/PERFORMANCE_OPTIMIZATIONS.md
 /UI/stonecarve_manager_mobile/FAVORITES_BACKEND_IMPLEMENTATION.md
 /UI/stonecarve_manager_mobile/FAVORITES_IMPLEMENTATION_COMPLETE.md
+/UI/stonecarve_manager_mobile/AUTH_JWT_SOLUTION.md
+/UI/stonecarve_manager_mobile/PASSWORD_RESET_EMAIL_TEMPLATE.md
+/UI/stonecarve_manager_mobile/PERFORMANCE_FIX_FINAL.md
+/UI/stonecarve_manager_mobile/PERFORMANCE_OPTIMIZATION.md
+/UI/stonecarve_manager_mobile/PROFILE_IMPLEMENTATION.md
+/StoneCarveManager.EmailService/PASSWORD_RESET_GUIDE.md
+/StoneCarveManager.EmailService/QUICK_START.md
+/StoneCarveManager.EmailService/README_LOKALNI_SETUP.md
+/StoneCarveManager.EmailService/TESTING_CHECKLIST.md
+/UI/stonecarve_manager_desktop/VIEW_TRACKING_IMPLEMENTATION.md

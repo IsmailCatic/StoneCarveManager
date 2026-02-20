@@ -67,34 +67,80 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<T> insert(dynamic request) async {
+    print('\n=== BASE_PROVIDER insert() DEBUG ===');
     var url = "$_baseUrl$_endpoint";
+    print('URL: $url');
+
     var uri = Uri.parse(url);
     var headers = createHeaders();
+    print('Headers: $headers');
 
-    var jsonRequest = jsonEncode(request);
-    var response = await http.post(uri, headers: headers, body: jsonRequest);
+    print('Request data before encoding: $request');
 
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
-      return fromJson(data);
-    } else {
-      throw new Exception("Unknown error");
+    try {
+      var jsonRequest = jsonEncode(request);
+      print('JSON request body: $jsonRequest');
+
+      print('Sending POST request...');
+      var response = await http.post(uri, headers: headers, body: jsonRequest);
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (isValidResponse(response)) {
+        var data = jsonDecode(response.body);
+        print('Response decoded successfully: $data');
+
+        final result = fromJson(data);
+        print('fromJson() executed successfully');
+        return result;
+      } else {
+        throw new Exception("Unknown error");
+      }
+    } catch (e, stackTrace) {
+      print('\n!!! ERROR in insert() !!!');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+      rethrow;
     }
   }
 
   Future<T> update(int id, [dynamic request]) async {
+    print('\n=== BASE_PROVIDER update() DEBUG ===');
     var url = "$_baseUrl$_endpoint/$id";
+    print('URL: $url');
+
     var uri = Uri.parse(url);
     var headers = createHeaders();
+    print('Headers: $headers');
 
-    var jsonRequest = jsonEncode(request);
-    var response = await http.put(uri, headers: headers, body: jsonRequest);
+    print('Request data before encoding: $request');
 
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
-      return fromJson(data);
-    } else {
-      throw new Exception("Unknown error");
+    try {
+      var jsonRequest = jsonEncode(request);
+      print('JSON request body: $jsonRequest');
+
+      print('Sending PUT request...');
+      var response = await http.put(uri, headers: headers, body: jsonRequest);
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (isValidResponse(response)) {
+        var data = jsonDecode(response.body);
+        print('Response decoded successfully: $data');
+
+        final result = fromJson(data);
+        print('fromJson() executed successfully');
+        return result;
+      } else {
+        throw new Exception("Unknown error");
+      }
+    } catch (e, stackTrace) {
+      print('\n!!! ERROR in update() !!!');
+      print('Error: $e');
+      print('StackTrace: $stackTrace');
+      rethrow;
     }
   }
 

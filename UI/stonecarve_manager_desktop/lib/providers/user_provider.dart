@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/utils/auth_client.dart';
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
 import 'package:stonecarve_manager_flutter/models/user.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 
 class UserProvider extends BaseProvider<User> {
   UserProvider() : super("User");
@@ -106,5 +108,52 @@ class UserProvider extends BaseProvider<User> {
     var filter = {"search": searchTerm};
     var result = await get(filter: filter);
     return result.items ?? [];
+  }
+
+  /// Upload user profile image
+  /// Returns the image URL
+  Future<String> uploadUserProfileImage(int userId, File imageFile) async {
+    final url = "http://localhost:5021/api/User/$userId/profile-image";
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+
+    final token = AuthProvider.token;
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath('file', imageFile.path),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['imageUrl'];
+    } else {
+      throw Exception("Failed to upload profile image: ${response.body}");
+    }
+  }
+
+  /// Delete user profile image
+  /// Returns true if successful
+  Future<bool> deleteUserProfileImage(int userId) async {
+    final url = "http://localhost:5021/api/User/$userId/profile-image";
+    final token = AuthProvider.token;
+
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    } else {
+      throw Exception("Failed to delete profile image: ${response.body}");
+    }
   }
 }

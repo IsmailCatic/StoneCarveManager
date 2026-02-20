@@ -66,27 +66,23 @@ namespace StoneCarveManager.Services.Services
                 .Include(x => x.Order)
                 .AsQueryable();
 
-            // Dodaj napredne filtere ovde po potrebi iz search
-            if (search.IsApproved.HasValue)
-                query = query.Where(x => x.IsApproved == search.IsApproved.Value);
+            // Primijeni filtere
+            query = ApplyFilter(query, search);
 
-            if (search.ProductId.HasValue)
-                query = query.Where(x => x.ProductId == search.ProductId.Value);
-            if (search.OrderId.HasValue)
-                query = query.Where(x => x.OrderId == search.OrderId.Value);
+            // ? Uvijek ra?unaj total count
+            int? totalCount = await query.CountAsync();
 
-            int? totalCount = null;
-            if (search.IncludeTotalCount)
-                totalCount = await query.CountAsync();
-
-            if (!search.RetrieveAll)
+            // Pagination
+            if (search != null && !search.RetrieveAll)
             {
                 if (search.Page.HasValue && search.PageSize.HasValue)
+                {
                     query = query.Skip(search.Page.Value * search.PageSize.Value)
                                  .Take(search.PageSize.Value);
+                }
             }
 
-            var list = await query.ToListAsync();
+            var list = await query.OrderByDescending(x => x.CreatedAt).ToListAsync();
             var items = list.Select(MapToResponse).ToList();
 
             return new PagedResult<ProductReviewResponse>
@@ -131,12 +127,11 @@ namespace StoneCarveManager.Services.Services
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt,
                 UserId = entity.UserId,
-                //UserName = entity.User?.Username,
+                UserName = $"{entity.User?.FirstName} {entity.User?.LastName}".Trim(), // ? Vra?a ime i prezime
                 ProductId = entity.ProductId,
                 ProductName = entity.Product?.Name,
                 OrderId = entity.OrderId,
                 IsApproved = entity.IsApproved
-                // Dodaj IsVerifiedPurchase ako želiš
             };
         }
 

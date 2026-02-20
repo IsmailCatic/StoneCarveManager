@@ -18,7 +18,8 @@ class ProductsMobileScreen extends StatefulWidget {
   State<ProductsMobileScreen> createState() => _ProductsMobileScreenState();
 }
 
-class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
+class _ProductsMobileScreenState extends State<ProductsMobileScreen>
+    with AutomaticKeepAliveClientMixin {
   List<Product> _products = [];
   List<Product> _filteredProducts = [];
   bool _isLoading = true;
@@ -37,10 +38,14 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
   ];
 
   @override
+  bool get wantKeepAlive => true; // Preserve state when switching tabs
+
+  @override
   void initState() {
     super.initState();
-    _fetchProducts();
     _searchController.addListener(_filterProducts);
+    // Fetch products once on initialization
+    _fetchProducts();
   }
 
   @override
@@ -175,6 +180,8 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(

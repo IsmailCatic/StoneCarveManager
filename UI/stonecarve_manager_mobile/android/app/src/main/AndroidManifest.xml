@@ -24,6 +24,34 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            
+            <!-- Deep linking for password reset -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- Custom scheme for direct app links -->
+                <data android:scheme="myapp" android:host="reset-password" />
+            </intent-filter>
+            
+            <!-- HTTP(S) fallback for desktop browsers -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- HTTPS fallback - works on desktop and mobile -->
+                <data android:scheme="https" 
+                      android:host="stonecarve.app" 
+                      android:pathPrefix="/reset-password" />
+                      
+                <!-- HTTP fallback for local testing -->
+                <data android:scheme="http" 
+                      android:host="localhost" 
+                      android:port="4200"
+                      android:pathPrefix="/reset-password" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

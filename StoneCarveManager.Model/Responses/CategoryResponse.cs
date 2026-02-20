@@ -16,5 +16,11 @@ namespace StoneCarveManager.Model.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public int ProductCount { get; set; }
+        
+        // ✅ Hierarchical category support
+        public int? ParentCategoryId { get; set; }
+        public string? ParentCategoryName { get; set; }
+        public int ChildCategoryCount { get; set; }
+        public List<CategoryResponse>? ChildCategories { get; set; }
     }
 }

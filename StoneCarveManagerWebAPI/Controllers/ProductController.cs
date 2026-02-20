@@ -13,12 +13,16 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly IProductService _productService;
         private readonly IProductReviewService _reviewService;
+        private readonly ICurrentUserService _currentUserService;
 
-
-        public ProductController(IProductService service, IProductReviewService reviewService) : base(service)
+        public ProductController(
+            IProductService service, 
+            IProductReviewService reviewService,
+            ICurrentUserService currentUserService) : base(service)
         {
             _productService = service;
             _reviewService = reviewService;
+            _currentUserService = currentUserService;
         }
 
         [HttpPatch("{id}/increment-view-count")]
@@ -45,6 +49,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             return NoContent();
         }
 
+        // ? Get reviews for a product (public, approved only)
         [HttpGet("{productId}/reviews")]
         public async Task<IActionResult> GetProductReviews(int productId)
         {
@@ -52,10 +57,16 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(list);
         }
 
+        // ? Add review for a product (userId from JWT token)
         [HttpPost("{productId}/reviews")]
         public async Task<IActionResult> AddProductReview(int productId, [FromBody] ProductReviewInsertRequest request)
         {
+            // Automatically set userId from JWT token
+            request.UserId = _currentUserService.GetUserId();
+            
+            // Set productId from URL
             request.ProductId = productId;
+            
             var review = await _reviewService.InsertAsync(request);
             return Ok(review);
         }
@@ -113,9 +124,5 @@ namespace StoneCarveManagerWebAPI.Controllers
             var result = await _productService.GetAsync(search);
             return Ok(result);
         }
-
-
-        
-
     }
 }

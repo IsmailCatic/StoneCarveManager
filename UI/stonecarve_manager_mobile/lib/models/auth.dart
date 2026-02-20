@@ -55,8 +55,18 @@ class AuthResponse {
     refreshToken = json['refreshToken'];
     userId = json['userId'];
     username = json['username'];
+
+    // Support both "roles" (plural) and "role" (singular) from backend
     if (json['roles'] != null) {
       roles = List<String>.from(json['roles']);
+    } else if (json['role'] != null) {
+      // Fallback: if backend sends "role" instead of "roles"
+      final roleValue = json['role'];
+      if (roleValue is List) {
+        roles = List<String>.from(roleValue);
+      } else if (roleValue is String) {
+        roles = [roleValue];
+      }
     }
   }
 

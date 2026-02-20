@@ -469,7 +469,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       categoryId: int.tryParse(categoryIdController.text),
                       materialId: int.tryParse(materialIdController.text),
                       isActive: isActive,
-                      // Ako editujemo postojeći product, zadržavamo ostala polja
+                      // If editing an existing product, keep other fields
                       createdAt: product?.createdAt,
                       updatedAt: product?.updatedAt,
                       isInPortfolio: product?.isInPortfolio,

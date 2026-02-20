@@ -13,23 +13,11 @@ namespace StoneCarveManager.Services.IServices
     public interface IOrderService
        : ICRUDService<OrderResponse, OrderSearchObject, OrderInsertRequest, OrderUpdateRequest>
     {
-        /// <summary>
         /// Create a custom order without a predefined product
         /// Automatically creates a custom product based on user specifications
-        /// </summary>
         Task<OrderResponse> CreateCustomOrderAsync(CustomOrderInsertRequest request, CancellationToken cancellationToken = default);
-        
-        /// <summary>
-        /// Upload a reference sketch for a custom order
-        /// Returns the URL to be included in CustomOrderInsertRequest.ReferenceImageUrls
-        /// </summary>
         Task<string> UploadCustomOrderSketchAsync(CustomOrderSketchUploadRequest request, CancellationToken cancellationToken = default);
-        
-        /// <summary>
-        /// Delete a previously uploaded custom order sketch
-        /// </summary>
         Task<bool> DeleteCustomOrderSketchAsync(string url, CancellationToken cancellationToken = default);
-        
         Task<OrderProgressImageResponse> AddOrderProgressImageAsync(int orderId, OrderProgressImageUploadRequest request, CancellationToken cancellationToken = default);
         Task<bool> DeleteOrderProgressImageAsync(int id, CancellationToken cancellationToken = default);
         Task<List<OrderResponse>> GetOrdersByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);

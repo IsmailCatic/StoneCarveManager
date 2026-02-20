@@ -55,25 +55,38 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   Future<void> _uploadImage(File imageFile) async {
     try {
+      print('=== ORDER DETAILS SCREEN - UPLOAD IMAGE ===');
+      print('Order ID: ${order.id}');
+      print('Image file path: ${imageFile.path}');
+
       final userId = AuthProvider.userId;
+      print('User ID: $userId');
+
       final newImage = await _orderProvider.uploadProgressImage(
         order.id,
         imageFile.path,
         uploadedByUserId: userId,
       );
+
+      print('Received new image: ${newImage.id}, ${newImage.imageUrl}');
+
       setState(() {
-        progressImages.add(newImage as ProgressImage);
+        progressImages.add(newImage);
+        print('Added image to list. Total images: ${progressImages.length}');
       });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Slika uspješno uploadana!')),
+          const SnackBar(content: Text('Image uploaded successfully!')),
         );
       }
     } catch (e) {
+      print('ERROR uploading image: $e');
+      print('Stack trace: ${StackTrace.current}');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Greška pri uploadu slike: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
       }
     }
   }
@@ -115,13 +128,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Promjene spremljene!')));
+        ).showSnackBar(const SnackBar(content: Text('Changes saved!')));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Greška: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       setState(() {
@@ -136,17 +149,17 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Potvrdi Promjenu Statusa'),
+        title: const Text('Confirm Status Change'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Novi status: $statusLabel'),
+            Text('New status: $statusLabel'),
             const SizedBox(height: 16),
             TextField(
               decoration: const InputDecoration(
-                labelText: 'Komentar (opciono)',
-                hintText: 'Razlog promjene statusa...',
+                labelText: 'Comment (optional)',
+                hintText: 'Reason for status change...',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
@@ -159,14 +172,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Otkaži'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _updateOrderStatus(newStatus, comment);
             },
-            child: const Text('Potvrdi'),
+            child: const Text('Confirm'),
           ),
         ],
       ),
@@ -192,7 +205,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Status uspješno promijenjen'),
+            content: Text('Status changed successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -202,7 +215,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Greška: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -281,7 +294,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             Icon(Icons.circle, color: _getStatusColor(order.status), size: 16),
             const SizedBox(width: 12),
             Text(
-              'Trenutni status: ${Order.statusToString(order.status)}',
+              'Current status: ${Order.statusToString(order.status)}',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
@@ -298,7 +311,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Promijeni Status',
+              'Change Status',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -349,7 +362,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Istorija Promjena Statusa',
+              'Status Change History',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -397,7 +410,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           if (history.changedByUserName != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Promijenio: ${history.changedByUserName}',
+              'Changed by: ${history.changedByUserName}',
               style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
@@ -413,7 +426,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalji narudžbe'), elevation: 2),
+      appBar: AppBar(title: const Text('Order Details'), elevation: 2),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -439,7 +452,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Narudžba #${order.orderNumber ?? order.id}',
+                                'Order #${order.orderNumber ?? order.id}',
                                 style: Theme.of(context).textTheme.headlineSmall
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
@@ -460,14 +473,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     Divider(),
                     const SizedBox(height: 8),
                     _buildInfoRow(
-                      'Ukupan iznos',
+                      'Total Amount',
                       '\$${order.totalAmount.toStringAsFixed(2)}',
                       Icons.attach_money,
                       Colors.green,
                     ),
                     if (order.clientName != null)
                       _buildInfoRow(
-                        'Klijent',
+                        'Client',
                         order.clientName!,
                         Icons.person,
                         Colors.blue,
@@ -502,7 +515,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         Icon(Icons.notes, color: Colors.orange),
                         const SizedBox(width: 8),
                         Text(
-                          'Bilješke',
+                          'Notes',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -512,7 +525,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     TextFormField(
                       controller: customerNotesController,
                       decoration: InputDecoration(
-                        labelText: 'Bilješke klijenta',
+                        labelText: 'Client Notes',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -525,7 +538,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     TextFormField(
                       controller: adminNotesController,
                       decoration: InputDecoration(
-                        labelText: 'Bilješke administratora',
+                        labelText: 'Administrator Notes',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -556,7 +569,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         Icon(Icons.photo_library, color: Colors.purple),
                         const SizedBox(width: 8),
                         Text(
-                          'Slike napretka',
+                          'Progress Images',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -600,22 +613,22 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                         final confirm = await showDialog<bool>(
                                           context: context,
                                           builder: (context) => AlertDialog(
-                                            title: const Text('Obriši sliku'),
+                                            title: const Text('Delete Image'),
                                             content: const Text(
-                                              'Jeste li sigurni da želite obrisati ovu sliku?',
+                                              'Are you sure you want to delete this image?',
                                             ),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.of(
                                                   context,
                                                 ).pop(false),
-                                                child: const Text('Ne'),
+                                                child: const Text('No'),
                                               ),
                                               ElevatedButton(
                                                 onPressed: () => Navigator.of(
                                                   context,
                                                 ).pop(true),
-                                                child: const Text('Da'),
+                                                child: const Text('Yes'),
                                               ),
                                             ],
                                           ),
@@ -633,7 +646,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                               ).showSnackBar(
                                                 const SnackBar(
                                                   content: Text(
-                                                    'Slika obrisana!',
+                                                    'Image deleted!',
                                                   ),
                                                 ),
                                               );
@@ -645,7 +658,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                               ).showSnackBar(
                                                 const SnackBar(
                                                   content: Text(
-                                                    'Greška pri brisanju slike!',
+                                                    'Error deleting image!',
                                                   ),
                                                 ),
                                               );
@@ -698,7 +711,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Dodaj',
+                                      'Add',
                                       style: TextStyle(
                                         color: Colors.blue[600],
                                         fontSize: 12,

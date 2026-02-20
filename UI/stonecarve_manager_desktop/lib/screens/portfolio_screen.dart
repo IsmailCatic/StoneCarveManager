@@ -55,9 +55,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Greška: ${snapshot.error}'));
+            return Center(child: Text('Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Portfolio je prazan.'));
+            return const Center(child: Text('Portfolio is empty.'));
           }
           final products = snapshot.data!;
           return ListView.builder(
@@ -100,10 +100,10 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Uredi')),
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
                       const PopupMenuItem(
                         value: 'delete',
-                        child: Text('Obriši'),
+                        child: Text('Delete'),
                       ),
                     ],
                   ),

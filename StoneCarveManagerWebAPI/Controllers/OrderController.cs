@@ -28,13 +28,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             _currentUserService = currentUserService;
         }
 
-        /// <summary>
-        /// Get all orders for the currently authenticated user
-        /// Perfect for frontend "My Orders" page with status tracking
-        /// </summary>
-        /// <param name="search">Optional search parameters (status filter, date range, etc.)</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Paged list of user's orders with status and progress images</returns>
         [HttpGet("my-orders")]
         [Authorize]
         public async Task<ActionResult<PagedResult<OrderResponse>>> GetMyOrders(
@@ -53,9 +46,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get active orders (not completed/delivered) for current user
-        /// </summary>
         [HttpGet("my-orders/active")]
         [Authorize]
         public async Task<ActionResult<PagedResult<OrderResponse>>> GetMyActiveOrders(
@@ -85,9 +75,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             });
         }
 
-        /// <summary>
-        /// Get order history (completed/delivered) for current user
-        /// </summary>
         [HttpGet("my-orders/history")]
         [Authorize]
         public async Task<ActionResult<PagedResult<OrderResponse>>> GetMyOrderHistory(
@@ -114,10 +101,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             });
         }
 
-        /// <summary>
-        /// Get single order by ID (only if it belongs to current user)
-        /// Perfect for detailed order status page with timeline and progress images
-        /// </summary>
         [HttpGet("my-orders/{id}")]
         [Authorize]
         public async Task<ActionResult<OrderResponse>> GetMyOrderById(int id, CancellationToken cancellationToken = default)
@@ -288,9 +271,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(new { url = imageUrl });
         }
 
-        /// <summary>
-        /// Delete a previously uploaded custom order sketch
-        /// </summary>
+
         [HttpDelete("custom/delete-sketch")]
         [Authorize]
         public async Task<IActionResult> DeleteCustomOrderSketch(

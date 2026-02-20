@@ -39,12 +39,18 @@ class OrderProvider extends BaseProvider<Order> {
     }
   }
 
-  Future<Order> uploadProgressImage(
+  Future<ProgressImage> uploadProgressImage(
     int orderId,
     String filePath, {
     String? description,
     int? uploadedByUserId,
   }) async {
+    print('=== UPLOAD PROGRESS IMAGE DEBUG ===');
+    print('Order ID: $orderId');
+    print('File path: $filePath');
+    print('Description: $description');
+    print('Uploaded by user ID: $uploadedByUserId');
+
     var url = "http://localhost:5021/api/Order/$orderId/progress-images";
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers.addAll(createHeaders());
@@ -55,11 +61,26 @@ class OrderProvider extends BaseProvider<Order> {
     if (uploadedByUserId != null) {
       request.fields['uploadedByUserId'] = uploadedByUserId.toString();
     }
+
+    print('Sending request to: $url');
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
+
+    print('Response status code: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
     if (isValidResponse(response)) {
-      return fromJson(jsonDecode(response.body));
+      final jsonData = jsonDecode(response.body);
+      print('Parsed JSON: $jsonData');
+
+      // Backend returns OrderProgressImageResponse, not Order
+      final progressImage = ProgressImage.fromJson(jsonData);
+      print(
+        'Created ProgressImage: ${progressImage.id}, ${progressImage.imageUrl}',
+      );
+      return progressImage;
     } else {
+      print('ERROR: ${response.body}');
       throw Exception("Failed to upload progress image: ${response.body}");
     }
   }
@@ -130,6 +151,77 @@ class OrderProvider extends BaseProvider<Order> {
       throw Exception('Order not found');
     } else {
       throw Exception('Failed to update order status: ${response.body}');
+    }
+  }
+
+  /// Get all custom orders (Admin/Employee only)
+  /// Orders where product.productState == "custom_order"
+  Future<List<Order>> getCustomOrders() async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final response = await http.get(
+      Uri.parse('http://localhost:5021/api/Order/custom-orders'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final items = jsonData['items'] as List?;
+      return items?.map((e) => Order.fromJson(e)).toList() ?? [];
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied - Admin/Employee only');
+    } else {
+      throw Exception('Failed to load custom orders: ${response.body}');
+    }
+  }
+
+  /// Upload a reference sketch/image for a custom order
+  /// Returns the URL of the uploaded image
+  Future<String> uploadCustomOrderSketch(String filePath) async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final url = 'http://localhost:5021/api/Order/custom/upload-sketch';
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      return jsonData['url'] as String;
+    } else {
+      throw Exception('Failed to upload sketch: ${response.body}');
+    }
+  }
+
+  /// Delete a custom order sketch by URL
+  Future<bool> deleteCustomOrderSketch(String url) async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final response = await http.delete(
+      Uri.parse(
+        'http://localhost:5021/api/Order/custom/delete-sketch?url=$url',
+      ),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 204) {
+      return true;
+    } else if (response.statusCode == 404) {
+      return false;
+    } else {
+      throw Exception('Failed to delete sketch: ${response.body}');
     }
   }
 }

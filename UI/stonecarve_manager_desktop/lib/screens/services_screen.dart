@@ -423,7 +423,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         // Edit button
                         IconButton(
                           icon: const Icon(Icons.edit_outlined),
-                          tooltip: 'Uredi uslugu',
+                          tooltip: 'Edit service',
                           onPressed: () => _showEditServiceDialog(service),
                         ),
                       ],

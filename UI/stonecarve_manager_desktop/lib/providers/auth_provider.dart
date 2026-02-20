@@ -156,12 +156,12 @@ class AuthProvider {
     return {'Content-Type': 'application/json'};
   }
 
-  // Dodaj metodu za učitavanje tokena iz storage prilikom pokretanja app-a
+  // Add method to load token from storage on app start
   static Future<void> loadToken() async {
     _token = await _storage.read(key: 'auth_token');
     if (_token != null) {
       _isLoggedIn = true;
-      // Ako imaš i druge podatke, možeš ih učitati ovdje, ali za sada samo token
+      // If you have other data, you can load it here, but for now just the token
     }
   }
 

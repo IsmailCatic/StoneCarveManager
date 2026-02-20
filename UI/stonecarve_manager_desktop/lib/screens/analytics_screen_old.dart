@@ -14,7 +14,8 @@ class AnalyticsScreen extends StatefulWidget {
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> with SingleTickerProviderStateMixin {
+class _AnalyticsScreenState extends State<AnalyticsScreen>
+    with SingleTickerProviderStateMixin {
   int? userCount;
   double? totalIncome;
   double? dailyIncome;
@@ -133,7 +134,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> with SingleTickerProv
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : error != null
-          ? Center(child: Text('Greška: $error'))
+          ? Center(child: Text('Error: $error'))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -143,12 +144,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> with SingleTickerProv
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _StatCard(
-                        title: 'Broj korisnika',
+                        title: 'Number of Users',
                         value: userCount?.toString() ?? '-',
                         icon: Icons.people,
                       ),
                       _StatCard(
-                        title: 'Ukupni prihodi',
+                        title: 'Total Revenue',
                         value: totalIncome != null
                             ? '${totalIncome!.toStringAsFixed(2)}'
                             : '-',
@@ -165,7 +166,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> with SingleTickerProv
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Najprodavaniji proizvodi',
+                    'Top Selling Products',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
@@ -184,7 +185,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> with SingleTickerProv
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Prihodi po danima',
+                              'Revenue per Day',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),

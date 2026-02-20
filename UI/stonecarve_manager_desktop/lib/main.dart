@@ -9,17 +9,19 @@ import 'package:stonecarve_manager_flutter/screens/categories_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/blog_post_list_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/orders_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/orders_monthly_view_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/custom_orders_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/users_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/analytics_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/portfolio_modern_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/profile_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/forgot_password_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/reset_password_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/reviews_management_screen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Potrebno za async operacije prije runApp
+  WidgetsFlutterBinding.ensureInitialized(); // Required for async operations before runApp
 
-  // Učitaj token iz storage prije pokretanja app-a
+  // Load token from storage before starting the app
   await AuthProvider.loadToken();
 
   runApp(const StoneCarveManagerApp());
@@ -52,6 +54,7 @@ class StoneCarveManagerApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/orders': (context) => const OrdersScreen(),
         '/orders/monthly': (context) => const OrdersMonthlyViewScreen(),
+        '/custom-orders': (context) => const CustomOrdersScreen(),
         '/products': (context) => const ProductsScreen(),
         '/services': (context) => const ServicesScreen(),
         '/materials': (context) => const MaterialsScreen(),
@@ -60,6 +63,7 @@ class StoneCarveManagerApp extends StatelessWidget {
         '/portfolio': (context) => const PortfolioModernScreen(),
         '/blog': (context) => BlogPostListScreen(authProvider: AuthProvider()),
         '/analytics': (context) => const AnalyticsScreen(),
+        '/reviews': (context) => const ReviewsManagementScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
       },

@@ -122,6 +122,16 @@ class _AppDrawerState extends State<AppDrawer> {
               onTap: () => _navigateTo(context, '/orders/monthly'),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(left: 32.0),
+            child: _DrawerItem(
+              icon: Icons.design_services,
+              title: 'Custom Orders',
+              route: '/custom-orders',
+              currentRoute: widget.currentRoute,
+              onTap: () => _navigateTo(context, '/custom-orders'),
+            ),
+          ),
           _DrawerItem(
             icon: Icons.inventory,
             title: 'Products',
@@ -177,6 +187,13 @@ class _AppDrawerState extends State<AppDrawer> {
             route: '/analytics',
             currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/analytics'),
+          ),
+          _DrawerItem(
+            icon: Icons.rate_review,
+            title: 'Reviews',
+            route: '/reviews',
+            currentRoute: widget.currentRoute,
+            onTap: () => _navigateTo(context, '/reviews'),
           ),
           const Divider(height: 32, thickness: 1),
           // My Profile with user avatar

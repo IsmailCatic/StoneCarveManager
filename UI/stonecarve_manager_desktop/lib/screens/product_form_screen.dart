@@ -117,9 +117,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           _images.removeWhere((img) => img.id == imageId);
         });
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Greška pri brisanju slike: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting image: $e')));
       }
     }
   }
@@ -129,7 +129,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   Future<void> _pickAndUploadImage(int? productId) async {
     if (productId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Spremite rad prije dodavanja slike.')),
+        SnackBar(content: Text('Save your work before adding an image.')),
       );
       return;
     }
@@ -145,9 +145,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           _images.add(uploadedImage);
         });
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Greška pri dodavanju slike: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error adding image: $e')));
       }
     }
   }
@@ -222,7 +222,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       } catch (e) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Greška: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -465,7 +465,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ? Validators.validateMinLength(
                         value,
                         15,
-                        fieldName: 'Izazov klijenta',
+                        fieldName: 'Client Challenge',
                       )
                     : null,
               ),
@@ -481,7 +481,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ? Validators.validateMinLength(
                         value,
                         15,
-                        fieldName: 'Naše rješenje',
+                        fieldName: 'Our Solution',
                       )
                     : null,
               ),
@@ -566,7 +566,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ? Validators.validateMinLength(
                               value,
                               5,
-                              fieldName: 'Korištene tehnike',
+                              fieldName: 'Techniques Used',
                             )
                           : null,
                     ),

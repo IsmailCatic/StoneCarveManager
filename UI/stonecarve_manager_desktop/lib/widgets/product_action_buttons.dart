@@ -60,7 +60,7 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$action uspešno izvršen'),
+            content: Text('$action completed successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -69,7 +69,7 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Greška: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -90,11 +90,11 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
           onPressed: _actionInProgress
               ? null
               : () => _performAction(
-                  'Aktivacija',
+                  'Activation',
                   () => provider.activateProduct(widget.productId),
                 ),
           icon: Icon(icon),
-          label: const Text('Aktiviraj'),
+          label: const Text('Activate'),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
@@ -105,11 +105,11 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
           onPressed: _actionInProgress
               ? null
               : () => _performAction(
-                  'Sakrivanje',
+                  'Hiding',
                   () => provider.hideProduct(widget.productId),
                 ),
           icon: Icon(icon),
-          label: const Text('Sakrij'),
+          label: const Text('Hide'),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
@@ -120,11 +120,11 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
           onPressed: _actionInProgress
               ? null
               : () => _performAction(
-                  'Konverzija u uslugu',
+                  'Convert to Service',
                   () => provider.makeService(widget.productId),
                 ),
           icon: Icon(icon),
-          label: const Text('Napravi Uslugu'),
+          label: const Text('Make Service'),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
@@ -135,11 +135,11 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
           onPressed: _actionInProgress
               ? null
               : () => _performAction(
-                  'Dodavanje u portfolio',
+                  'Add to Portfolio',
                   () => provider.addToPortfolio(widget.productId),
                 ),
           icon: Icon(icon),
-          label: const Text('Dodaj u Portfolio'),
+          label: const Text('Add to Portfolio'),
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,

@@ -44,15 +44,15 @@ class ProductStateChip extends StatelessWidget {
       case 'draft':
         return 'Draft';
       case 'active':
-        return 'Aktivan';
+        return 'Active';
       case 'service':
-        return 'Usluga';
+        return 'Service';
       case 'portfolio':
         return 'Portfolio';
       case 'hidden':
-        return 'Sakriven';
+        return 'Hidden';
       default:
-        return state ?? 'Nepoznato';
+        return state ?? 'Unknown';
     }
   }
 

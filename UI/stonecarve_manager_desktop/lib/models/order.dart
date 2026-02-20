@@ -147,6 +147,9 @@ class OrderItem {
   final double unitPrice;
   final double totalPrice;
   final String? specifications;
+  final String? productState; // e.g., "custom_order", "standard"
+  final String? customSketchUrl; // URL to the uploaded sketch
+  final String? customSpecifications; // Custom order specifications
 
   OrderItem({
     required this.id,
@@ -158,6 +161,9 @@ class OrderItem {
     required this.unitPrice,
     required this.totalPrice,
     this.specifications,
+    this.productState,
+    this.customSketchUrl,
+    this.customSpecifications,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
@@ -174,6 +180,9 @@ class OrderItem {
         ? (json['totalPrice'] as num).toDouble()
         : 0.0,
     specifications: json['specifications'],
+    productState: json['productState'],
+    customSketchUrl: json['customSketchUrl'],
+    customSpecifications: json['customSpecifications'],
   );
 
   Map<String, dynamic> toJson() => {
@@ -186,6 +195,9 @@ class OrderItem {
     'unitPrice': unitPrice,
     'totalPrice': totalPrice,
     'specifications': specifications,
+    'productState': productState,
+    'customSketchUrl': customSketchUrl,
+    'customSpecifications': customSpecifications,
   };
 }
 

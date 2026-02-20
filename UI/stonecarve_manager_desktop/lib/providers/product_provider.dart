@@ -24,7 +24,7 @@ class ProductProvider {
       return items.map((item) => Product.fromJson(item)).toList();
     } else {
       throw Exception(
-        'Greška pri dohvaćanju portfolia: ${response.statusCode} ${response.body}',
+        'Error fetching portfolio: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -42,7 +42,7 @@ class ProductProvider {
       return items.map((item) => Product.fromJson(item)).toList();
     } else {
       throw Exception(
-        'Greška pri dohvaćanju usluga: ${response.statusCode} ${response.body}',
+        'Error fetching services: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -62,9 +62,7 @@ class ProductProvider {
       final List<dynamic> actions = json.decode(response.body);
       return actions.cast<String>();
     } else {
-      throw Exception(
-        'Greška pri dohvaćanju dozvoljenih akcija: ${response.statusCode}',
-      );
+      throw Exception('Error fetching allowed actions: ${response.statusCode}');
     }
   }
 
@@ -77,7 +75,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri aktivaciji proizvoda: ${response.body}');
+      throw Exception('Error activating product: ${response.body}');
     }
   }
 
@@ -88,7 +86,7 @@ class ProductProvider {
     final response = await client.patch(Uri.parse('$baseUrl/$productId/hide'));
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri sakrivanju proizvoda: ${response.body}');
+      throw Exception('Error hiding product: ${response.body}');
     }
   }
 
@@ -101,7 +99,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri konverziji u uslugu: ${response.body}');
+      throw Exception('Error converting to service: ${response.body}');
     }
   }
 
@@ -116,7 +114,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri dodavanju u portfolio: ${response.body}');
+      throw Exception('Error adding to portfolio: ${response.body}');
     }
   }
 
@@ -133,7 +131,7 @@ class ProductProvider {
       return Product.fromJson(json.decode(response.body));
     } else {
       throw Exception(
-        'Greška pri dodavanju proizvoda: ${response.statusCode} ${response.body}',
+        'Error adding product: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -151,7 +149,7 @@ class ProductProvider {
       return Product.fromJson(json.decode(response.body));
     } else {
       throw Exception(
-        'Greška pri ažuriranju proizvoda: ${response.statusCode} ${response.body}',
+        'Error updating product: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -166,7 +164,7 @@ class ProductProvider {
       return true;
     } else {
       throw Exception(
-        'Greška pri brisanju proizvoda: ${response.statusCode} ${response.body}',
+        'Error deleting product: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -198,7 +196,7 @@ class ProductProvider {
       return ProductImage.fromJson(data); // <-- expect a single object
     } else {
       throw Exception(
-        'Greška pri uploadu slike: ${response.statusCode} ${response.body}',
+        'Error uploading image: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -215,7 +213,7 @@ class ProductProvider {
       return true;
     } else {
       throw Exception(
-        'Greška pri brisanju slike: ${response.statusCode} ${response.body}',
+        'Error deleting image: ${response.statusCode} ${response.body}',
       );
     }
   }

@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>dotnet-CineMatic.EmailService-8893a818-b278-4614-b9b5-0b0ec6e1ecac</UserSecretsId>
+    <!--<UserSecretsId>dotnet-StoneCarveManager.EmailService-8893a818-b278-4614-b9b5-0b0ec6e1ecac</UserSecretsId>-->
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
+using StoneCarveManager.Model.Responses;
+using StoneCarveManager.Model.Responses.StoneCarveManager.Model.Responses;
+using StoneCarveManager.Model.SearchObjects;
 using StoneCarveManager.Services.IServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,6 +54,70 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var payment = await _paymentService.GetPaymentByIdAsync(paymentId, cancellationToken);
             return Ok(payment);
+        }
+
+        // ================================
+        // NEW ADMIN ENDPOINTS
+        // ================================
+
+        [HttpGet]
+        [Authorize(Roles = "Admin,Employee")]
+        public async Task<ActionResult<PagedResult<PaymentResponse>>> GetAllPayments(
+            [FromQuery] string? status,
+            [FromQuery] string? method,
+            [FromQuery] System.DateTime? startDate,
+            [FromQuery] System.DateTime? endDate,
+            [FromQuery] int? page,
+            [FromQuery] int? pageSize,
+            [FromQuery] bool retrieveAll = false,
+            CancellationToken cancellationToken = default)
+        {
+            var searchObject = new PaymentSearchObject
+            {
+                Status = status,
+                Method = method,
+                StartDate = startDate,
+                EndDate = endDate,
+                Page = page,
+                PageSize = pageSize,
+                RetrieveAll = retrieveAll
+            };
+            
+            var result = await _paymentService.GetPaymentsAsync(searchObject, cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpPost("refund")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<PaymentResponse>> IssueRefund(
+            [FromBody] RefundRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var payment = await _paymentService.IssueRefundAsync(request, cancellationToken);
+            return Ok(payment);
+        }
+
+        [HttpPost("retry/{orderId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<PaymentResponse>> RetryPayment(
+            int orderId,
+            CancellationToken cancellationToken = default)
+        {
+            var payment = await _paymentService.RetryPaymentAsync(orderId, cancellationToken);
+            return Ok(payment);
+        }
+
+        [HttpGet("statistics")]
+        [Authorize(Roles = "Admin,Employee")]
+        public async Task<ActionResult<PaymentStatisticsResponse>> GetPaymentStatistics(
+            [FromQuery] System.DateTime? startDate,
+            [FromQuery] System.DateTime? endDate,
+            CancellationToken cancellationToken = default)
+        {
+            var stats = await _paymentService.GetPaymentStatisticsAsync(
+                startDate, endDate, cancellationToken
+            );
+            return Ok(stats);
         }
     }
 }

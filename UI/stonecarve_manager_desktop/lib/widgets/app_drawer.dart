@@ -189,6 +189,13 @@ class _AppDrawerState extends State<AppDrawer> {
             onTap: () => _navigateTo(context, '/analytics'),
           ),
           _DrawerItem(
+            icon: Icons.payment,
+            title: 'Payments',
+            route: '/payments',
+            currentRoute: widget.currentRoute,
+            onTap: () => _navigateTo(context, '/payments'),
+          ),
+          _DrawerItem(
             icon: Icons.rate_review,
             title: 'Reviews',
             route: '/reviews',

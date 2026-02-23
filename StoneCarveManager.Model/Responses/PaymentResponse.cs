@@ -9,12 +9,14 @@ namespace StoneCarveManager.Model.Responses
         public string OrderNumber { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public string Currency { get; set; } = "BAM";
-        public string Status { get; set; } = string.Empty; // pending, succeeded, failed, cancelled
+        public string Status { get; set; } = string.Empty; // pending, succeeded, failed, cancelled, refunded
         public string Method { get; set; } = string.Empty;
         public string? TransactionId { get; set; }
         public string? StripePaymentIntentId { get; set; }
         public string? FailureReason { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
+        public string? CustomerName { get; set; }
+        public string? CustomerEmail { get; set; }
     }
 }

@@ -33,7 +33,6 @@ namespace StoneCarveManager.Services.Extensions
             services.AddScoped<IProductImageService, ProductImageService>();
             services.AddScoped<IProductReviewService, ProductReviewService>();
             services.AddScoped<IFileService, AzureBlobFileService>();
-            services.AddScoped<IBusinessAnalyticsService, BusinessAnalyticsService>();
 
             // Register Role service
             services.AddScoped<IRoleService, RoleService>();
@@ -51,6 +50,9 @@ namespace StoneCarveManager.Services.Extensions
             
             // Register Favorite service
             services.AddScoped<IFavoriteService, FavoriteService>();
+
+            // Register consolidated Analytics service (replaces BusinessAnalyticsService)
+            services.AddScoped<IAnalyticsService, AnalyticsService>();
 
             // Register Product State Machine
             services.AddTransient<BaseProductState>();

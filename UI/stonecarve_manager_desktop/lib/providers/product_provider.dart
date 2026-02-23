@@ -217,4 +217,21 @@ class ProductProvider {
       );
     }
   }
+
+  Future<bool> setPrimaryImage(int productId, int imageId) async {
+    print('[ProductProvider] setPrimaryImage: $productId $imageId');
+    final client = AuthClient(getToken: () async => AuthProvider.token);
+    final response = await client.patch(
+      Uri.parse('$baseUrl/$productId/images/$imageId/set-primary'),
+    );
+    print('[ProductProvider] Status: ${response.statusCode}');
+    print('[ProductProvider] Body: ${response.body}');
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    } else {
+      throw Exception(
+        'Error setting primary image: ${response.statusCode} ${response.body}',
+      );
+    }
+  }
 }

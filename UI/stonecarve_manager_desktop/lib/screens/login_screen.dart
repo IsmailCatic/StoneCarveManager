@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
-import 'package:stonecarve_manager_flutter/screens/analytics_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/analytics_dashboard_screen_comprehensive.dart';
 import 'package:stonecarve_manager_flutter/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -41,7 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
+          MaterialPageRoute(
+            builder: (context) => const AnalyticsDashboardScreen(),
+          ),
         );
       }
     } catch (e) {

@@ -6,6 +6,10 @@ import 'package:stonecarve_manager_flutter/widgets/product_state_chip.dart';
 import 'package:stonecarve_manager_flutter/widgets/product_action_buttons.dart';
 import 'package:stonecarve_manager_flutter/screens/add_product_screen.dart';
 import 'package:stonecarve_manager_flutter/widgets/optimized_image.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:stonecarve_manager_flutter/providers/product_provider.dart'
+    as prod_provider;
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -16,6 +20,8 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   final ProductProvider _productProvider = ProductProvider();
+  final prod_provider.ProductProvider _productProviderWithImages =
+      prod_provider.ProductProvider();
   List<Product> _products = [];
   bool _isLoading = true;
 
@@ -46,6 +52,252 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
       }
     }
+  }
+
+  Future<void> _pickAndUploadImage(Product product) async {
+    if (product.id == null) return;
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      try {
+        await _productProviderWithImages.uploadProductImage(
+          product.id!,
+          pickedFile.path,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image uploaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadProducts();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteProductImage(int productId, int imageId) async {
+    try {
+      await _productProviderWithImages.deleteProductImage(productId, imageId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image deleted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadProducts();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting image: $e')));
+      }
+    }
+  }
+
+  Future<void> _setPrimaryImage(int productId, int imageId) async {
+    try {
+      await _productProviderWithImages.setPrimaryImage(productId, imageId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Primary image set successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadProducts();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error setting primary image: $e')),
+        );
+      }
+    }
+  }
+
+  void _showImageManagementDialog(Product product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Manage Images: ${product.name}'),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Upload new image button
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage(product);
+                },
+                icon: const Icon(Icons.add_photo_alternate),
+                label: const Text('Upload New Image'),
+              ),
+              const SizedBox(height: 16),
+              // Existing images
+              if (product.images != null && product.images!.isNotEmpty) ...[
+                const Divider(),
+                const Text(
+                  'Existing Images:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Tap an image to set it as primary (shown first)',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 300,
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                    itemCount: product.images!.length,
+                    itemBuilder: (context, index) {
+                      final image = product.images![index];
+                      final isPrimary = image.isPrimary == true;
+                      return Stack(
+                        children: [
+                          InkWell(
+                            onTap: () async {
+                              if (!isPrimary &&
+                                  product.id != null &&
+                                  image.id != null) {
+                                Navigator.pop(context);
+                                await _setPrimaryImage(product.id!, image.id!);
+                              }
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: isPrimary
+                                    ? Border.all(color: Colors.green, width: 3)
+                                    : null,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: OptimizedImage(
+                                  imageUrl: image.imageUrl ?? '',
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  errorWidget: Container(
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.broken_image),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (isPrimary)
+                            Positioned(
+                              top: 4,
+                              left: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'PRIMARY',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.red,
+                                size: 20,
+                              ),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                padding: const EdgeInsets.all(4),
+                              ),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Image'),
+                                    content: const Text(
+                                      'Are you sure you want to delete this image?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true &&
+                                    product.id != null &&
+                                    image.id != null) {
+                                  Navigator.pop(context);
+                                  await _deleteProductImage(
+                                    product.id!,
+                                    image.id!,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ] else
+                const Text('No images uploaded yet'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -97,11 +349,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       itemCount: _products.length,
                       itemBuilder: (context, index) {
                         final product = _products[index];
-                        final latestImageUrl =
-                            (product.images != null &&
-                                product.images!.isNotEmpty)
-                            ? product.images!.last.imageUrl
-                            : null;
+                        // Get primary image or first image
+                        String? displayImageUrl;
+                        if (product.images != null &&
+                            product.images!.isNotEmpty) {
+                          final primaryImage = product.images!.firstWhere(
+                            (img) => img.isPrimary == true,
+                            orElse: () => product.images!.first,
+                          );
+                          displayImageUrl = primaryImage.imageUrl;
+                        }
                         return Card(
                           elevation: 3,
                           shape: RoundedRectangleBorder(
@@ -120,10 +377,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                       height: 140,
                                       width: double.infinity,
                                       child:
-                                          latestImageUrl != null &&
-                                              latestImageUrl.isNotEmpty
+                                          displayImageUrl != null &&
+                                              displayImageUrl.isNotEmpty
                                           ? OptimizedImage(
-                                              imageUrl: latestImageUrl,
+                                              imageUrl: displayImageUrl,
                                               fit: BoxFit.cover,
                                               height: 140,
                                               width: double.infinity,
@@ -272,6 +529,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                         tooltip: 'Edit',
                                         onPressed: () =>
                                             _showEditProductDialog(product),
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 24,
+                                        color: Colors.grey[300],
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.image,
+                                          size: 20,
+                                          color: Colors.purple[700],
+                                        ),
+                                        tooltip: 'Manage Images',
+                                        onPressed: () =>
+                                            _showImageManagementDialog(product),
                                       ),
                                       Container(
                                         width: 1,

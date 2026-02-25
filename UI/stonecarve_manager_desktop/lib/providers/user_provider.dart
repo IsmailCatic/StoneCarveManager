@@ -48,11 +48,16 @@ class UserProvider extends BaseProvider<User> {
     return await delete(id);
   }
 
-  Future<bool> blockUser(int id, bool isBlocked) async {
+  Future<bool> blockUser(int id, bool isBlocked, String role) async {
     try {
-      await update(id, {'isBlocked': isBlocked});
+      // Backend requires Role field (capital R) when updating user
+      await update(id, {
+        'isBlocked': isBlocked,
+        'Role': role, // Backend expects capital R
+      });
       return true;
     } catch (e) {
+      print('❌ [UserProvider] blockUser failed: $e');
       return false;
     }
   }
@@ -121,8 +126,33 @@ class UserProvider extends BaseProvider<User> {
       request.headers['Authorization'] = 'Bearer $token';
     }
 
+    // Detect correct MIME type based on file extension
+    String? contentType;
+    final extension = imageFile.path.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        contentType = 'image/jpeg';
+        break;
+      case 'png':
+        contentType = 'image/png';
+        break;
+      case 'gif':
+        contentType = 'image/gif';
+        break;
+      case 'webp':
+        contentType = 'image/webp';
+        break;
+    }
+
     request.files.add(
-      await http.MultipartFile.fromPath('file', imageFile.path),
+      await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+        contentType: contentType != null
+            ? http.MediaType.parse(contentType)
+            : null,
+      ),
     );
 
     final streamedResponse = await request.send();

@@ -99,6 +99,12 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
     return years;
   }
 
+  bool _isCustomOrder(Order order) {
+    return order.orderItems.any(
+      (item) => item.productState?.toLowerCase() == 'custom_order',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final availableYears = _getAvailableYears();
@@ -420,23 +426,65 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
                   ),
                 ),
               // Status badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(order.status).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _getStatusColor(order.status).withOpacity(0.3),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(order.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _getStatusColor(order.status).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      Order.statusToString(order.status),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _getStatusColor(order.status),
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  Order.statusToString(order.status),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: _getStatusColor(order.status),
-                  ),
-                ),
+                  if (_isCustomOrder(order)) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.purple.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 12,
+                            color: Colors.purple,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Custom',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.purple,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 8),
               // Amount

@@ -144,6 +144,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         setState(() {
           _images.add(uploadedImage);
         });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image uploaded successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } catch (e) {
         ScaffoldMessenger.of(
           context,

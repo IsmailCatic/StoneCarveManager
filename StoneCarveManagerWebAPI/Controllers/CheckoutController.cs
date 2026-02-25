@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
@@ -15,11 +16,16 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly ICheckoutService _checkoutService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IValidator<CheckoutRequest> _checkoutValidator;
 
-        public CheckoutController(ICheckoutService checkoutService, ICurrentUserService currentUserService)
+        public CheckoutController(
+            ICheckoutService checkoutService, 
+            ICurrentUserService currentUserService,
+            IValidator<CheckoutRequest> checkoutValidator)
         {
             _checkoutService = checkoutService;
             _currentUserService = currentUserService;
+            _checkoutValidator = checkoutValidator;
         }
 
         /// <summary>
@@ -39,6 +45,10 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("process")]
         public async Task<IActionResult> ProcessCheckout([FromBody] CheckoutRequest request, CancellationToken cancellationToken)
         {
+            var validationResult = await _checkoutValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             var userId = _currentUserService.GetUserId();
             var checkout = await _checkoutService.ProcessCheckoutAsync(userId, request, cancellationToken);
             return Ok(checkout);
@@ -50,6 +60,9 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("complete")]
         public async Task<IActionResult> CompleteCheckout([FromQuery] string paymentIntentId, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrWhiteSpace(paymentIntentId))
+                return BadRequest(new { message = "Payment intent ID is required" });
+
             var order = await _checkoutService.CompleteCheckoutAsync(paymentIntentId, cancellationToken);
             return Ok(order);
         }

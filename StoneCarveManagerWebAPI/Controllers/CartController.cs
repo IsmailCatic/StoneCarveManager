@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
@@ -15,11 +16,19 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly ICartService _cartService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IValidator<AddToCartRequest> _addToCartValidator;
+        private readonly IValidator<UpdateCartItemRequest> _updateCartItemValidator;
 
-        public CartController(ICartService cartService, ICurrentUserService currentUserService)
+        public CartController(
+            ICartService cartService, 
+            ICurrentUserService currentUserService,
+            IValidator<AddToCartRequest> addToCartValidator,
+            IValidator<UpdateCartItemRequest> updateCartItemValidator)
         {
             _cartService = cartService;
             _currentUserService = currentUserService;
+            _addToCartValidator = addToCartValidator;
+            _updateCartItemValidator = updateCartItemValidator;
         }
 
         [HttpGet]
@@ -33,6 +42,10 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("items")]
         public async Task<IActionResult> AddToCart([FromBody] AddToCartRequest request, CancellationToken cancellationToken)
         {
+            var validationResult = await _addToCartValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             var userId = _currentUserService.GetUserId();
             var cartItem = await _cartService.AddToCartAsync(userId, request, cancellationToken);
             return Ok(cartItem);
@@ -41,6 +54,10 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPut("items/{cartItemId}")]
         public async Task<IActionResult> UpdateCartItem(int cartItemId, [FromBody] UpdateCartItemRequest request, CancellationToken cancellationToken)
         {
+            var validationResult = await _updateCartItemValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             var userId = _currentUserService.GetUserId();
             var cartItem = await _cartService.UpdateCartItemAsync(userId, cartItemId, request, cancellationToken);
             return Ok(cartItem);
@@ -53,7 +70,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             var result = await _cartService.RemoveFromCartAsync(userId, cartItemId, cancellationToken);
             
             if (!result)
-                return NotFound();
+                return NotFound(new { message = "Cart item not found" });
             
             return NoContent();
         }
@@ -65,7 +82,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             var result = await _cartService.ClearCartAsync(userId, cancellationToken);
             
             if (!result)
-                return NotFound();
+                return NotFound(new { message = "Cart not found" });
             
             return NoContent();
         }

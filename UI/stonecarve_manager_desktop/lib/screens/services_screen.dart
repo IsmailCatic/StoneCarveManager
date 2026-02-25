@@ -34,18 +34,25 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   Future<void> _loadData() async {
-    await Future.wait([_loadServices(), _loadCategories(), _loadMaterials()]);
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Load categories and materials first (in parallel)
+    await Future.wait([_loadCategories(), _loadMaterials()]);
+
+    // Then load services and map the names
+    await _loadServices();
   }
 
   Future<void> _loadServices() async {
     try {
-      setState(() {
-        _isLoading = true;
-      });
-
       print('🔵 [ServicesScreen] Loading services...');
       final services = await _productProvider.fetchServiceProducts();
       print('✅ [ServicesScreen] Loaded ${services.length} services');
+      print(
+        '📋 [ServicesScreen] Available categories: ${_categories.length}, materials: ${_materials.length}',
+      );
 
       // Map category and material names from loaded lists
       for (var service in services) {
@@ -55,6 +62,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
             orElse: () => Category(id: null, name: null),
           );
           service.categoryName = category.name;
+          print(
+            '  ✅ Service "${service.name}" -> Category: ${category.name ?? "null"} (ID: ${service.categoryId})',
+          );
         }
         if (service.materialId != null) {
           final material = _materials.firstWhere(

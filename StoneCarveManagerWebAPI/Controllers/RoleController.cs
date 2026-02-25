@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -11,11 +12,13 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly IRoleService _roleService;
 
-        public RoleController(IRoleService service) : base(service)
+        public RoleController(
+            IRoleService service,
+            IValidator<RoleInsertRequest> insertValidator,
+            IValidator<RoleUpdateRequest> updateValidator)
+            : base(service, insertValidator, updateValidator)
         {
             _roleService = service;
         }
-
-        
     }
 }

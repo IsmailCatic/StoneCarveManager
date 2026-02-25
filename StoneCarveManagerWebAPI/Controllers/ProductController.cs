@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StoneCarveManager.Model.Requests;
@@ -14,15 +15,36 @@ namespace StoneCarveManagerWebAPI.Controllers
         private readonly IProductService _productService;
         private readonly IProductReviewService _reviewService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IValidator<ProductImageUploadRequest> _imageUploadValidator;
+        private readonly IValidator<ProductReviewInsertRequest> _reviewValidator;
 
         public ProductController(
             IProductService service, 
             IProductReviewService reviewService,
-            ICurrentUserService currentUserService) : base(service)
+            ICurrentUserService currentUserService,
+            IValidator<ProductInsertRequest> insertValidator,
+            IValidator<ProductUpdateRequest> updateValidator,
+            IValidator<ProductImageUploadRequest> imageUploadValidator,
+            IValidator<ProductReviewInsertRequest> reviewValidator) 
+            : base(service, insertValidator, updateValidator)
         {
             _productService = service;
             _reviewService = reviewService;
             _currentUserService = currentUserService;
+            _imageUploadValidator = imageUploadValidator;
+            _reviewValidator = reviewValidator;
+        }
+
+        // Override Create to add validation
+        public override async Task<ProductResponse> Create([FromBody] ProductInsertRequest request)
+        {
+            return await base.Create(request);
+        }
+
+        // Override Update to add validation
+        public override async Task<ProductResponse?> Update(int id, [FromBody] ProductUpdateRequest request)
+        {
+            return await base.Update(id, request);
         }
 
         [HttpPatch("{id}/increment-view-count")]
@@ -30,7 +52,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var result = await _productService.IncrementViewCountAsync(id);
             if (!result)
-                return NotFound();
+                return NotFound(new { message = "Product not found" });
 
             return Ok();
         }
@@ -38,6 +60,10 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("{productId}/images")]
         public async Task<IActionResult> UploadImage(int productId, [FromForm] ProductImageUploadRequest request, CancellationToken cancellationToken)
         {
+            var validationResult = await _imageUploadValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             var result = await _productService.AddProductImageAsync(productId, request, cancellationToken);
             return Ok(result);
         }
@@ -49,7 +75,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return NoContent();
         }
 
-        // ? Get reviews for a product (public, approved only)
         [HttpGet("{productId}/reviews")]
         public async Task<IActionResult> GetProductReviews(int productId)
         {
@@ -57,15 +82,18 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(list);
         }
 
-        // ? Add review for a product (userId from JWT token)
         [HttpPost("{productId}/reviews")]
-        public async Task<IActionResult> AddProductReview(int productId, [FromBody] ProductReviewInsertRequest request)
+        public async Task<IActionResult> AddProductReview(int productId, [FromBody] ProductReviewInsertRequest request, CancellationToken cancellationToken)
         {
             // Automatically set userId from JWT token
             request.UserId = _currentUserService.GetUserId();
             
             // Set productId from URL
             request.ProductId = productId;
+
+            var validationResult = await _reviewValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
             
             var review = await _reviewService.InsertAsync(request);
             return Ok(review);
@@ -107,7 +135,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(actions);
         }
 
-        // Helper endpoints for filtering
         [HttpGet("services")]
         public async Task<IActionResult> GetServices([FromQuery] ProductSearchObject search)
         {

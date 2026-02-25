@@ -73,6 +73,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           category.id!,
           File(pickedFile.path),
         );
+        // Reload data immediately to show the new image
+        await _loadCategories();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -80,7 +82,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          _loadCategories();
         }
       } catch (e) {
         if (mounted) {
@@ -100,6 +101,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
     try {
       await _categoryProvider.deleteCategoryImage(category.id!);
+      // Reload data immediately to reflect the deletion
+      await _loadCategories();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -107,7 +110,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _loadCategories();
       }
     } catch (e) {
       if (mounted) {

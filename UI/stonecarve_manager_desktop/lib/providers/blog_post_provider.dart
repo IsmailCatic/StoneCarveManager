@@ -175,8 +175,34 @@ class BlogPostProvider extends BaseProvider {
 
       var req = http.MultipartRequest('POST', uri);
       req.headers.addAll(_headers(token!, isMultipart: true));
+
+      // Detect correct MIME type based on file extension
+      String? contentType;
+      final extension = request.filePath.toLowerCase().split('.').last;
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+      }
+
       req.files.add(
-        await http.MultipartFile.fromPath('file', request.filePath),
+        await http.MultipartFile.fromPath(
+          'file',
+          request.filePath,
+          contentType: contentType != null
+              ? http.MediaType.parse(contentType)
+              : null,
+        ),
       );
       req.fields.addAll(request.toFields());
 
@@ -211,7 +237,35 @@ class BlogPostProvider extends BaseProvider {
 
       var req = http.MultipartRequest('POST', uri);
       req.headers.addAll(_headers(token!, isMultipart: true));
-      req.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+
+      // Detect correct MIME type based on file extension
+      String? contentType;
+      final extension = imageFile.path.toLowerCase().split('.').last;
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+      }
+
+      req.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          imageFile.path,
+          contentType: contentType != null
+              ? http.MediaType.parse(contentType)
+              : null,
+        ),
+      );
 
       final streamed = await req.send();
       final response = await http.Response.fromStream(streamed);

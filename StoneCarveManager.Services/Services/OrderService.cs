@@ -589,6 +589,28 @@ namespace StoneCarveManager.Services.Services
             }
         }
 
+        /// <summary>
+        /// Get all custom orders (orders where any product has productState == "custom_order")
+        /// Only for Admin/Employee use
+        /// </summary>
+        public async Task<List<OrderResponse>> GetCustomOrdersAsync(CancellationToken cancellationToken = default)
+        {
+            var orders = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.StatusHistory)
+                    .ThenInclude(sh => sh.ChangedByUser)
+                .Include(o => o.Review)
+                .Where(o => o.OrderItems.Any(oi => oi.Product.ProductState == "custom_order"))
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync(cancellationToken);
+
+            return orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+        }
+
         private string GenerateOrderNumber()
         {
             return $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString().Substring(0, 6).ToUpper()}";

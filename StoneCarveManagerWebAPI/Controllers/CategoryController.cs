@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -14,10 +15,17 @@ namespace StoneCarveManagerWebAPI.Controllers
         : BaseCRUDController<CategoryResponse, CategorySearchObject, CategoryInsertRequest, CategoryUpdateRequest>
     {
         private readonly ICategoryService _categoryService;
+        private readonly IValidator<CategoryImageUploadRequest> _imageUploadValidator;
 
-        public CategoryController(ICategoryService service) : base(service)
+        public CategoryController(
+            ICategoryService service,
+            IValidator<CategoryInsertRequest> insertValidator,
+            IValidator<CategoryUpdateRequest> updateValidator,
+            IValidator<CategoryImageUploadRequest> imageUploadValidator) 
+            : base(service, insertValidator, updateValidator)
         {
             _categoryService = service;
+            _imageUploadValidator = imageUploadValidator;
         }
 
         // ✅ Custom endpoint (ako ti treba)
@@ -26,7 +34,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var category = await _categoryService.GetByIdAsync(id);
             if (category == null)
-                return NotFound();
+                return NotFound(new { message = "Category not found" });
 
             // Custom logic... 
             return Ok();
@@ -47,6 +55,10 @@ namespace StoneCarveManagerWebAPI.Controllers
             [FromForm] CategoryImageUploadRequest request,
             CancellationToken cancellationToken = default)
         {
+            var validationResult = await _imageUploadValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             try
             {
                 var imageUrl = await _categoryService.UploadCategoryImageAsync(id, request, cancellationToken);

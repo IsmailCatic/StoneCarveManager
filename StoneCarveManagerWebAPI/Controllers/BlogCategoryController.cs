@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -11,7 +12,11 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly IBlogCategoryService _service;
 
-        public BlogCategoryController(IBlogCategoryService service) : base(service)
+        public BlogCategoryController(
+            IBlogCategoryService service,
+            IValidator<BlogCategoryInsertRequest> insertValidator,
+            IValidator<BlogCategoryUpdateRequest> updateValidator)
+            : base(service, insertValidator, updateValidator)
         {
             _service = service;
         }
@@ -28,7 +33,9 @@ namespace StoneCarveManagerWebAPI.Controllers
         public async Task<IActionResult> ToggleActive(int id, CancellationToken cancellationToken)
         {
             var ok = await _service.ToggleActiveAsync(id, cancellationToken);
-            if (!ok) return NotFound();
+            if (!ok)
+                return NotFound(new { message = "Blog category not found" });
+
             return Ok();
         }
     }

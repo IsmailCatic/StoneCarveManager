@@ -54,7 +54,35 @@ class OrderProvider extends BaseProvider<Order> {
     var url = "http://localhost:5021/api/Order/$orderId/progress-images";
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers.addAll(createHeaders());
-    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    // Detect correct MIME type based on file extension
+    String? contentType;
+    final extension = filePath.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        contentType = 'image/jpeg';
+        break;
+      case 'png':
+        contentType = 'image/png';
+        break;
+      case 'gif':
+        contentType = 'image/gif';
+        break;
+      case 'webp':
+        contentType = 'image/webp';
+        break;
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        contentType: contentType != null
+            ? http.MediaType.parse(contentType)
+            : null,
+      ),
+    );
     if (description != null) {
       request.fields['description'] = description;
     }
@@ -134,7 +162,7 @@ class OrderProvider extends BaseProvider<Order> {
       comment: comment,
     );
 
-    final response = await http.patch(
+    final response = await http.put(
       Uri.parse('http://localhost:5021/api/Order/$orderId/status'),
       headers: {
         'Authorization': 'Bearer $token',
@@ -188,7 +216,35 @@ class OrderProvider extends BaseProvider<Order> {
     final url = 'http://localhost:5021/api/Order/custom/upload-sketch';
     final request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    // Detect correct MIME type based on file extension
+    String? contentType;
+    final extension = filePath.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        contentType = 'image/jpeg';
+        break;
+      case 'png':
+        contentType = 'image/png';
+        break;
+      case 'gif':
+        contentType = 'image/gif';
+        break;
+      case 'webp':
+        contentType = 'image/webp';
+        break;
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        contentType: contentType != null
+            ? http.MediaType.parse(contentType)
+            : null,
+      ),
+    );
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);

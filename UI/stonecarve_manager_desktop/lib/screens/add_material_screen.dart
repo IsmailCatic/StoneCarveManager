@@ -48,6 +48,8 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
       quantityInStock: int.tryParse(_quantityController.text.trim()),
       unit: _unitController.text.trim(),
       isAvailable: _isAvailable,
+      // Preserve existing imageUrl when editing to prevent deletion
+      imageUrl: widget.material?.imageUrl,
     );
 
     try {

@@ -132,6 +132,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           File(pickedFile.path),
         );
         if (mounted && success) {
+          // Reload profile data to get the updated image URL
+          await _profileProvider.fetchCurrentUserProfile();
           setState(() {}); // Force rebuild to show new image
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -189,6 +191,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         final success = await _profileProvider.deleteProfileImage();
         if (mounted && success) {
+          // Reload profile data to reflect the deletion
+          await _profileProvider.fetchCurrentUserProfile();
           setState(() {}); // Force rebuild to clear image
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

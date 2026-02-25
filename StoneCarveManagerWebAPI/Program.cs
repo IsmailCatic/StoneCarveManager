@@ -11,6 +11,7 @@ using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
 using StoneCarveManager.Services.Services;
 using StoneCarveManagerWebAPI.Extensions;
+using StoneCarveManagerWebAPI.Middleware;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,9 @@ builder.Services.AddValidatorsFromAssemblyContaining<UserInsertRequestValidator>
 
 
 var app = builder.Build();
+
+// Configure global exception handler for validation errors
+app.ConfigureExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -179,8 +179,34 @@ class ProductProvider {
       'POST',
       Uri.parse('$baseUrl/$productId/images'),
     );
+
+    // Detect correct MIME type based on file extension
+    String? contentType;
+    final extension = filePath.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        contentType = 'image/jpeg';
+        break;
+      case 'png':
+        contentType = 'image/png';
+        break;
+      case 'gif':
+        contentType = 'image/gif';
+        break;
+      case 'webp':
+        contentType = 'image/webp';
+        break;
+    }
+
     request.files.add(
-      await http.MultipartFile.fromPath('file', filePath),
+      await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        contentType: contentType != null
+            ? http.MediaType.parse(contentType)
+            : null,
+      ),
     ); // <-- use 'file'
     final token = AuthProvider.token;
     if (token != null) {

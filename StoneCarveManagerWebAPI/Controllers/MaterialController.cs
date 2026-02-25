@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using StoneCarveManager.Model.Requests;
@@ -13,10 +14,17 @@ namespace StoneCarveManagerWebAPI.Controllers
         : BaseCRUDController<MaterialResponse, MaterialSearchObject, MaterialInsertRequest, MaterialUpdateRequest>
     {
         private readonly IMaterialService _materialService;
+        private readonly IValidator<MaterialImageUploadRequest> _imageUploadValidator;
 
-        public MaterialController(IMaterialService service) : base(service)
+        public MaterialController(
+            IMaterialService service,
+            IValidator<MaterialInsertRequest> insertValidator,
+            IValidator<MaterialUpdateRequest> updateValidator,
+            IValidator<MaterialImageUploadRequest> imageUploadValidator) 
+            : base(service, insertValidator, updateValidator)
         {
             _materialService = service;
+            _imageUploadValidator = imageUploadValidator;
         }
 
         /// <summary>
@@ -34,6 +42,10 @@ namespace StoneCarveManagerWebAPI.Controllers
             [FromForm] MaterialImageUploadRequest request,
             CancellationToken cancellationToken = default)
         {
+            var validationResult = await _imageUploadValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             try
             {
                 var imageUrl = await _materialService.UploadMaterialImageAsync(id, request, cancellationToken);

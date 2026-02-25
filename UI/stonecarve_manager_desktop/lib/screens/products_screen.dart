@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/product.dart';
+import 'package:stonecarve_manager_flutter/models/category.dart';
+import 'package:stonecarve_manager_flutter/models/material.dart';
 import 'package:stonecarve_manager_flutter/providers/project_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/category_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/stone_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/product_state_chip.dart';
 import 'package:stonecarve_manager_flutter/widgets/product_action_buttons.dart';
 import 'package:stonecarve_manager_flutter/screens/add_product_screen.dart';
@@ -23,12 +27,28 @@ class _ProductsScreenState extends State<ProductsScreen> {
   final prod_provider.ProductProvider _productProviderWithImages =
       prod_provider.ProductProvider();
   List<Product> _products = [];
+  List<Category> _categories = [];
+  List<StoneMaterial> _materials = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _loadDropdownData();
+  }
+
+  Future<void> _loadDropdownData() async {
+    try {
+      final categories = await CategoryProvider().getActiveCategories();
+      final materials = await MaterialProvider().getAvailableMaterials();
+      setState(() {
+        _categories = categories;
+        _materials = materials;
+      });
+    } catch (e) {
+      print('Error loading dropdown data: $e');
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -39,7 +59,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
       final result = await _productProvider.get();
       setState(() {
-        _products = result.items ?? [];
+        // Filter out custom_order products - they should not be shown in regular products listing
+        _products = (result.items ?? [])
+            .where(
+              (product) =>
+                  product.productState?.toLowerCase() != 'custom_order',
+            )
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -66,6 +92,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
           product.id!,
           pickedFile.path,
         );
+        // Reload data immediately to show the new image
+        await _loadProducts();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -73,7 +101,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          _loadProducts();
         }
       } catch (e) {
         if (mounted) {
@@ -88,6 +115,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _deleteProductImage(int productId, int imageId) async {
     try {
       await _productProviderWithImages.deleteProductImage(productId, imageId);
+      // Reload data immediately to reflect the deletion
+      await _loadProducts();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -95,7 +124,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _loadProducts();
       }
     } catch (e) {
       if (mounted) {
@@ -610,13 +638,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final estimatedDaysController = TextEditingController(
       text: product?.estimatedDays?.toString() ?? '',
     );
-    final categoryIdController = TextEditingController(
-      text: product?.categoryId?.toString() ?? '',
-    );
-    final materialIdController = TextEditingController(
-      text: product?.materialId?.toString() ?? '',
-    );
 
+    int? selectedCategoryId = product?.categoryId;
+    int? selectedMaterialId = product?.materialId;
     bool isActive = product?.isActive ?? true;
 
     showDialog(
@@ -680,20 +704,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: categoryIdController,
+                    DropdownButtonFormField<int>(
+                      value: selectedCategoryId,
                       decoration: const InputDecoration(
-                        labelText: 'Category ID',
+                        labelText: 'Category *',
+                        border: OutlineInputBorder(),
                       ),
-                      keyboardType: TextInputType.number,
+                      items: _categories
+                          .map(
+                            (cat) => DropdownMenuItem(
+                              value: cat.id,
+                              child: Text(cat.name ?? ''),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedCategoryId = value;
+                        });
+                      },
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: materialIdController,
+                    DropdownButtonFormField<int>(
+                      value: selectedMaterialId,
                       decoration: const InputDecoration(
-                        labelText: 'Material ID',
+                        labelText: 'Material *',
+                        border: OutlineInputBorder(),
                       ),
-                      keyboardType: TextInputType.number,
+                      items: _materials
+                          .map(
+                            (mat) => DropdownMenuItem(
+                              value: mat.id,
+                              child: Text(mat.name ?? ''),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedMaterialId = value;
+                        });
+                      },
                     ),
                     const SizedBox(height: 8),
                     CheckboxListTile(
@@ -738,8 +788,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           : dimensionsController.text,
                       weight: double.tryParse(weightController.text),
                       estimatedDays: int.tryParse(estimatedDaysController.text),
-                      categoryId: int.tryParse(categoryIdController.text),
-                      materialId: int.tryParse(materialIdController.text),
+                      categoryId: selectedCategoryId,
+                      materialId: selectedMaterialId,
                       isActive: isActive,
                       // If editing an existing product, keep other fields
                       createdAt: product?.createdAt,

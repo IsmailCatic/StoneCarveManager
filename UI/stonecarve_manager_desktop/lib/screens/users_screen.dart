@@ -503,7 +503,11 @@ class _UsersScreenState extends State<UsersScreen> {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await _userProvider.blockUser(user.id!, isBlocking);
+                  // Pass the user's role (use first role if multiple)
+                  final userRole = user.roles.isNotEmpty
+                      ? user.roles.first
+                      : 'User';
+                  await _userProvider.blockUser(user.id!, isBlocking, userRole);
                   if (!mounted) return;
                   Navigator.of(context).pop();
                   if (!mounted) return;

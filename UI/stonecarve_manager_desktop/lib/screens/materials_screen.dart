@@ -63,6 +63,8 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
           material.id!,
           File(pickedFile.path),
         );
+        // Reload data immediately to show the new image
+        await _loadMaterials();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -70,7 +72,6 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          _loadMaterials();
         }
       } catch (e) {
         if (mounted) {
@@ -90,6 +91,8 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
 
     try {
       await _materialProvider.deleteMaterialImage(material.id!);
+      // Reload data immediately to reflect the deletion
+      await _loadMaterials();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -97,7 +100,6 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _loadMaterials();
       }
     } catch (e) {
       if (mounted) {

@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -11,7 +12,11 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly IProductImageService _productImageService;
 
-        public ProductImageController(IProductImageService service) : base(service)
+        public ProductImageController(
+            IProductImageService service,
+            IValidator<ProductImageInsertRequest> insertValidator,
+            IValidator<ProductImageUpdateRequest> updateValidator)
+            : base(service, insertValidator, updateValidator)
         {
             _productImageService = service;
         }
@@ -21,9 +26,9 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var result = await _productImageService.SetPrimaryImageAsync(id);
             if (!result)
-                return NotFound();
+                return NotFound(new { message = "Image not found" });
 
-            return Ok();
+            return Ok(new { message = "Primary image updated successfully" });
         }
     }
 }

@@ -240,16 +240,6 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.settings, color: Colors.grey),
-            title: const Text('Settings'),
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings - Coming Soon')),
-              );
-            },
-          ),
-          ListTile(
             leading: Icon(Icons.logout, color: Colors.red.shade400),
             title: Text('Logout', style: TextStyle(color: Colors.red.shade400)),
             onTap: () {

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import '../models/blog_post.dart';
 import '../models/blog_post_requests.dart';
 import '../providers/blog_post_provider.dart';
@@ -27,8 +25,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   late TextEditingController _summaryController;
-  late TextEditingController _featuredImageUrlController;
-  File? _featuredImageFile;
   bool _isPublished = false;
   bool _isTutorial = false;
   bool _isActive = true;
@@ -36,23 +32,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
   int? _categoryId;
   bool _loading = false;
   String? _error;
-
-  Future<void> _pickFeaturedImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 85,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _featuredImageFile = File(pickedFile.path);
-        // Clear URL field if file is picked
-        _featuredImageUrlController.clear();
-      });
-    }
-  }
 
   @override
   void initState() {
@@ -62,9 +41,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
     _titleController = TextEditingController(text: post?.title ?? '');
     _contentController = TextEditingController(text: post?.content ?? '');
     _summaryController = TextEditingController(text: post?.summary ?? '');
-    _featuredImageUrlController = TextEditingController(
-      text: post?.featuredImageUrl ?? '',
-    );
     _isPublished = post?.isPublished ?? false;
     _isTutorial = post?.isTutorial ?? false;
     _isActive = post?.isActive ?? true;
@@ -77,7 +53,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
     _titleController.dispose();
     _contentController.dispose();
     _summaryController.dispose();
-    _featuredImageUrlController.dispose();
     super.dispose();
   }
 
@@ -88,11 +63,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
       _error = null;
     });
     try {
-      // Get the featured image URL from text field (if provided)
-      final featuredImageUrl = _featuredImageUrlController.text.isNotEmpty
-          ? _featuredImageUrlController.text
-          : null;
-
       int? createdPostId;
 
       if (widget.existingPost == null) {
@@ -105,7 +75,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
             summary: _summaryController.text.isNotEmpty
                 ? _summaryController.text
                 : null,
-            featuredImageUrl: featuredImageUrl,
             isPublished: _isPublished,
             isTutorial: _isTutorial,
             isActive: _isActive,
@@ -133,7 +102,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
             summary: _summaryController.text.isNotEmpty
                 ? _summaryController.text
                 : null,
-            featuredImageUrl: featuredImageUrl,
             isPublished: _isPublished,
             isTutorial: _isTutorial,
             isActive: _isActive,
@@ -143,38 +111,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
         );
         createdPostId = widget.existingPost!.id;
         print('✅ [BlogFormScreen] Blog post updated successfully');
-      }
-
-      // Upload featured image AFTER creating the post (if image file was selected)
-      if (_featuredImageFile != null && createdPostId != null) {
-        print(
-          '🔵 [BlogFormScreen] Uploading featured image for post $createdPostId...',
-        );
-        final uploadedImageUrl = await _provider.uploadFeaturedImage(
-          context,
-          _featuredImageFile!,
-        );
-        print('✅ [BlogFormScreen] Featured image uploaded: $uploadedImageUrl');
-
-        // Update the post with the uploaded image URL
-        await _provider.updateBlogPost(
-          context,
-          createdPostId,
-          BlogPostUpdateRequest(
-            title: _titleController.text,
-            content: _contentController.text,
-            summary: _summaryController.text.isNotEmpty
-                ? _summaryController.text
-                : null,
-            featuredImageUrl: uploadedImageUrl,
-            isPublished: _isPublished,
-            isTutorial: _isTutorial,
-            isActive: _isActive,
-            authorId: _authorId ?? 1,
-            categoryId: _categoryId ?? 1,
-          ),
-        );
-        print('✅ [BlogFormScreen] Post updated with featured image URL');
       }
 
       if (mounted) Navigator.of(context).pop(true);
@@ -250,67 +186,6 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
                         500,
                         fieldName: 'Summary',
                       )
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Featured Image',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              if (_featuredImageFile != null)
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _featuredImageFile!,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: IconButton(
-                        icon: const Icon(Icons.close),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black54,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _featuredImageFile = null;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                )
-              else
-                OutlinedButton.icon(
-                  onPressed: _pickFeaturedImage,
-                  icon: const Icon(Icons.add_photo_alternate),
-                  label: const Text('Upload Featured Image'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                  ),
-                ),
-              const SizedBox(height: 8),
-              const Text(
-                'Or enter image URL:',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              TextFormField(
-                controller: _featuredImageUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Featured Image URL (optional)',
-                  hintText: 'https://example.com/image.jpg',
-                ),
-                enabled: _featuredImageFile == null,
-                validator: (value) => value != null && value.isNotEmpty
-                    ? Validators.validateUrl(value, required: false)
                     : null,
               ),
               const SizedBox(height: 16),

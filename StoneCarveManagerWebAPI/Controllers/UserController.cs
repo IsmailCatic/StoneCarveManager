@@ -90,10 +90,10 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var validationResult = await _insertValidator.ValidateAsync(insertRequest, cancellationToken);
             if (!validationResult.IsValid)
-                return BadRequest(validationResult.Errors);
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
 
             await _userService.AddAsync(insertRequest, cancellationToken);
-            return Ok(new { Message = "User added successfully" });
+            return Ok(new { message = "User added successfully" });
         }
 
         // ✅ PUT za update korisnika (sa sigurnosnim provjerama)
@@ -103,7 +103,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var validationResult = await _updateValidator.ValidateAsync(updateRequest, cancellationToken);
             if (!validationResult.IsValid)
-                return BadRequest(validationResult.Errors);
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
 
             // Uzmi user ID iz custom "userid" claim-a
             var userIdClaim = User.FindFirst("userid")?.Value;
@@ -117,9 +117,9 @@ namespace StoneCarveManagerWebAPI.Controllers
             var isAdmin = User.IsInRole(Roles.Admin);
             var isEmployee = User.IsInRole(Roles.Employee);
 
-            // Pravila:
-            // - User može update-ovati samo svoj profil
-            // - Admin i Employee mogu update-ovati bilo koji profil
+            // rules:
+            // - User can update only his profile
+            // - Admin & Employee can update any  profile
             if (id != currentUserId && !isAdmin && !isEmployee)
             {
                 return Forbid();
@@ -137,7 +137,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(new { message = "User deleted successfully" });
         }
 
-        // ✅ Get trenutno ulogovanog korisnika
         [HttpGet("current")]
         [Authorize]
         public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken)
@@ -171,7 +170,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(user);
         }
 
-        // ✅ Promjena lozinke
         [HttpPost("change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
@@ -208,13 +206,8 @@ namespace StoneCarveManagerWebAPI.Controllers
             }
         }
 
-        /// <summary>
         /// Upload user profile image
         /// Replaces existing image if present
-        /// </summary>
-        /// <param name="id">User ID</param>
-        /// <param name="request">Image upload request</param>
-        /// <param name="cancellationToken"></param>
         /// <returns>URL of uploaded image</returns>
         [HttpPost("{id}/profile-image")]
         [Authorize]

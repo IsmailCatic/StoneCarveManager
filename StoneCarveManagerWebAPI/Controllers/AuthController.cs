@@ -1,7 +1,6 @@
-﻿using Azure.Core;
+﻿using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Services.IServices;
-using System.IdentityModel.Tokens.Jwt;
 using StoneCarveManager.Model.Requests;
 
 namespace StoneCarveManagerWebAPI.Controllers
@@ -12,58 +11,54 @@ namespace StoneCarveManagerWebAPI.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IUserService _userService;
+        private readonly IValidator<RegisterRequest> _registerValidator;
+        private readonly IValidator<LoginRequest> _loginValidator;
+        private readonly IValidator<PasswordResetRequestRequest> _passwordResetRequestValidator;
+        private readonly IValidator<PasswordResetConfirmRequest> _passwordResetConfirmValidator;
 
-
-        public AuthController(IAuthService authService, IUserService userService)
+        public AuthController(
+            IAuthService authService, 
+            IUserService userService,
+            IValidator<RegisterRequest> registerValidator,
+            IValidator<LoginRequest> loginValidator,
+            IValidator<PasswordResetRequestRequest> passwordResetRequestValidator,
+            IValidator<PasswordResetConfirmRequest> passwordResetConfirmValidator)
         {
             _authService = authService;
             _userService = userService;
+            _registerValidator = registerValidator;
+            _loginValidator = loginValidator;
+            _passwordResetRequestValidator = passwordResetRequestValidator;
+            _passwordResetConfirmValidator = passwordResetConfirmValidator;
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
         {
+            var validationResult = await _registerValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             var token = await _authService.Register(request);
 
             if (token == null)
             {
-                return BadRequest("User registration failed.");
+                return BadRequest(new { message = "User registration failed." });
             }
 
             return Ok(token);
         }
 
-
-        //[HttpPost("login")]
-        //public async Task<IActionResult> Login([FromBody] LoginRequest request)
-        //{
-        //    try
-        //    {
-        //        var tokenResult = await _authService.Login(request);
-
-        //        // Now you can use tokenResult.UserId
-        //        await _userSessionService.TrackLoginAsync(new TrackLoginCommand
-        //        {
-        //            UserId = tokenResult.UserId,
-        //            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        //            DeviceInfo = Request.Headers["User-Agent"].ToString()
-        //        });
-
-        //        return Ok(tokenResult);
-        //    }
-        //    catch (UnauthorizedAccessException ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
-
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
         {
+            var validationResult = await _loginValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
             try
             {
                 var tokenResult = await _authService.Login(request);
-
                 return Ok(tokenResult);
             }
             catch (UnauthorizedAccessException ex)
@@ -82,14 +77,12 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(new { message = "Logged out successfully" });
         }
 
-        // ✅ NEW: Request password reset
         [HttpPost("request-password-reset")]
-        public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequestRequest request)
+        public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequestRequest request, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(request.Email))
-            {
-                return BadRequest(new { message = "Email is required." });
-            }
+            var validationResult = await _passwordResetRequestValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
 
             var result = await _authService.RequestPasswordResetAsync(request.Email);
             
@@ -100,22 +93,12 @@ namespace StoneCarveManagerWebAPI.Controllers
             });
         }
 
-        // ✅ NEW: Confirm password reset with verification code
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] PasswordResetConfirmRequest request)
+        public async Task<IActionResult> ResetPassword([FromBody] PasswordResetConfirmRequest request, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(request.Email) || 
-                string.IsNullOrWhiteSpace(request.VerificationCode) || 
-                string.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                return BadRequest(new { message = "All fields are required." });
-            }
-
-            // Validate verification code format (6 digits)
-            if (!System.Text.RegularExpressions.Regex.IsMatch(request.VerificationCode, @"^\d{6}$"))
-            {
-                return BadRequest(new { message = "Invalid verification code format. Must be 6 digits." });
-            }
+            var validationResult = await _passwordResetConfirmValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
 
             try
             {

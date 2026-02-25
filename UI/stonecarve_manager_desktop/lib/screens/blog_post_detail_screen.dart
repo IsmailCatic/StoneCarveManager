@@ -28,6 +28,7 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
   String? _error;
   File? _imageFile;
   bool _uploading = false;
+  bool _hasChanges = false;
 
   @override
   void initState() {
@@ -96,24 +97,17 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
     });
     try {
       print('🔵 [BlogDetailScreen] Uploading image for post ${_post!.id}');
-      final newImgResponse = await _provider.uploadBlogImage(
+      await _provider.uploadBlogImage(
         context,
         _post!.id,
         BlogImageUploadRequest(filePath: imageFile.path),
       );
       print('✅ [BlogDetailScreen] Image uploaded successfully');
-      // Convert BlogImageResponse to BlogImage
-      final newImg = BlogImage(
-        id: newImgResponse.id,
-        imageUrl: newImgResponse.imageUrl,
-        altText: newImgResponse.altText,
-        displayOrder: newImgResponse.displayOrder,
-        uploadedAt: newImgResponse.uploadedAt,
-        blogPostId: newImgResponse.blogPostId,
-      );
-      setState(() {
-        _post = _post!.copyWith(images: [..._post!.images, newImg]);
-      });
+
+      // Reload the post to show the new image
+      await _fetch();
+      _hasChanges = true;
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -156,11 +150,11 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
     if (confirm == true) {
       try {
         await _provider.deleteBlogImage(context, _post!.id, imageId);
-        setState(() {
-          final imgs = [..._post!.images];
-          imgs.removeAt(index);
-          _post = _post!.copyWith(images: imgs);
-        });
+
+        // Reload the post to reflect the deletion
+        await _fetch();
+        _hasChanges = true;
+
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -206,283 +200,292 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Blog Post Details'),
-        actions: [
-          if (_post != null)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BlogPostFormScreen(
-                      authProvider: widget.authProvider,
-                      existingPost: _post,
-                    ),
-                  ),
-                );
-                if (result == true) _fetch();
-              },
-            ),
-          if (_post != null)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Post'),
-                    content: const Text(
-                      'Are you sure you want to delete this blog post?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pop(_hasChanges);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Blog Post Details'),
+          actions: [
+            if (_post != null)
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlogPostFormScreen(
+                        authProvider: widget.authProvider,
+                        existingPost: _post,
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  try {
-                    await _provider.deleteBlogPost(context, _post!.id);
-                    if (mounted) {
-                      Navigator.of(context).pop(true);
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error deleting post: $e')),
-                      );
-                    }
+                    ),
+                  );
+                  if (result == true) {
+                    _fetch();
+                    _hasChanges = true;
                   }
-                }
-              },
-            ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(child: Text(_error!))
-          : _post == null
-          ? const Center(child: Text('Not found'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _post!.title,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Builder(
-                    builder: (context) {
-                      final imageUrl = _getBestImageUrl();
-                      if (imageUrl == null) {
-                        return Container(
-                          height: 200,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.blue.shade300,
-                                Colors.purple.shade300,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.article_outlined,
-                                  size: 64,
-                                  color: Colors.white,
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'No image available',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
+                },
+              ),
+            if (_post != null)
+              IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete Post'),
+                      content: const Text(
+                        'Are you sure you want to delete this blog post?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    try {
+                      await _provider.deleteBlogPost(context, _post!.id);
+                      if (mounted) {
+                        Navigator.of(context).pop(true);
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error deleting post: $e')),
                         );
                       }
-                      return Image.network(
-                        imageUrl,
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          print(
-                            '❌ [BlogDetailScreen] Error loading image from URL: $imageUrl',
-                          );
-                          print('❌ [BlogDetailScreen] Error: $error');
+                    }
+                  }
+                },
+              ),
+          ],
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? Center(child: Text(_error!))
+            : _post == null
+            ? const Center(child: Text('Not found'))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _post!.title,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (context) {
+                        final imageUrl = _getBestImageUrl();
+                        if (imageUrl == null) {
                           return Container(
                             height: 200,
-                            color: Colors.grey[300],
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.broken_image,
-                                  size: 48,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 8),
-                                Text('Failed to load image'),
-                              ],
-                            ),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 200,
-                            color: Colors.grey[200],
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value:
-                                    loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                    : null,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blue.shade300,
+                                  Colors.purple.shade300,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (_post!.isPublished)
-                        const Chip(
-                          label: Text('Published'),
-                          backgroundColor: Colors.greenAccent,
-                        ),
-                      if (_post!.isTutorial)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 8.0),
-                          child: Chip(
-                            label: Text('Tutorial'),
-                            backgroundColor: Colors.blueAccent,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _post!.summary ?? '',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(_post!.content),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Images:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: _uploading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.add_a_photo),
-                        tooltip: 'Add Image',
-                        onPressed: _uploading ? null : _pickImage,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _post!.images.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        final img = _post!.images[i];
-                        final validUrl = _getValidImageUrl(img.imageUrl);
-                        return Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: validUrl != null
-                                  ? Image.network(
-                                      validUrl,
-                                      width: 120,
-                                      height: 120,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        print(
-                                          '❌ [BlogDetailScreen] Error loading image ${img.id}: $error',
-                                        );
-                                        return Container(
-                                          width: 120,
-                                          height: 120,
-                                          color: Colors.grey[300],
-                                          child: const Icon(
-                                            Icons.broken_image,
-                                            color: Colors.grey,
-                                          ),
-                                        );
-                                      },
-                                    )
-                                  : Container(
-                                      width: 120,
-                                      height: 120,
-                                      color: Colors.grey[300],
-                                      child: const Icon(
-                                        Icons.image_not_supported,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                            ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: () => _deleteImage(img.id, i),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.delete,
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.article_outlined,
+                                    size: 64,
                                     color: Colors.white,
-                                    size: 20,
                                   ),
-                                ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'No image available',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          );
+                        }
+                        return Image.network(
+                          imageUrl,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            print(
+                              '❌ [BlogDetailScreen] Error loading image from URL: $imageUrl',
+                            );
+                            print('❌ [BlogDetailScreen] Error: $error');
+                            return Container(
+                              height: 200,
+                              color: Colors.grey[300],
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image,
+                                    size: 48,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text('Failed to load image'),
+                                ],
+                              ),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 200,
+                              color: Colors.grey[200],
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value:
+                                      loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (_post!.isPublished)
+                          const Chip(
+                            label: Text('Published'),
+                            backgroundColor: Colors.greenAccent,
+                          ),
+                        if (_post!.isTutorial)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: Chip(
+                              label: Text('Tutorial'),
+                              backgroundColor: Colors.blueAccent,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _post!.summary ?? '',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(_post!.content),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Images:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: _uploading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.add_a_photo),
+                          tooltip: 'Add Image',
+                          onPressed: _uploading ? null : _pickImage,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 120,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _post!.images.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final img = _post!.images[i];
+                          final validUrl = _getValidImageUrl(img.imageUrl);
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: validUrl != null
+                                    ? Image.network(
+                                        validUrl,
+                                        width: 120,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          print(
+                                            '❌ [BlogDetailScreen] Error loading image ${img.id}: $error',
+                                          );
+                                          return Container(
+                                            width: 120,
+                                            height: 120,
+                                            color: Colors.grey[300],
+                                            child: const Icon(
+                                              Icons.broken_image,
+                                              color: Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Container(
+                                        width: 120,
+                                        height: 120,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.image_not_supported,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () => _deleteImage(img.id, i),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 }

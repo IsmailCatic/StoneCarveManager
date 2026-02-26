@@ -29,7 +29,10 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
     try {
       setState(() => _isLoading = true);
 
-      final result = await _orderProvider.getCustomOrders();
+      final statusFilter = _filterStatus == 'all'
+          ? null
+          : int.tryParse(_filterStatus);
+      final result = await _orderProvider.getCustomOrders(status: statusFilter);
 
       setState(() {
         _customOrders = result;
@@ -45,12 +48,7 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
     }
   }
 
-  List<Order> get _filteredOrders {
-    if (_filterStatus == 'all') return _customOrders;
-    final statusInt = int.tryParse(_filterStatus);
-    if (statusInt == null) return _customOrders;
-    return _customOrders.where((order) => order.status == statusInt).toList();
-  }
+  // Filtering now done on backend
 
   Future<void> _viewOrderDetails(Order order) async {
     // Navigate to full OrderDetailsScreen for complete management capabilities
@@ -224,6 +222,7 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
                       selected: _filterStatus == filter.$1,
                       onSelected: (selected) {
                         setState(() => _filterStatus = filter.$1);
+                        _loadCustomOrders();
                       },
                     ),
                   ),
@@ -242,7 +241,7 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _filteredOrders.isEmpty
+                  : _customOrders.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -264,9 +263,9 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
                       ),
                     )
                   : ListView.builder(
-                      itemCount: _filteredOrders.length,
+                      itemCount: _customOrders.length,
                       itemBuilder: (context, index) {
-                        final order = _filteredOrders[index];
+                        final order = _customOrders[index];
                         return _buildOrderCard(order);
                       },
                     ),

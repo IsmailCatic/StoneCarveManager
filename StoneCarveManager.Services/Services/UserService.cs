@@ -86,7 +86,7 @@ namespace StoneCarveManager.Services.Services
             if (search == null)
                 return query;
 
-            // FTS search
+            // FTS search (Full Text Search - searches across multiple fields)
             if (!string.IsNullOrWhiteSpace(search.FTS))
             {
                 query = query.Where(u =>
@@ -96,28 +96,29 @@ namespace StoneCarveManager.Services.Services
                     (u.PhoneNumber != null && u.PhoneNumber.Contains(search.FTS)));
             }
 
-            // Filter by Email
+            // Filter by Email (partial match)
             if (!string.IsNullOrWhiteSpace(search.Email))
             {
                 query = query.Where(u => u.Email.Contains(search.Email));
             }
 
-            // Filter by IsActive
-            if (search.IsActive.HasValue)
+            // Filter by FirstName (partial match)
+            if (!string.IsNullOrWhiteSpace(search.FirstName))
             {
-                query = query.Where(u => u.IsActive == search.IsActive.Value);
+                query = query.Where(u => u.FirstName.Contains(search.FirstName));
             }
 
-            // Filter by IsBlocked
-            if (search.IsBlocked.HasValue)
+            // Filter by LastName (partial match)
+            if (!string.IsNullOrWhiteSpace(search.LastName))
             {
-                query = query.Where(u => u.IsBlocked == search.IsBlocked.Value);
+                query = query.Where(u => u.LastName.Contains(search.LastName));
             }
 
-            // Filter by RoleId
-            if (search.RoleId.HasValue)
+            // Filter by RoleName (case-insensitive)
+            if (!string.IsNullOrWhiteSpace(search.RoleName))
             {
-                query = query.Where(u => u.UserRoles.Any(ur => ur.RoleId == search.RoleId.Value));
+                query = query.Where(u => u.UserRoles.Any(ur => 
+                    ur.Role.Name.ToLower() == search.RoleName.ToLower()));
             }
 
             return query;

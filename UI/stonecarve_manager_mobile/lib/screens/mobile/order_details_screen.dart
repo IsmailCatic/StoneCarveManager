@@ -391,6 +391,26 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
   }
 
+  bool _isCustomOrder() {
+    // Custom orders typically have:
+    // 1. No productId in their order items (custom design)
+    // 2. Or have an attachment URL (design files)
+    // 3. Product name starts with "Custom" (auto-generated custom products)
+
+    final hasNoProductId =
+        _order!.orderItems.isEmpty ||
+        _order!.orderItems.every((item) => item.productId == null);
+    final hasAttachment =
+        _order!.attachmentUrl != null && _order!.attachmentUrl!.isNotEmpty;
+    final hasCustomProductName = _order!.orderItems.any(
+      (item) =>
+          item.productName != null &&
+          item.productName!.toLowerCase().startsWith('custom'),
+    );
+
+    return hasNoProductId || hasAttachment || hasCustomProductName;
+  }
+
   Widget _buildStatusCard(Map<String, dynamic> statusInfo) {
     return Card(
       elevation: 2,
@@ -445,6 +465,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   }
 
   Widget _buildOrderInfoCard() {
+    final isCustomOrder = _isCustomOrder();
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -453,10 +475,80 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow(
-              'Order Number',
-              _order!.orderNumber,
-              Icons.receipt_long,
+            // Order number with custom badge
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.receipt_long, size: 20, color: Colors.blue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Order Number',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _order!.orderNumber,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isCustomOrder) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade100,
+                                border: Border.all(
+                                  color: Colors.amber.shade700,
+                                  width: 1.5,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome,
+                                    size: 13,
+                                    color: Colors.amber.shade700,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Custom Order',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.amber.shade900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const Divider(height: 24),
             _buildInfoRow(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/product.dart';
@@ -26,11 +27,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
   List<stone_material.StoneMaterial> _materials = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -47,8 +55,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   Future<void> _loadServices() async {
     try {
-      print('🔵 [ServicesScreen] Loading services...');
-      final services = await _productProvider.fetchServiceProducts();
+      print(
+        '🔵 [ServicesScreen] Loading services with search: "$_searchQuery"',
+      );
+      final services = await _productProvider.fetchServiceProducts(
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      );
       print('✅ [ServicesScreen] Loaded ${services.length} services');
       print(
         '📋 [ServicesScreen] Available categories: ${_categories.length}, materials: ${_materials.length}',
@@ -114,17 +126,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     }
   }
 
-  List<Product> get _filteredServices {
-    if (_searchQuery.isEmpty) {
-      return _services;
-    }
-    return _services.where((service) {
-      final name = service.name?.toLowerCase() ?? '';
-      final description = service.description?.toLowerCase() ?? '';
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) || description.contains(query);
-    }).toList();
-  }
+  // Filtering now done on backend
 
   @override
   Widget build(BuildContext context) {
@@ -175,6 +177,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       setState(() {
                         _searchQuery = value;
                       });
+                      // Debounce search
+                      _searchDebounce?.cancel();
+                      _searchDebounce = Timer(
+                        const Duration(milliseconds: 500),
+                        () => _loadServices(),
+                      );
                     },
                   ),
                 ),
@@ -220,7 +228,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Total Services: ${_filteredServices.length}',
+                          'Total Services: ${_services.length}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -253,7 +261,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _filteredServices.isEmpty
+                  : _services.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -282,9 +290,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       ),
                     )
                   : ListView.builder(
-                      itemCount: _filteredServices.length,
+                      itemCount: _services.length,
                       itemBuilder: (context, index) {
-                        final service = _filteredServices[index];
+                        final service = _services[index];
                         return _buildServiceCard(service);
                       },
                     ),
@@ -419,7 +427,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${service.estimatedDays ?? 7} dana',
+                                '${service.estimatedDays ?? 7} days',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue.shade700,
@@ -601,7 +609,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   void _showEditServiceDialog(Product service) {
-    final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: service.name);
     final descriptionController = TextEditingController(
       text: service.description,
@@ -619,8 +626,26 @@ class _ServicesScreenState extends State<ServicesScreen> {
       text: service.weight?.toString(),
     );
 
-    int? selectedCategoryId = service.categoryId;
-    int? selectedMaterialId = service.materialId;
+    // Normalize 0 to null and validate IDs exist in dropdown lists
+    int? selectedCategoryId =
+        (service.categoryId == null || service.categoryId == 0)
+        ? null
+        : service.categoryId;
+    // Check if category exists in the list, if not set to null
+    if (selectedCategoryId != null &&
+        !_categories.any((cat) => cat.id == selectedCategoryId)) {
+      selectedCategoryId = null;
+    }
+
+    int? selectedMaterialId =
+        (service.materialId == null || service.materialId == 0)
+        ? null
+        : service.materialId;
+    // Check if material exists in the list, if not set to null
+    if (selectedMaterialId != null &&
+        !_materials.any((mat) => mat.id == selectedMaterialId)) {
+      selectedMaterialId = null;
+    }
 
     showDialog(
       context: context,
@@ -687,6 +712,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           controller: dimensionsController,
                           decoration: const InputDecoration(
                             labelText: 'Dimensions',
+                            hintText:
+                                'Optional (e.g., 100x50x20 or leave empty)',
                             prefixIcon: Icon(Icons.straighten),
                             border: OutlineInputBorder(),
                           ),
@@ -698,6 +725,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           controller: weightController,
                           decoration: const InputDecoration(
                             labelText: 'Weight (kg)',
+                            hintText: 'Optional (e.g., 50 or leave empty)',
                             prefixIcon: Icon(Icons.monitor_weight),
                             border: OutlineInputBorder(),
                           ),
@@ -710,7 +738,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   const Divider(),
                   const SizedBox(height: 8),
                   // Category Dropdown
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<int?>(
                     value: selectedCategoryId,
                     decoration: const InputDecoration(
                       labelText: 'Category',
@@ -718,12 +746,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: [
-                      const DropdownMenuItem<int>(
+                      const DropdownMenuItem<int?>(
                         value: null,
                         child: Text('Not assigned'),
                       ),
-                      ..._categories.map((category) {
-                        return DropdownMenuItem<int>(
+                      ...{
+                        for (var category in _categories)
+                          if (category.id != null && category.id! > 0)
+                            category.id: category,
+                      }.values.map((category) {
+                        return DropdownMenuItem<int?>(
                           value: category.id,
                           child: Text(category.name ?? 'N/A'),
                         );
@@ -737,7 +769,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   ),
                   const SizedBox(height: 12),
                   // Material Dropdown
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<int?>(
                     value: selectedMaterialId,
                     decoration: const InputDecoration(
                       labelText: 'Material',
@@ -745,12 +777,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: [
-                      const DropdownMenuItem<int>(
+                      const DropdownMenuItem<int?>(
                         value: null,
                         child: Text('Not assigned'),
                       ),
-                      ..._materials.map((material) {
-                        return DropdownMenuItem<int>(
+                      ...{
+                        for (var material in _materials)
+                          if (material.id != null && material.id! > 0)
+                            material.id: material,
+                      }.values.map((material) {
+                        return DropdownMenuItem<int?>(
                           value: material.id,
                           child: Text(material.name ?? 'N/A'),
                         );
@@ -773,23 +809,79 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Validate form
-                if (!_formKey.currentState!.validate()) {
+                // Validate name
+                if (nameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Service name is required'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                   return;
+                }
+
+                // Validate description
+                if (descriptionController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Description is required'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                // Validate price
+                final priceText = priceController.text.trim();
+                if (priceText.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Price is required'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                final price = double.tryParse(priceText);
+                if (price == null || price < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid price'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                // Validate weight if provided
+                final weightText = weightController.text.trim();
+                double? weight;
+                if (weightText.isNotEmpty) {
+                  weight = double.tryParse(weightText);
+                  if (weight == null || weight < 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Weight must be a valid positive number'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
                 }
 
                 // Use original service object and only update fields that are changing
                 final updatedService = Product(
                   // Retain ALL existing fields from original object
                   id: service.id,
-                  name: nameController.text,
-                  description: descriptionController.text,
-                  price: double.tryParse(priceController.text),
+                  name: nameController.text.trim(),
+                  description: descriptionController.text.trim(),
+                  price: price,
                   estimatedDays: int.tryParse(estimatedDaysController.text),
-                  dimensions: dimensionsController.text.isEmpty
+                  dimensions: dimensionsController.text.trim().isEmpty
                       ? null
-                      : dimensionsController.text,
-                  weight: double.tryParse(weightController.text),
+                      : dimensionsController.text.trim(),
+                  weight: weight,
                   // Updated categoryId and materialId from dropdowns
                   categoryId: selectedCategoryId,
                   materialId: selectedMaterialId,
@@ -812,6 +904,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 );
 
                 try {
+                  if (service.id == null) {
+                    throw Exception('Service ID is null');
+                  }
                   await _productProvider.updateProduct(
                     service.id!,
                     updatedService,
@@ -829,7 +924,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error: $e'),
+                      content: Text('Error updating service: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );

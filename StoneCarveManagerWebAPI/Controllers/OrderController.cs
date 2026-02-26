@@ -116,10 +116,11 @@ namespace StoneCarveManagerWebAPI.Controllers
 
         [HttpGet("custom-orders")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public async Task<IActionResult> GetCustomOrders(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetCustomOrders([FromQuery] OrderSearchObject search, CancellationToken cancellationToken)
         {
-            var result = await _orderService.GetCustomOrdersAsync(cancellationToken);
-            return Ok(new { items = result });
+            search.ProductState = "custom_order";
+            var result = await _orderService.GetAsync(search);
+            return Ok(result);
         }
 
         [HttpPut("{orderId}/status")]

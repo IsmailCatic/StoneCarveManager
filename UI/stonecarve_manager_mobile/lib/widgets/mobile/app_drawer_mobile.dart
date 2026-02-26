@@ -129,7 +129,14 @@ class AppDrawerMobile extends StatelessWidget {
               Navigator.pushNamed(context, '/orders');
             },
           ),
-
+          ListTile(
+            leading: const Icon(Icons.payment),
+            title: const Text('My Payments'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/payments');
+            },
+          ),
           const Divider(),
 
           // Secondary actions

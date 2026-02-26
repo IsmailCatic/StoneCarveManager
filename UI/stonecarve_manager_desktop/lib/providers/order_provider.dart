@@ -184,12 +184,17 @@ class OrderProvider extends BaseProvider<Order> {
 
   /// Get all custom orders (Admin/Employee only)
   /// Orders where product.productState == "custom_order"
-  Future<List<Order>> getCustomOrders() async {
+  Future<List<Order>> getCustomOrders({int? status}) async {
     final token = AuthProvider.token;
     if (token == null) throw Exception('Not authenticated');
 
+    var url = 'http://localhost:5021/api/Order/custom-orders';
+    if (status != null) {
+      url += '?status=$status';
+    }
+
     final response = await http.get(
-      Uri.parse('http://localhost:5021/api/Order/custom-orders'),
+      Uri.parse(url),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

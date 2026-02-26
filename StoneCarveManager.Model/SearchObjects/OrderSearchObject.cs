@@ -19,6 +19,11 @@ namespace StoneCarveManager.Model.SearchObjects
 
         public DateTime? DateTo { get; set; }
 
+        /// <summary>
+        /// Filter by product state (e.g., "custom_order")
+        /// </summary>
+        public string? ProductState { get; set; }
+
         // Optionally include items or related data flags if needed by mapper
         public bool IncludeItems { get; set; } = false;
     }

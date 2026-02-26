@@ -31,8 +31,23 @@ namespace StoneCarveManager.Services.Services
             var previousStartDate = startDate.AddDays(-periodLength);
             var previousEndDate = startDate;
 
-            // Current period orders
+            // ? FIX: Use Payments as single source of truth for revenue
+            // Current period payments (only succeeded payments)
+            var currentPayments = await _context.Payments
+                .Include(p => p.Order)
+                .Where(p => p.Status == "succeeded" && p.CreatedAt >= startDate && p.CreatedAt <= endDate)
+                .ToListAsync(cancellationToken);
+
+            // Previous period payments (only succeeded payments)
+            var previousPayments = await _context.Payments
+                .Include(p => p.Order)
+                .Where(p => p.Status == "succeeded" && p.CreatedAt >= previousStartDate && p.CreatedAt < previousEndDate)
+                .ToListAsync(cancellationToken);
+
+            // Current period orders (for order statistics, not revenue)
             var currentOrders = await _context.Orders
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
                 .Where(o => o.OrderDate >= startDate && o.OrderDate <= endDate)
                 .ToListAsync(cancellationToken);
 
@@ -41,12 +56,16 @@ namespace StoneCarveManager.Services.Services
                 .Where(o => o.OrderDate >= previousStartDate && o.OrderDate < previousEndDate)
                 .ToListAsync(cancellationToken);
 
-            // Revenue calculations
-            var currentRevenue = currentOrders.Sum(o => o.TotalAmount);
-            var previousRevenue = previousOrders.Sum(o => o.TotalAmount);
+            // ? Revenue calculations from PAYMENTS (not Orders)
+            var currentRevenue = currentPayments.Sum(p => p.Amount);
+            var previousRevenue = previousPayments.Sum(p => p.Amount);
             var revenueChange = previousRevenue > 0 
                 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 
                 : 0;
+
+            // ? Average order value from PAID orders only
+            var paidOrdersCount = currentPayments.Select(p => p.OrderId).Distinct().Count();
+            var averageOrderValue = paidOrdersCount > 0 ? currentRevenue / paidOrdersCount : 0;
 
             // Orders change
             var ordersChange = previousOrders.Count > 0
@@ -95,10 +114,10 @@ namespace StoneCarveManager.Services.Services
 
             return new DashboardStatisticsResponse
             {
-                // Revenue
+                // Revenue (from PAYMENTS, not Orders)
                 TotalRevenue = currentRevenue,
                 RevenueChange = revenueChange,
-                AverageOrderValue = currentOrders.Count > 0 ? currentRevenue / currentOrders.Count : 0,
+                AverageOrderValue = averageOrderValue,
 
                 // Orders
                 TotalOrders = currentOrders.Count,
@@ -275,6 +294,7 @@ namespace StoneCarveManager.Services.Services
                 .Include(oi => oi.Product)
                     .ThenInclude(p => p.Category)
                 .Include(oi => oi.Order)
+                .Where(oi => oi.Product.CategoryId.HasValue) // Filter out products without category
                 .AsQueryable();
 
             if (startDate.HasValue)
@@ -287,11 +307,11 @@ namespace StoneCarveManager.Services.Services
             var totalRevenue = orderItems.Sum(oi => oi.TotalPrice);
 
             var categories = orderItems
-                .GroupBy(oi => oi.Product.CategoryId)
+                .GroupBy(oi => oi.Product.CategoryId!.Value) // Use .Value since we filtered nulls above
                 .Select(g => new CategoryPerformanceResponse
                 {
                     CategoryId = g.Key,
-                    CategoryName = g.First().Product.Category.Name,
+                    CategoryName = g.First().Product.Category?.Name ?? "Unknown",
                     ProductCount = g.Select(oi => oi.ProductId).Distinct().Count(),
                     OrderCount = g.Select(oi => oi.OrderId).Distinct().Count(),
                     TotalRevenue = g.Sum(oi => oi.TotalPrice),
@@ -308,54 +328,70 @@ namespace StoneCarveManager.Services.Services
         // ================================
 
         // Legacy method - kept for backward compatibility
+        // ? UPDATED: Now uses Payments table for consistency
         public async Task<decimal> GetTotalIncomeAsync(
             DateTime? from = null, 
             DateTime? to = null, 
             CancellationToken cancellationToken = default)
         {
-            var orders = _context.Orders.AsQueryable();
-            if (from.HasValue) 
-                orders = orders.Where(o => o.OrderDate >= from.Value);
-            if (to.HasValue) 
-                orders = orders.Where(o => o.OrderDate <= to.Value);
+            var query = _context.Payments
+                .Where(p => p.Status == "succeeded");
             
-            return await orders.SumAsync(o => o.TotalAmount, cancellationToken);
+            if (from.HasValue) 
+                query = query.Where(p => p.CreatedAt >= from.Value);
+            if (to.HasValue) 
+                query = query.Where(p => p.CreatedAt <= to.Value);
+            
+            return await query.SumAsync(p => p.Amount, cancellationToken);
         }
 
         // Legacy method - kept for backward compatibility
+        // ? UPDATED: Now uses Payments table for consistency
         public async Task<decimal> GetDailyAverageIncomeAsync(
             DateTime? from = null, 
             DateTime? to = null, 
             CancellationToken cancellationToken = default)
         {
-            var orders = _context.Orders.AsQueryable();
+            var query = _context.Payments
+                .Where(p => p.Status == "succeeded");
+            
             if (from.HasValue) 
-                orders = orders.Where(o => o.OrderDate >= from.Value);
+                query = query.Where(p => p.CreatedAt >= from.Value);
             if (to.HasValue) 
-                orders = orders.Where(o => o.OrderDate <= to.Value);
+                query = query.Where(p => p.CreatedAt <= to.Value);
             
-            var total = await orders.SumAsync(o => o.TotalAmount, cancellationToken);
-            var minOrderDate = await _context.Orders.MinAsync(o => o.OrderDate, cancellationToken);
-            var days = (to ?? DateTime.Now) - (from ?? minOrderDate);
-            var numDays = days.TotalDays > 0 ? days.TotalDays : 1;
+            var total = await query.SumAsync(p => p.Amount, cancellationToken);
             
-            return (decimal)(total / (decimal)numDays);
+            // Calculate days in range
+            var actualFrom = from ?? await _context.Payments.MinAsync(p => p.CreatedAt, cancellationToken);
+            var actualTo = to ?? DateTime.UtcNow;
+            var days = (actualTo - actualFrom).TotalDays;
+            var numDays = days > 0 ? days : 1;
+            
+            return total / (decimal)numDays;
         }
 
         // Legacy method - kept for backward compatibility
+        // ? UPDATED: Now uses Payments table for consistency
         public async Task<List<DailyIncomeResponse>> GetIncomePerDayAsync(
             DateTime? from = null, 
             DateTime? to = null, 
             CancellationToken cancellationToken = default)
         {
-            return await _context.Orders
-                .Where(o => (!from.HasValue || o.OrderDate >= from.Value) && 
-                           (!to.HasValue || o.OrderDate <= to.Value))
-                .GroupBy(o => o.OrderDate.Date)
+            var query = _context.Payments
+                .Where(p => p.Status == "succeeded");
+                
+            if (from.HasValue)
+                query = query.Where(p => p.CreatedAt >= from.Value);
+            if (to.HasValue)
+                query = query.Where(p => p.CreatedAt <= to.Value);
+                
+            return await query
+                .GroupBy(p => p.CreatedAt.Date)
                 .Select(g => new DailyIncomeResponse
                 {
                     Date = g.Key,
-                    Amount = g.Sum(o => o.TotalAmount)
+                    Amount = g.Sum(p => p.Amount)
                 })
                 .OrderBy(g => g.Date)
                 .ToListAsync(cancellationToken);

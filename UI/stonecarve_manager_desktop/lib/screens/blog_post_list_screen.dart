@@ -140,7 +140,8 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
                   final imageUrl = getImageUrl();
 
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: () async {
@@ -154,188 +155,203 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
                         );
                         if (result == true) _fetchPosts();
                       },
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (imageUrl != null)
-                            Image.network(
-                              imageUrl,
-                              height: 200,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                print(
-                                  '❌ [BlogListScreen] Error loading image: $error',
-                                );
-                                return Container(
-                                  height: 200,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.blue.shade400,
-                                        Colors.purple.shade400,
-                                      ],
+                          // Image - takes 35% width (less than 50%)
+                          SizedBox(
+                            width: 160,
+                            height: 140,
+                            child: imageUrl != null
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print(
+                                        '❌ [BlogListScreen] Error loading image: $error',
+                                      );
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.blue.shade300,
+                                              Colors.purple.shade300,
+                                            ],
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          post.isTutorial
+                                              ? Icons.school
+                                              : Icons.article,
+                                          size: 48,
+                                          color: Colors.white70,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.blue.shade300,
+                                          Colors.purple.shade300,
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  child: Center(
                                     child: Icon(
                                       post.isTutorial
                                           ? Icons.school
                                           : Icons.article,
-                                      size: 64,
-                                      color: Colors.white,
+                                      size: 48,
+                                      color: Colors.white70,
                                     ),
                                   ),
-                                );
-                              },
-                            )
-                          else
-                            Container(
-                              height: 200,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.blue.shade400,
-                                    Colors.purple.shade400,
-                                  ],
-                                ),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  post.isTutorial
-                                      ? Icons.school
-                                      : Icons.article,
-                                  size: 64,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  post.title,
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    // Publication status chip
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
+                          ),
+                          // Content - takes 65% width
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        post.title,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: post.isPublished
-                                            ? Colors.green
-                                            : Colors.grey,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                      const SizedBox(height: 6),
+                                      // Status chips in row
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
                                         children: [
-                                          Icon(
-                                            post.isPublished
-                                                ? Icons.check_circle
-                                                : Icons.unpublished,
-                                            color: Colors.white,
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            post.isPublished
-                                                ? 'Published'
-                                                : 'Not Published',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
+                                          // Publication status chip
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: post.isPublished
+                                                  ? Colors.green.shade600
+                                                  : Colors.grey.shade600,
+                                              borderRadius:
+                                                  BorderRadius.circular(3),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  post.isPublished
+                                                      ? Icons.check_circle
+                                                      : Icons.unpublished,
+                                                  color: Colors.white,
+                                                  size: 12,
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  post.isPublished
+                                                      ? 'Published'
+                                                      : 'Draft',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    // Tutorial chip
-                                    if (post.isTutorial) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            Icon(
-                                              Icons.school,
-                                              color: Colors.white,
-                                              size: 14,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Tutorial',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
+                                          // Tutorial chip
+                                          if (post.isTutorial)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.shade600,
+                                                borderRadius:
+                                                    BorderRadius.circular(3),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Icon(
+                                                    Icons.school,
+                                                    color: Colors.white,
+                                                    size: 12,
+                                                  ),
+                                                  SizedBox(width: 3),
+                                                  Text(
+                                                    'Tutorial',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        post.summary ??
+                                            (post.content.length > 80
+                                                ? '${post.content.substring(0, 80)}...'
+                                                : post.content),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade700,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  post.summary ??
-                                      (post.content.length > 120
-                                          ? '${post.content.substring(0, 120)}...'
-                                          : post.content),
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.visibility,
-                                      size: 16,
-                                      color: Colors.grey[600],
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${post.viewCount} views',
-                                      style: TextStyle(
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.visibility,
+                                        size: 14,
                                         color: Colors.grey[600],
-                                        fontSize: 12,
                                       ),
-                                    ),
-                                    const Spacer(),
-                                    if (post.publishedAt != null)
+                                      const SizedBox(width: 3),
                                       Text(
-                                        _formatDate(post.publishedAt!),
+                                        '${post.viewCount}',
                                         style: TextStyle(
                                           color: Colors.grey[600],
-                                          fontSize: 12,
+                                          fontSize: 11,
                                         ),
                                       ),
-                                  ],
-                                ),
-                              ],
+                                      const Spacer(),
+                                      if (post.publishedAt != null)
+                                        Text(
+                                          _formatDate(post.publishedAt!),
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],

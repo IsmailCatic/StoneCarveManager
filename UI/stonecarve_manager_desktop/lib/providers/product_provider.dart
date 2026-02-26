@@ -11,11 +11,28 @@ import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 class ProductProvider {
   final String baseUrl = 'http://localhost:5021/api/Product';
 
-  // Fetch portfolio products using new endpoint
-  Future<List<Product>> fetchPortfolioProducts() async {
-    print('[ProductProvider] fetchPortfolioProducts: $baseUrl/portfolio');
+  // Fetch portfolio products using new endpoint with optional filters
+  Future<List<Product>> fetchPortfolioProducts({
+    String? categoryName,
+    int? materialId,
+    int? completionYear,
+  }) async {
+    var url = '$baseUrl/portfolio';
+    final queryParams = <String, String>{};
+
+    if (categoryName != null) queryParams['categoryName'] = categoryName;
+    if (materialId != null) queryParams['materialId'] = materialId.toString();
+    if (completionYear != null)
+      queryParams['completionYear'] = completionYear.toString();
+
+    if (queryParams.isNotEmpty) {
+      url +=
+          '?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
+    }
+
+    print('[ProductProvider] fetchPortfolioProducts: $url');
     final client = AuthClient(getToken: () async => AuthProvider.token);
-    final response = await client.get(Uri.parse('$baseUrl/portfolio'));
+    final response = await client.get(Uri.parse(url));
     print('[ProductProvider] Status: ${response.statusCode}');
     print('[ProductProvider] Body: ${response.body}');
     if (response.statusCode == 200) {
@@ -29,11 +46,16 @@ class ProductProvider {
     }
   }
 
-  // Fetch service products
-  Future<List<Product>> fetchServiceProducts() async {
-    print('[ProductProvider] fetchServiceProducts: $baseUrl/services');
+  // Fetch service products with optional search
+  Future<List<Product>> fetchServiceProducts({String? searchQuery}) async {
+    var url = '$baseUrl/services';
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      url += '?searchQuery=${Uri.encodeComponent(searchQuery)}';
+    }
+
+    print('[ProductProvider] fetchServiceProducts: $url');
     final client = AuthClient(getToken: () async => AuthProvider.token);
-    final response = await client.get(Uri.parse('$baseUrl/services'));
+    final response = await client.get(Uri.parse(url));
     print('[ProductProvider] Status: ${response.statusCode}');
     print('[ProductProvider] Body: ${response.body}');
     if (response.statusCode == 200) {
@@ -118,12 +140,15 @@ class ProductProvider {
     }
   }
 
-  Future<Product> addProduct(Product product) async {
-    print('[ProductProvider] addProduct: ${product.toJson()}');
+  Future<Product> addProduct(dynamic productData) async {
+    final requestBody = productData is Product
+        ? productData.toJson()
+        : productData;
+    print('[ProductProvider] addProduct: $requestBody');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.post(
       Uri.parse(baseUrl),
-      body: json.encode(product.toJson()),
+      body: json.encode(requestBody),
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     print('[ProductProvider] Body: ${response.body}');
@@ -136,12 +161,15 @@ class ProductProvider {
     }
   }
 
-  Future<Product> updateProduct(int id, Product product) async {
-    print('[ProductProvider] updateProduct: $id ${product.toJson()}');
+  Future<Product> updateProduct(int id, dynamic productData) async {
+    final requestBody = productData is Product
+        ? productData.toJson()
+        : productData;
+    print('[ProductProvider] updateProduct: $id $requestBody');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.put(
       Uri.parse('$baseUrl/$id'),
-      body: json.encode(product.toJson()),
+      body: json.encode(requestBody),
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     print('[ProductProvider] Body: ${response.body}');

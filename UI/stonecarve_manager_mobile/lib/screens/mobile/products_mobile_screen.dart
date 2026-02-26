@@ -55,6 +55,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
   }
 
   Future<void> _fetchProducts() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -81,12 +82,25 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         final List<dynamic> items = jsonResponse['items'] ?? [];
         print('[ProductsMobile] Loaded ${items.length} products');
+        if (!mounted) return;
         setState(() {
-          _products = items.map((json) => Product.fromJson(json)).toList();
+          // Filter out custom products (those created for custom orders)
+          _products = items
+              .map((json) => Product.fromJson(json))
+              .where(
+                (product) =>
+                    product.name == null ||
+                    !product.name!.toLowerCase().startsWith('custom'),
+              )
+              .toList();
+          print(
+            '[ProductsMobile] After filtering custom products: ${_products.length}',
+          );
           _filteredProducts = List.from(_products);
           _isLoading = false;
         });
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage =
               'Failed to load products (${response.statusCode}): ${response.body}';
@@ -95,6 +109,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
       }
     } catch (e) {
       print('[ProductsMobile] Error: $e');
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error: $e';
         _isLoading = false;
@@ -106,6 +121,11 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredProducts = _products.where((product) {
+        // Skip custom products
+        if (product.name != null &&
+            product.name!.toLowerCase().startsWith('custom')) {
+          return false;
+        }
         final nameMatch = product.name?.toLowerCase().contains(query) ?? false;
         final categoryMatch =
             product.categoryName?.toLowerCase().contains(query) ?? false;

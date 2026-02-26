@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
 
@@ -12,24 +12,31 @@ class CheckoutPaymentScreen extends StatefulWidget {
 
 class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _cardNumberController = TextEditingController();
-  final _expiryController = TextEditingController();
-  final _cvvController = TextEditingController();
+  CardFieldInputDetails? _cardDetails;
+  bool _cardComplete = false;
   bool _useSameAddress = true;
 
   @override
   void dispose() {
-    _cardNumberController.dispose();
-    _expiryController.dispose();
-    _cvvController.dispose();
     super.dispose();
   }
 
   void _proceedToConfirmation() {
-    if (_formKey.currentState!.validate()) {
-      // In real app, this would process payment with Stripe
-      Navigator.pushNamed(context, '/checkout-confirmation');
+    if (!_cardComplete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please complete your card details'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
+
+    // Store card completion status in cart provider for next screen
+    final cart = context.read<CartProvider>();
+    cart.setPaymentReady(true);
+
+    Navigator.pushNamed(context, '/checkout-confirmation');
   }
 
   @override
@@ -104,77 +111,66 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Card Number
-                    _buildLabel('Credit card number'),
-                    TextFormField(
-                      controller: _cardNumberController,
-                      decoration: _inputDecoration('4242 4242 4242 4242'),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(16),
-                        _CardNumberFormatter(),
-                      ],
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Required';
-                        if (value!.replaceAll(' ', '').length < 13) {
-                          return 'Invalid card number';
-                        }
-                        return null;
-                      },
+                    // Stripe Card Field Widget
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _cardComplete
+                              ? Colors.blue
+                              : Colors.grey[300]!,
+                          width: _cardComplete ? 2 : 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: CardField(
+                        onCardChanged: (card) {
+                          setState(() {
+                            _cardDetails = card;
+                            _cardComplete = card?.complete ?? false;
+                          });
+                        },
+                        enablePostalCode: true,
+                        style: TextStyle(fontSize: 16, color: Colors.black87),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          hintText: 'Card information',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                    // Expiry and CVV
+                    // Info text
                     Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('Expiry date'),
-                              TextFormField(
-                                controller: _expiryController,
-                                decoration: _inputDecoration('04/26'),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(4),
-                                  _ExpiryDateFormatter(),
-                                ],
-                                validator: (value) {
-                                  if (value?.isEmpty ?? true) return 'Required';
-                                  if (value!.length < 5) return 'Invalid date';
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('CCV'),
-                              TextFormField(
-                                controller: _cvvController,
-                                decoration: _inputDecoration('123'),
-                                keyboardType: TextInputType.number,
-                                obscureText: true,
-                                maxLength: 4,
-                                validator: (value) {
-                                  if (value?.isEmpty ?? true) return 'Required';
-                                  if (value!.length < 3) return 'Invalid';
-                                  return null;
-                                },
-                              ),
-                            ],
+                        Icon(Icons.lock, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Your payment information is secure',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Test cards: 4242 4242 4242 4242 (any future date, any CVC)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.blue[700],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
                     // Checkbox
                     CheckboxListTile(
@@ -266,91 +262,5 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               ),
       ),
     );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey[600],
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400]),
-      filled: true,
-      fillColor: Colors.grey[50],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.blue),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      counterText: '',
-    );
-  }
-}
-
-// Card number formatter - adds space every 4 digits
-class _CardNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text.replaceAll(' ', '');
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < text.length; i++) {
-      buffer.write(text[i]);
-      if ((i + 1) % 4 == 0 && i + 1 != text.length) {
-        buffer.write(' ');
-      }
-    }
-
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-// Expiry date formatter - adds "/" after 2 digits
-class _ExpiryDateFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text.replaceAll('/', '');
-
-    if (text.length >= 2) {
-      final month = text.substring(0, 2);
-      final year = text.length > 2 ? text.substring(2) : '';
-      final formatted = year.isNotEmpty ? '$month/$year' : month;
-
-      return TextEditingValue(
-        text: formatted,
-        selection: TextSelection.collapsed(offset: formatted.length),
-      );
-    }
-
-    return newValue;
   }
 }

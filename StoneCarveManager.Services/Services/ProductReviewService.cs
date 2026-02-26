@@ -141,10 +141,14 @@ namespace StoneCarveManager.Services.Services
             if (search == null)
                 return query;
 
-            // FTS search
+            // FTS search - search across user name, product name, order number
             if (!string.IsNullOrWhiteSpace(search.FTS))
             {
-                query = query.Where(pr => pr.Comment.Contains(search.FTS));
+                query = query.Where(pr =>
+                    pr.User.FirstName.Contains(search.FTS) ||
+                    pr.User.LastName.Contains(search.FTS) ||
+                    (pr.Product != null && pr.Product.Name.Contains(search.FTS)) ||
+                    (pr.Order != null && pr.Order.OrderNumber.Contains(search.FTS)));
             }
 
             // Filter by ProductId
@@ -163,6 +167,18 @@ namespace StoneCarveManager.Services.Services
             if (search.IsApproved.HasValue)
             {
                 query = query.Where(pr => pr.IsApproved == search.IsApproved.Value);
+            }
+
+            // Filter by OrderId
+            if (search.OrderId.HasValue)
+            {
+                query = query.Where(pr => pr.OrderId == search.OrderId.Value);
+            }
+
+            // Filter by Rating
+            if (search.Rating.HasValue)
+            {
+                query = query.Where(pr => pr.Rating == search.Rating.Value);
             }
 
             return query;

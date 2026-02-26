@@ -32,13 +32,8 @@ namespace StoneCarveManager.Model.Requests
 
         public bool IsInPortfolio { get; set; } = true;
 
-        [Required]
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
 
-        [Required]
-        public int MaterialId { get; set; }
-
-        [StringLength(50)]
-        public string ProductState { get; set; } = "draft";
+        public int? MaterialId { get; set; }
     }
 }

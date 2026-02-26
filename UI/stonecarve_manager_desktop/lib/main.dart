@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/login_screen.dart';
-import 'package:stonecarve_manager_flutter/screens/portfolio_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/products_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/services_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/materials_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/categories_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/blog_post_list_screen.dart';
-import 'package:stonecarve_manager_flutter/screens/orders_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/orders_monthly_view_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/custom_orders_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/users_screen.dart';
@@ -53,8 +51,7 @@ class StoneCarveManagerApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/orders': (context) => const OrdersScreen(),
-        '/orders/monthly': (context) => const OrdersMonthlyViewScreen(),
+        '/orders': (context) => const OrdersMonthlyViewScreen(),
         '/custom-orders': (context) => const CustomOrdersScreen(),
         '/products': (context) => const ProductsScreen(),
         '/services': (context) => const ServicesScreen(),

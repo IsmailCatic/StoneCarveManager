@@ -180,7 +180,7 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
                   Icon(Icons.info_outline, color: Colors.blue.shade700),
                   const SizedBox(width: 8),
                   Text(
-                    'Trenutno stanje: ',
+                    'Current state: ',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.blue.shade700,
@@ -203,7 +203,7 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
                 Icon(Icons.settings, color: Colors.blue.shade700),
                 const SizedBox(width: 8),
                 Text(
-                  'Dostupne Akcije',
+                  'Available Actions',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -217,7 +217,7 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
-                  'Nema dostupnih akcija za trenutno stanje',
+                  'No available actions for current state',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontStyle: FontStyle.italic,

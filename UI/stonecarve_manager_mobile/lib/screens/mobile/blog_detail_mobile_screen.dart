@@ -337,7 +337,11 @@ class _BlogDetailMobileScreenState extends State<BlogDetailMobileScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _sharePost,
                     icon: const Icon(Icons.share),
-                    label: const Text('Share this ${0}'),
+                    label: Text(
+                      _post!.isTutorial
+                          ? 'Share this tutorial'
+                          : 'Share this post',
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,

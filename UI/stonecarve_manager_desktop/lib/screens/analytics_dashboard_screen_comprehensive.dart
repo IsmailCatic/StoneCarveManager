@@ -4,6 +4,9 @@ import 'package:stonecarve_manager_flutter/models/analytics.dart';
 import 'package:stonecarve_manager_flutter/providers/analytics_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/app_drawer.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class AnalyticsDashboardScreen extends StatefulWidget {
   const AnalyticsDashboardScreen({super.key});
@@ -14,7 +17,7 @@ class AnalyticsDashboardScreen extends StatefulWidget {
 }
 
 class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final AnalyticsProvider _analyticsProvider = AnalyticsProvider();
 
   DashboardStatistics? _dashboardStats;
@@ -36,13 +39,17 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
     1,
     1,
   ); // Start from January 1st of current year
-  DateTime _endDate = DateTime.now();
+  late DateTime _endDate;
 
   late AnimationController _animationController;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    // Initialize endDate to end of today
+    final now = DateTime.now();
+    _endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
     print('[Analytics] ===============================================');
     print('[Analytics] 🚀 INIT: Default date range set to:');
     print('[Analytics]    Start: $_startDate');
@@ -52,12 +59,14 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
+    _tabController = TabController(length: 6, vsync: this);
     _loadData();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -274,7 +283,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
         _isAllTime =
             false; // Disable all-time mode when custom range is selected
         _startDate = picked.start;
-        _endDate = picked.end;
+        // Set end date to end of day (23:59:59) to include entire day
+        _endDate = DateTime(
+          picked.end.year,
+          picked.end.month,
+          picked.end.day,
+          23,
+          59,
+          59,
+        );
       });
       // Show snackbar to indicate data is reloading
       if (mounted) {
@@ -294,10 +311,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
 
   void _setAllTime() {
     print('[Analytics] ⏰ ALL TIME selected - Setting dates to 2020-01-01');
+    final now = DateTime.now();
     setState(() {
       _isAllTime = true; // Enable all-time mode (no date filters)
       _startDate = DateTime(2020, 1, 1);
-      _endDate = DateTime.now();
+      _endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
     });
     print('[Analytics]    Start: ${_startDate.toIso8601String()}');
     print('[Analytics]    End: ${_endDate.toIso8601String()}');
@@ -319,7 +337,20 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Comprehensive Analytics Dashboard'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Comprehensive Analytics Dashboard'),
+            Text(
+              '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
         elevation: 0,
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -331,6 +362,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Export Current Tab',
+            onPressed: () => _exportCurrentTab(),
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.calendar_today),
             tooltip: 'Date Range',
@@ -338,28 +374,27 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
               if (value == 'all_time') {
                 _setAllTime();
               } else if (value == 'this_year') {
+                final now = DateTime.now();
                 setState(() {
                   _isAllTime = false; // Disable all-time mode
-                  _startDate = DateTime(DateTime.now().year, 1, 1);
-                  _endDate = DateTime.now();
+                  _startDate = DateTime(now.year, 1, 1);
+                  _endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
                 });
                 _loadData();
               } else if (value == 'last_30') {
+                final now = DateTime.now();
                 setState(() {
                   _isAllTime = false; // Disable all-time mode
-                  _startDate = DateTime.now().subtract(
-                    const Duration(days: 30),
-                  );
-                  _endDate = DateTime.now();
+                  _startDate = now.subtract(const Duration(days: 30));
+                  _endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
                 });
                 _loadData();
               } else if (value == 'last_90') {
+                final now = DateTime.now();
                 setState(() {
                   _isAllTime = false; // Disable all-time mode
-                  _startDate = DateTime.now().subtract(
-                    const Duration(days: 90),
-                  );
-                  _endDate = DateTime.now();
+                  _startDate = now.subtract(const Duration(days: 90));
+                  _endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
                 });
                 _loadData();
               } else if (value == 'custom') {
@@ -421,6 +456,20 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
             ],
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          tabs: const [
+            Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
+            Tab(icon: Icon(Icons.monetization_on), text: 'Revenue'),
+            Tab(icon: Icon(Icons.inventory), text: 'Products'),
+            Tab(icon: Icon(Icons.people), text: 'Customers'),
+            Tab(icon: Icon(Icons.star), text: 'Reviews'),
+            Tab(icon: Icon(Icons.person), text: 'Employees'),
+          ],
+        ),
       ),
       drawer: const AppDrawer(currentRoute: '/analytics'),
       body: _isLoading
@@ -445,282 +494,882 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
                 ],
               ),
             )
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header gradient section with COMPREHENSIVE stats
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.blue.shade700,
-                            Colors.purple.shade700,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Business Overview',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          // ALL Stats cards (old + new combined)
-                          if (_dashboardStats != null)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                alignment: WrapAlignment.center,
-                                children: [
-                                  // Total Revenue (from new)
-                                  _EnhancedStatCard(
-                                    title: 'Total Revenue',
-                                    value:
-                                        '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
-                                    subtitle:
-                                        '${_dashboardStats!.revenueChange >= 0 ? '+' : ''}${_dashboardStats!.revenueChange.toStringAsFixed(1)}%',
-                                    icon: Icons.attach_money,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.green.shade400,
-                                        Colors.green.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Daily Average (from old - calculated)
-                                  _EnhancedStatCard(
-                                    title: 'Daily Average',
-                                    value: _revenueTrend.isNotEmpty
-                                        ? '\$${NumberFormat('#,##0.00').format(_revenueTrend.fold<double>(0, (sum, e) => sum + e.revenue) / _revenueTrend.length)}'
-                                        : '\$0.00',
-                                    icon: Icons.trending_up,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.orange.shade400,
-                                        Colors.orange.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Total Orders (from new)
-                                  _EnhancedStatCard(
-                                    title: 'Total Orders',
-                                    value: _dashboardStats!.totalOrders
-                                        .toString(),
-                                    subtitle:
-                                        '${_dashboardStats!.ordersChange >= 0 ? '+' : ''}${_dashboardStats!.ordersChange}',
-                                    icon: Icons.shopping_cart,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.blue.shade400,
-                                        Colors.blue.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Total Customers (from old + new)
-                                  _EnhancedStatCard(
-                                    title: 'Total Customers',
-                                    value: _dashboardStats!.totalCustomers
-                                        .toString(),
-                                    subtitle:
-                                        '${_dashboardStats!.newCustomers} new',
-                                    icon: Icons.people,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.indigo.shade400,
-                                        Colors.indigo.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Avg Order Value
-                                  _EnhancedStatCard(
-                                    title: 'Avg Order Value',
-                                    value:
-                                        '\$${_dashboardStats!.averageOrderValue.toStringAsFixed(2)}',
-                                    icon: Icons.analytics,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.purple.shade400,
-                                        Colors.purple.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Pending Orders
-                                  _EnhancedStatCard(
-                                    title: 'Pending Orders',
-                                    value: _dashboardStats!.pendingOrders
-                                        .toString(),
-                                    icon: Icons.pending_actions,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.amber.shade400,
-                                        Colors.amber.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Completed Orders
-                                  _EnhancedStatCard(
-                                    title: 'Completed',
-                                    value: _dashboardStats!.completedOrders
-                                        .toString(),
-                                    icon: Icons.check_circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.teal.shade400,
-                                        Colors.teal.shade600,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                  // Avg Rating
-                                  _EnhancedStatCard(
-                                    title: 'Avg Rating',
-                                    value: _dashboardStats!.averageRating
-                                        .toStringAsFixed(1),
-                                    subtitle:
-                                        '${_dashboardStats!.totalReviews} reviews',
-                                    icon: Icons.star,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.yellow.shade600,
-                                        Colors.amber.shade700,
-                                      ],
-                                    ),
-                                    animation: _animationController,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Overview
+                _buildOverviewTab(),
+                // Tab 2: Revenue
+                _buildRevenueTab(),
+                // Tab 3: Products
+                _buildProductsTab(),
+                // Tab 4: Customers
+                _buildCustomersTab(),
+                // Tab 5: Reviews
+                _buildReviewsTab(),
+                // Tab 6: Employees
+                _buildEmployeesTab(),
+              ],
+            ),
+    );
+  }
 
-                    // Content section with ALL charts and data
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Revenue trend chart WITH gap filling (STYLED VERSION)
-                          _EnhancedRevenueChartStyled(
-                            entries: _revenueTrend,
-                            animation: _animationController,
-                          ),
+  // Export current tab to PDF
+  Future<void> _exportCurrentTab() async {
+    final tabNames = [
+      'Overview',
+      'Revenue',
+      'Products',
+      'Customers',
+      'Reviews',
+      'Employees',
+    ];
+    final currentTabName = tabNames[_tabController.index];
 
-                          const SizedBox(height: 24),
+    try {
+      final pdf = pw.Document();
 
-                          // Order Status Breakdown (NEW!)
-                          if (_dashboardStats != null)
-                            _OrderStatusBreakdownChart(
-                              dashboardStats: _dashboardStats!,
-                              animation: _animationController,
-                            ),
+      // Generate PDF based on current tab
+      switch (_tabController.index) {
+        case 0:
+          await _generateOverviewPDF(pdf);
+          break;
+        case 1:
+          await _generateRevenuePDF(pdf);
+          break;
+        case 2:
+          await _generateProductsPDF(pdf);
+          break;
+        case 3:
+          await _generateCustomersPDF(pdf);
+          break;
+        case 4:
+          await _generateReviewsPDF(pdf);
+          break;
+        case 5:
+          await _generateEmployeesPDF(pdf);
+          break;
+      }
 
-                          const SizedBox(height: 24),
+      // Show print/save dialog
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name:
+            '${currentTabName}_Analytics_${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf',
+      );
 
-                          // Revenue by payment method PIE
-                          if (_revenueByMethod.isNotEmpty)
-                            _RevenueByMethodChart(
-                              methods: _revenueByMethod,
-                              animation: _animationController,
-                            ),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$currentTabName analytics exported successfully!'),
+            backgroundColor: Colors.green.shade700,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
-                          const SizedBox(height: 24),
-
-                          // Top Products and Top Customers side by side
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (_topProducts.isNotEmpty)
-                                Expanded(
-                                  child: _EnhancedTopProductsSection(
-                                    products: _topProducts,
-                                    animation: _animationController,
-                                  ),
-                                ),
-                              const SizedBox(width: 16),
-                              if (_topCustomers.isNotEmpty)
-                                Expanded(
-                                  child: _TopCustomersSection(
-                                    customers: _topCustomers,
-                                    animation: _animationController,
-                                  ),
-                                ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Category Performance
-                          if (_categories.isNotEmpty)
-                            _CategoryPerformanceSection(
-                              categories: _categories,
-                              animation: _animationController,
-                            ),
-
-                          const SizedBox(height: 24),
-
-                          // Customer Statistics (NEW!)
-                          if (_customerStats != null)
-                            _CustomerStatisticsCard(
-                              stats: _customerStats!,
-                              animation: _animationController,
-                            ),
-
-                          const SizedBox(height: 24),
-
-                          // Review Statistics (NEW!)
-                          if (_reviewStats != null)
-                            _ReviewStatisticsCard(
-                              stats: _reviewStats!,
-                              animation: _animationController,
-                            ),
-
-                          const SizedBox(height: 24),
-
-                          // Employee Performance (NEW!)
-                          if (_employeePerformance.isNotEmpty)
-                            _EmployeePerformanceSection(
-                              employees: _employeePerformance,
-                              animation: _animationController,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+  Future<void> _generateOverviewPDF(pw.Document pdf) async {
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Analytics Overview',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
                 ),
               ),
             ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Key Metrics
+            pw.Text(
+              'Key Metrics',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 10),
+            if (_dashboardStats != null) ...[
+              _buildPdfStatRow(
+                'Total Revenue',
+                '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
+              ),
+              _buildPdfStatRow(
+                'Total Orders',
+                _dashboardStats!.totalOrders.toString(),
+              ),
+              _buildPdfStatRow(
+                'Average Order Value',
+                '\$${_dashboardStats!.averageOrderValue.toStringAsFixed(2)}',
+              ),
+              _buildPdfStatRow(
+                'Total Customers',
+                _dashboardStats!.totalCustomers.toString(),
+              ),
+              _buildPdfStatRow(
+                'New Customers',
+                _dashboardStats!.newCustomers.toString(),
+              ),
+              pw.SizedBox(height: 20),
+
+              // Order Status Breakdown
+              pw.Text(
+                'Order Status',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              _buildPdfStatRow(
+                'Pending',
+                _dashboardStats!.pendingOrders.toString(),
+              ),
+              _buildPdfStatRow(
+                'Completed',
+                _dashboardStats!.completedOrders.toString(),
+              ),
+              _buildPdfStatRow(
+                'Cancelled',
+                _dashboardStats!.cancelledOrders.toString(),
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+  }
+
+  Future<void> _generateRevenuePDF(pw.Document pdf) async {
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Revenue Analytics',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Revenue Summary
+            if (_dashboardStats != null) ...[
+              pw.Text(
+                'Revenue Summary',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              _buildPdfStatRow(
+                'Total Revenue',
+                '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
+              ),
+              _buildPdfStatRow(
+                'Revenue Change',
+                '${_dashboardStats!.revenueChange >= 0 ? '+' : ''}${_dashboardStats!.revenueChange.toStringAsFixed(1)}%',
+              ),
+              if (_revenueTrend.isNotEmpty) ...[
+                _buildPdfStatRow(
+                  'Daily Average',
+                  '\$${NumberFormat('#,##0.00').format(_revenueTrend.fold<double>(0, (sum, e) => sum + e.revenue) / _revenueTrend.length)}',
+                ),
+              ],
+              pw.SizedBox(height: 20),
+            ],
+
+            // Revenue by Payment Method
+            if (_revenueByMethod.isNotEmpty) ...[
+              pw.Text(
+                'Revenue by Payment Method',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              ..._revenueByMethod.map(
+                (method) => _buildPdfStatRow(
+                  method.paymentMethod,
+                  '\$${NumberFormat('#,##0.00').format(method.totalRevenue)}',
+                ),
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+  }
+
+  Future<void> _generateProductsPDF(pw.Document pdf) async {
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Product Performance Analytics',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Top Products
+            if (_topProducts.isNotEmpty) ...[
+              pw.Text(
+                'Top Products',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Table.fromTextArray(
+                headers: ['Rank', 'Product', 'Sold', 'Revenue'],
+                data: _topProducts
+                    .asMap()
+                    .entries
+                    .map(
+                      (entry) => [
+                        '#${entry.key + 1}',
+                        entry.value.productName,
+                        entry.value.quantitySold.toString(),
+                        '\$${NumberFormat('#,##0.00').format(entry.value.totalRevenue)}',
+                      ],
+                    )
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellAlignment: pw.Alignment.centerLeft,
+              ),
+              pw.SizedBox(height: 20),
+            ],
+
+            // Category Performance
+            if (_categories.isNotEmpty) ...[
+              pw.Text(
+                'Category Performance',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Table.fromTextArray(
+                headers: ['Category', 'Revenue', 'Orders', 'Products'],
+                data: _categories
+                    .map(
+                      (cat) => [
+                        cat.categoryName,
+                        '\$${NumberFormat('#,##0.00').format(cat.totalRevenue)}',
+                        cat.orderCount.toString(),
+                        cat.productCount.toString(),
+                      ],
+                    )
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellAlignment: pw.Alignment.centerLeft,
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+  }
+
+  Future<void> _generateCustomersPDF(pw.Document pdf) async {
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Customer Analytics',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Customer Statistics
+            if (_customerStats != null) ...[
+              pw.Text(
+                'Customer Statistics',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              _buildPdfStatRow(
+                'Total Customers',
+                _customerStats!.totalCustomers.toString(),
+              ),
+              _buildPdfStatRow(
+                'New Customers',
+                _customerStats!.newCustomers.toString(),
+              ),
+              _buildPdfStatRow(
+                'Returning Customers',
+                _customerStats!.returningCustomers.toString(),
+              ),
+              _buildPdfStatRow(
+                'Avg Lifetime Value',
+                '\$${NumberFormat('#,##0.00').format(_customerStats!.averageLifetimeValue)}',
+              ),
+              _buildPdfStatRow(
+                'Avg Orders per Customer',
+                _customerStats!.averageOrdersPerCustomer.toStringAsFixed(1),
+              ),
+              pw.SizedBox(height: 20),
+            ],
+
+            // Top Customers
+            if (_topCustomers.isNotEmpty) ...[
+              pw.Text(
+                'Top Customers',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Table.fromTextArray(
+                headers: ['Rank', 'Customer', 'Orders', 'Total Spent'],
+                data: _topCustomers
+                    .asMap()
+                    .entries
+                    .map(
+                      (entry) => [
+                        '#${entry.key + 1}',
+                        entry.value.customerName,
+                        entry.value.totalOrders.toString(),
+                        '\$${NumberFormat('#,##0.00').format(entry.value.totalSpent)}',
+                      ],
+                    )
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellAlignment: pw.Alignment.centerLeft,
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+  }
+
+  Future<void> _generateReviewsPDF(pw.Document pdf) async {
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Review Analytics',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'All Time Statistics',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+
+            if (_reviewStats != null) ...[
+              pw.Text(
+                'Review Summary',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              _buildPdfStatRow(
+                'Total Reviews',
+                _reviewStats!.totalReviews.toString(),
+              ),
+              _buildPdfStatRow(
+                'Average Rating',
+                _reviewStats!.averageRating.toStringAsFixed(2),
+              ),
+              pw.SizedBox(height: 20),
+
+              pw.Text(
+                'Rating Distribution',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              _buildPdfStatRow(
+                '5 Stars',
+                (_reviewStats!.ratingDistribution[5] ?? 0).toString(),
+              ),
+              _buildPdfStatRow(
+                '4 Stars',
+                (_reviewStats!.ratingDistribution[4] ?? 0).toString(),
+              ),
+              _buildPdfStatRow(
+                '3 Stars',
+                (_reviewStats!.ratingDistribution[3] ?? 0).toString(),
+              ),
+              _buildPdfStatRow(
+                '2 Stars',
+                (_reviewStats!.ratingDistribution[2] ?? 0).toString(),
+              ),
+              _buildPdfStatRow(
+                '1 Star',
+                (_reviewStats!.ratingDistribution[1] ?? 0).toString(),
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+  }
+
+  Future<void> _generateEmployeesPDF(pw.Document pdf) async {
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                'Employee Performance Analytics',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              '${DateFormat('MMM d, y').format(_startDate)} - ${DateFormat('MMM d, y').format(_endDate)}',
+              style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 20),
+
+            if (_employeePerformance.isNotEmpty) ...[
+              pw.Text(
+                'Employee Rankings',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Table.fromTextArray(
+                headers: [
+                  'Rank',
+                  'Employee',
+                  'Assigned',
+                  'Completed',
+                  'Revenue',
+                ],
+                data: _employeePerformance
+                    .asMap()
+                    .entries
+                    .map(
+                      (entry) => [
+                        '#${entry.key + 1}',
+                        entry.value.employeeName,
+                        entry.value.assignedOrders.toString(),
+                        entry.value.completedOrders.toString(),
+                        '\$${NumberFormat('#,##0.00').format(entry.value.totalRevenue)}',
+                      ],
+                    )
+                    .toList(),
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellAlignment: pw.Alignment.centerLeft,
+              ),
+            ],
+          ];
+        },
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStatRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label, style: const pw.TextStyle(fontSize: 12)),
+          pw.Text(
+            value,
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tab 1: Overview - Dashboard stats and order breakdown
+  Widget _buildOverviewTab() {
+    if (_dashboardStats == null) {
+      return _buildEmptyState(
+        icon: Icons.dashboard_outlined,
+        title: 'No Overview Data',
+        message:
+            'Dashboard statistics are not available for the selected date range.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Stats cards
+            if (_dashboardStats != null)
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _EnhancedStatCard(
+                    title: 'Total Revenue',
+                    value:
+                        '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
+                    subtitle:
+                        '${_dashboardStats!.revenueChange >= 0 ? '+' : ''}${_dashboardStats!.revenueChange.toStringAsFixed(1)}%',
+                    icon: Icons.attach_money,
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade400, Colors.green.shade600],
+                    ),
+                    animation: _animationController,
+                  ),
+                  _EnhancedStatCard(
+                    title: 'Total Orders',
+                    value: _dashboardStats!.totalOrders.toString(),
+                    subtitle:
+                        '${_dashboardStats!.ordersChange >= 0 ? '+' : ''}${_dashboardStats!.ordersChange}',
+                    icon: Icons.shopping_cart,
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade400, Colors.blue.shade600],
+                    ),
+                    animation: _animationController,
+                  ),
+                  _EnhancedStatCard(
+                    title: 'Avg Order Value',
+                    value:
+                        '\$${_dashboardStats!.averageOrderValue.toStringAsFixed(2)}',
+                    icon: Icons.analytics,
+                    gradient: LinearGradient(
+                      colors: [Colors.purple.shade400, Colors.purple.shade600],
+                    ),
+                    animation: _animationController,
+                  ),
+                  _EnhancedStatCard(
+                    title: 'Total Customers',
+                    value: _dashboardStats!.totalCustomers.toString(),
+                    subtitle: '${_dashboardStats!.newCustomers} new',
+                    icon: Icons.people,
+                    gradient: LinearGradient(
+                      colors: [Colors.indigo.shade400, Colors.indigo.shade600],
+                    ),
+                    animation: _animationController,
+                  ),
+                ],
+              ),
+            const SizedBox(height: 24),
+
+            // Order Status Breakdown
+            if (_dashboardStats != null)
+              _OrderStatusBreakdownChart(
+                dashboardStats: _dashboardStats!,
+                animation: _animationController,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Tab 2: Revenue - Revenue trend and payment methods
+  Widget _buildRevenueTab() {
+    if (_revenueTrend.isEmpty && _revenueByMethod.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.monetization_on_outlined,
+        title: 'No Revenue Data',
+        message:
+            'No revenue information is available for the selected date range.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Revenue trend chart
+            _EnhancedRevenueChartStyled(
+              entries: _revenueTrend,
+              animation: _animationController,
+            ),
+            const SizedBox(height: 24),
+
+            // Revenue by payment method
+            if (_revenueByMethod.isNotEmpty)
+              _RevenueByMethodChart(
+                methods: _revenueByMethod,
+                animation: _animationController,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Tab 3: Products - Top products and categories
+  Widget _buildProductsTab() {
+    if (_topProducts.isEmpty && _categories.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.inventory_2_outlined,
+        title: 'No Product Data',
+        message:
+            'No product sales information is available for the selected date range.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Products
+            if (_topProducts.isNotEmpty)
+              _EnhancedTopProductsSection(
+                products: _topProducts,
+                animation: _animationController,
+              ),
+            const SizedBox(height: 24),
+
+            // Category Performance
+            if (_categories.isNotEmpty)
+              _CategoryPerformanceSection(
+                categories: _categories,
+                animation: _animationController,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Tab 4: Customers - Top customers and customer statistics
+  Widget _buildCustomersTab() {
+    if (_topCustomers.isEmpty && _customerStats == null) {
+      return _buildEmptyState(
+        icon: Icons.people_outline,
+        title: 'No Customer Data',
+        message:
+            'No customer information is available for the selected date range.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Customers
+            if (_topCustomers.isNotEmpty)
+              _TopCustomersSection(
+                customers: _topCustomers,
+                animation: _animationController,
+              ),
+            const SizedBox(height: 24),
+
+            // Customer Statistics
+            if (_customerStats != null)
+              _CustomerStatisticsCard(
+                stats: _customerStats!,
+                animation: _animationController,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Tab 5: Reviews - Review statistics
+  Widget _buildReviewsTab() {
+    if (_reviewStats == null || _reviewStats!.totalReviews == 0) {
+      return _buildEmptyState(
+        icon: Icons.star_outline,
+        title: 'No Review Data',
+        message: 'No customer reviews are available yet.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Review Statistics
+            if (_reviewStats != null)
+              _ReviewStatisticsCard(
+                stats: _reviewStats!,
+                animation: _animationController,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Tab 6: Employees - Employee performance
+  Widget _buildEmployeesTab() {
+    if (_employeePerformance.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.person_outline,
+        title: 'No Employee Data',
+        message:
+            'No employee performance data is available for the selected date range.',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Employee Performance
+            if (_employeePerformance.isNotEmpty)
+              _EmployeePerformanceSection(
+                employees: _employeePerformance,
+                animation: _animationController,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Empty State Widget
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 120, color: Colors.grey.shade300),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh Data'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -143,7 +143,7 @@ class OrderProvider extends BaseProvider<Order> {
     if (dateTo != null) queryParams['DateTo'] = dateTo.toIso8601String();
 
     final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Order/my-orders',
+      '${BaseProvider.baseUrl}/api/Order',
     ).replace(queryParameters: queryParams);
 
     print('[OrderProvider] Fetching my orders from: $uri');
@@ -164,44 +164,82 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   /// Get active orders (not completed/cancelled)
+  /// Active statuses: Pending (0), Processing (1), Shipped (2)
   static Future<List<Order>> getMyActiveOrders() async {
     final headers = await AuthProvider.getAuthHeaders();
 
-    final uri = Uri.parse('${BaseProvider.baseUrl}/api/Order/my-orders/active');
+    final uri = Uri.parse(
+      '${BaseProvider.baseUrl}/api/Order',
+    ).replace(queryParameters: {'PageSize': '100'});
 
-    print('[OrderProvider] Fetching active orders from: $uri');
+    print('[OrderProvider] Fetching all orders from: $uri');
 
     final response = await http.get(uri, headers: headers);
 
+    print('[OrderProvider] Response status: ${response.statusCode}');
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['items'] as List)
+      final allOrders = (data['items'] as List)
           .map((json) => Order.fromJson(json))
           .toList();
+
+      // Filter for active orders: Pending (0), Processing (1), Shipped (2)
+      final activeOrders = allOrders.where((order) {
+        return order.status >= 0 && order.status <= 2;
+      }).toList();
+
+      print(
+        '[OrderProvider] Loaded ${activeOrders.length} active orders (from ${allOrders.length} total)',
+      );
+      return activeOrders;
     } else {
-      throw Exception('Failed to load active orders: ${response.body}');
+      print(
+        '[OrderProvider] Active orders error: ${response.statusCode} - ${response.body}',
+      );
+      throw Exception(
+        'Failed to load active orders (${response.statusCode}): ${response.body}',
+      );
     }
   }
 
   /// Get order history (completed/cancelled)
+  /// History statuses: Delivered (3), Cancelled (4), Returned (5)
   static Future<List<Order>> getMyOrderHistory() async {
     final headers = await AuthProvider.getAuthHeaders();
 
     final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Order/my-orders/history',
-    );
+      '${BaseProvider.baseUrl}/api/Order',
+    ).replace(queryParameters: {'PageSize': '100'});
 
-    print('[OrderProvider] Fetching order history from: $uri');
+    print('[OrderProvider] Fetching all orders from: $uri');
 
     final response = await http.get(uri, headers: headers);
 
+    print('[OrderProvider] Response status: ${response.statusCode}');
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return (data['items'] as List)
+      final allOrders = (data['items'] as List)
           .map((json) => Order.fromJson(json))
           .toList();
+
+      // Filter for history orders: Delivered (3), Cancelled (4), Returned (5)
+      final historyOrders = allOrders.where((order) {
+        return order.status >= 3 && order.status <= 5;
+      }).toList();
+
+      print(
+        '[OrderProvider] Loaded ${historyOrders.length} history orders (from ${allOrders.length} total)',
+      );
+      return historyOrders;
     } else {
-      throw Exception('Failed to load order history: ${response.body}');
+      print(
+        '[OrderProvider] Order history error: ${response.statusCode} - ${response.body}',
+      );
+      throw Exception(
+        'Failed to load order history (${response.statusCode}): ${response.body}',
+      );
     }
   }
 
@@ -209,9 +247,7 @@ class OrderProvider extends BaseProvider<Order> {
   static Future<Order> getMyOrderById(int orderId) async {
     final headers = await AuthProvider.getAuthHeaders();
 
-    final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Order/my-orders/$orderId',
-    );
+    final uri = Uri.parse('${BaseProvider.baseUrl}/api/Order/$orderId');
 
     print('[OrderProvider] Fetching order details from: $uri');
 

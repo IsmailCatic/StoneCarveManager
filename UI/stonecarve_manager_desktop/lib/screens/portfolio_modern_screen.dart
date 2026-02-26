@@ -54,7 +54,11 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
 
   Future<void> _loadPortfolioItems() async {
     try {
-      final items = await _productProvider.fetchPortfolioProducts();
+      final items = await _productProvider.fetchPortfolioProducts(
+        categoryName: _selectedType,
+        materialId: _selectedMaterialId,
+        completionYear: _selectedYear,
+      );
       setState(() => _portfolioItems = items);
     } catch (e) {
       print('Error loading portfolio: $e');
@@ -100,29 +104,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
     }
   }
 
-  List<Product> get _filteredItems {
-    var filtered = _portfolioItems;
-
-    if (_selectedType != null) {
-      filtered = filtered
-          .where((item) => item.categoryName == _selectedType)
-          .toList();
-    }
-
-    if (_selectedMaterialId != null) {
-      filtered = filtered
-          .where((item) => item.materialId == _selectedMaterialId)
-          .toList();
-    }
-
-    if (_selectedYear != null) {
-      filtered = filtered
-          .where((item) => item.completionYear == _selectedYear)
-          .toList();
-    }
-
-    return filtered;
-  }
+  // Removed frontend filtering - now done on backend
 
   List<int> get _availableYears {
     final years = _portfolioItems
@@ -291,6 +273,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
               ],
               onChanged: (value) {
                 setState(() => _selectedType = value);
+                _loadPortfolioItems();
               },
             ),
           ),
@@ -298,7 +281,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
           // Material filter
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 150, maxWidth: 200),
-            child: DropdownButtonFormField<int>(
+            child: DropdownButtonFormField<int?>(
               value: _selectedMaterialId,
               decoration: InputDecoration(
                 labelText: 'Material',
@@ -315,19 +298,24 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
               ),
               isExpanded: true,
               items: [
-                const DropdownMenuItem<int>(
+                const DropdownMenuItem<int?>(
                   value: null,
                   child: Text('All Materials'),
                 ),
-                ..._materials.map((material) {
-                  return DropdownMenuItem<int>(
-                    value: material.id,
-                    child: Text(material.name ?? ''),
-                  );
-                }),
+                ..._materials
+                    .where(
+                      (material) => material.id != null && material.id! > 0,
+                    )
+                    .map((material) {
+                      return DropdownMenuItem<int?>(
+                        value: material.id,
+                        child: Text(material.name ?? ''),
+                      );
+                    }),
               ],
               onChanged: (value) {
                 setState(() => _selectedMaterialId = value);
+                _loadPortfolioItems();
               },
             ),
           ),
@@ -335,7 +323,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
           // Year filter
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 120, maxWidth: 150),
-            child: DropdownButtonFormField<int>(
+            child: DropdownButtonFormField<int?>(
               value: _selectedYear,
               decoration: InputDecoration(
                 labelText: 'Year',
@@ -352,7 +340,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
               ),
               isExpanded: true,
               items: [
-                const DropdownMenuItem<int>(
+                const DropdownMenuItem<int?>(
                   value: null,
                   child: Text('All Years'),
                 ),
@@ -365,6 +353,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
               ],
               onChanged: (value) {
                 setState(() => _selectedYear = value);
+                _loadPortfolioItems();
               },
             ),
           ),
@@ -390,7 +379,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
   }
 
   Widget _buildPortfolioGrid() {
-    if (_filteredItems.isEmpty) {
+    if (_portfolioItems.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 100.0),
         child: Column(
@@ -414,6 +403,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
                   _selectedMaterialId = null;
                   _selectedYear = null;
                 });
+                _loadPortfolioItems();
               },
               child: const Text('Clear filters to see all projects'),
             ),
@@ -435,7 +425,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
           child: Wrap(
             spacing: 24,
             runSpacing: 24,
-            children: _filteredItems.map((item) {
+            children: _portfolioItems.map((item) {
               return SizedBox(
                 width: itemWidth,
                 height: itemHeight,

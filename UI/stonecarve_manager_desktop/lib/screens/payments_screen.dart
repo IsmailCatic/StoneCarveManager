@@ -44,8 +44,20 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         status: _selectedStatus,
         method: _selectedMethod,
         startDate: _startDate,
-        endDate: _endDate,
-        retrieveAll: true,
+        endDate: _endDate != null
+            ? DateTime(
+                _endDate!.year,
+                _endDate!.month,
+                _endDate!.day,
+                23,
+                59,
+                59,
+              )
+            : null,
+      );
+
+      print(
+        '[PaymentsScreen] Loading payments with filters: status=$_selectedStatus, method=$_selectedMethod, dates=$_startDate to $_endDate',
       );
 
       final result = await _paymentProvider.getPayments(search);

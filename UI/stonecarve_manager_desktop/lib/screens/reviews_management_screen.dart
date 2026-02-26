@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/review.dart';
@@ -26,6 +27,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
 
   int? _selectedRatingFilter;
   String _searchQuery = '';
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -46,6 +48,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -57,7 +60,10 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
     try {
       setState(() => _isLoadingPending = true);
 
-      final result = await _reviewProvider.getPendingReviews();
+      final result = await _reviewProvider.getPendingReviews(
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+        rating: _selectedRatingFilter,
+      );
 
       setState(() {
         _pendingReviews = result.items ?? [];
@@ -77,7 +83,10 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
     try {
       setState(() => _isLoadingApproved = true);
 
-      final result = await _reviewProvider.getApprovedReviews();
+      final result = await _reviewProvider.getApprovedReviews(
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+        rating: _selectedRatingFilter,
+      );
 
       setState(() {
         _approvedReviews = result.items ?? [];
@@ -233,49 +242,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
     }
   }
 
-  List<ProductReview> get _filteredPendingReviews {
-    var filtered = _pendingReviews;
-
-    if (_selectedRatingFilter != null) {
-      filtered = filtered
-          .where((r) => r.rating == _selectedRatingFilter)
-          .toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((r) {
-        final query = _searchQuery.toLowerCase();
-        return r.userName?.toLowerCase().contains(query) == true ||
-            r.comment.toLowerCase().contains(query) ||
-            r.productName?.toLowerCase().contains(query) == true ||
-            r.orderNumber?.toLowerCase().contains(query) == true;
-      }).toList();
-    }
-
-    return filtered;
-  }
-
-  List<ProductReview> get _filteredApprovedReviews {
-    var filtered = _approvedReviews;
-
-    if (_selectedRatingFilter != null) {
-      filtered = filtered
-          .where((r) => r.rating == _selectedRatingFilter)
-          .toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((r) {
-        final query = _searchQuery.toLowerCase();
-        return r.userName?.toLowerCase().contains(query) == true ||
-            r.comment.toLowerCase().contains(query) ||
-            r.productName?.toLowerCase().contains(query) == true ||
-            r.orderNumber?.toLowerCase().contains(query) == true;
-      }).toList();
-    }
-
-    return filtered;
-  }
+  // Filtering now done on backend
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +308,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                     Expanded(
                       child: TextField(
                         decoration: InputDecoration(
-                          hintText: 'Search by customer, order, or comment...',
+                          hintText: 'Search by customer, order, or product...',
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -353,6 +320,12 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                         ),
                         onChanged: (value) {
                           setState(() => _searchQuery = value);
+                          // Debounce search
+                          _searchDebounce?.cancel();
+                          _searchDebounce = Timer(
+                            const Duration(milliseconds: 500),
+                            () => _loadData(),
+                          );
                         },
                       ),
                     ),
@@ -397,6 +370,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                         ],
                         onChanged: (value) {
                           setState(() => _selectedRatingFilter = value);
+                          _loadData();
                         },
                       ),
                     ),
@@ -426,7 +400,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                     children: [
                       const Icon(Icons.pending_actions),
                       const SizedBox(width: 8),
-                      Text('Pending (${_filteredPendingReviews.length})'),
+                      Text('Pending (${_pendingReviews.length})'),
                     ],
                   ),
                 ),
@@ -436,7 +410,7 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                     children: [
                       const Icon(Icons.check_circle),
                       const SizedBox(width: 8),
-                      Text('Approved (${_filteredApprovedReviews.length})'),
+                      Text('Approved (${_approvedReviews.length})'),
                     ],
                   ),
                 ),
@@ -449,14 +423,14 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
               controller: _tabController,
               children: [
                 _buildReviewsList(
-                  reviews: _filteredPendingReviews,
+                  reviews: _pendingReviews,
                   isLoading: _isLoadingPending,
                   isPending: true,
                   emptyMessage: 'No pending reviews',
                   emptyIcon: Icons.pending_actions,
                 ),
                 _buildReviewsList(
-                  reviews: _filteredApprovedReviews,
+                  reviews: _approvedReviews,
                   isLoading: _isLoadingApproved,
                   isPending: false,
                   emptyMessage: 'No approved reviews yet',

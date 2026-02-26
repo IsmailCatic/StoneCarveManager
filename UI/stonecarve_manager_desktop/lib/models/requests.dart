@@ -74,6 +74,7 @@ class ProductInsertRequest {
       'isInPortfolio': isInPortfolio ?? false,
       'categoryId': categoryId,
       'materialId': materialId,
+      'productState': productState ?? 'draft',
     };
   }
 }

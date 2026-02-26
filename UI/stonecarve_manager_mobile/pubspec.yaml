@@ -49,6 +49,7 @@ dependencies:
   shimmer: ^3.0.0
   share_plus: ^7.2.2
   app_links: ^3.5.0  # Deep linking support (modern replacement for uni_links)
+  flutter_stripe: ^10.1.1  # Stripe payment integration
 
 dev_dependencies:
   flutter_test:

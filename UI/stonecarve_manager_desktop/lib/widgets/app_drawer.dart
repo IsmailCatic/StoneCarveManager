@@ -115,16 +115,6 @@ class _AppDrawerState extends State<AppDrawer> {
           Padding(
             padding: const EdgeInsets.only(left: 32.0),
             child: _DrawerItem(
-              icon: Icons.calendar_view_month,
-              title: 'Monthly View',
-              route: '/orders/monthly',
-              currentRoute: widget.currentRoute,
-              onTap: () => _navigateTo(context, '/orders/monthly'),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 32.0),
-            child: _DrawerItem(
               icon: Icons.design_services,
               title: 'Custom Orders',
               route: '/custom-orders',

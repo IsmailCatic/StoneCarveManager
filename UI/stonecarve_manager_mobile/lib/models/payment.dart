@@ -25,16 +25,10 @@ class ConfirmPaymentRequest {
   final String paymentIntentId;
   final int orderId;
 
-  ConfirmPaymentRequest({
-    required this.paymentIntentId,
-    required this.orderId,
-  });
+  ConfirmPaymentRequest({required this.paymentIntentId, required this.orderId});
 
   Map<String, dynamic> toJson() {
-    return {
-      'paymentIntentId': paymentIntentId,
-      'orderId': orderId,
-    };
+    return {'paymentIntentId': paymentIntentId, 'orderId': orderId};
   }
 }
 
@@ -72,6 +66,7 @@ class Payment {
   final String? paymentIntentId;
   final String? status;
   final String? paymentMethod;
+  final String? failureReason;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -83,6 +78,7 @@ class Payment {
     this.paymentIntentId,
     this.status,
     this.paymentMethod,
+    this.failureReason,
     this.createdAt,
     this.updatedAt,
   });
@@ -96,6 +92,7 @@ class Payment {
       paymentIntentId: json['paymentIntentId'],
       status: json['status'],
       paymentMethod: json['paymentMethod'],
+      failureReason: json['failureReason'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -114,6 +111,7 @@ class Payment {
       'paymentIntentId': paymentIntentId,
       'status': status,
       'paymentMethod': paymentMethod,
+      'failureReason': failureReason,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };

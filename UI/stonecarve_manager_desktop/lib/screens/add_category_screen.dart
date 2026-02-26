@@ -216,7 +216,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                                 print('  - id: ${c.id}, name: ${c.name}');
                               }
 
-                              return DropdownButtonFormField<int>(
+                              return DropdownButtonFormField<int?>(
                                 value: _parentCategoryId,
                                 decoration: InputDecoration(
                                   labelText: "Parent Category (Optional)",
@@ -226,14 +226,19 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                                       : 'No parent selected (top-level category)',
                                 ),
                                 items: [
-                                  DropdownMenuItem<int>(
+                                  const DropdownMenuItem<int?>(
                                     value: null,
                                     child: Text("None (Top Level)"),
                                   ),
                                   ..._allCategories
-                                      .where((c) => c.id != widget.category?.id)
+                                      .where(
+                                        (c) =>
+                                            c.id != null &&
+                                            c.id! > 0 &&
+                                            c.id != widget.category?.id,
+                                      )
                                       .map(
-                                        (c) => DropdownMenuItem(
+                                        (c) => DropdownMenuItem<int?>(
                                           value: c.id,
                                           child: Text(c.name ?? ""),
                                         ),

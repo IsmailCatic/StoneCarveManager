@@ -118,21 +118,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   ),
                                 ],
                               ),
-                              trailing: PopupMenuButton(
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Edit'),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('Delete'),
-                                  ),
-                                ],
-                                onSelected: (value) {
-                                  // TODO: Implement edit/delete functionality
-                                },
-                              ),
                               children: [
                                 Padding(
                                   padding: const EdgeInsets.all(16.0),

@@ -75,6 +75,8 @@ class ReviewSearchObject {
   int? userId;
   int? minRating;
   int? maxRating;
+  int? rating;
+  String? searchQuery;
   bool retrieveAll;
 
   ReviewSearchObject({
@@ -86,6 +88,8 @@ class ReviewSearchObject {
     this.userId,
     this.minRating,
     this.maxRating,
+    this.rating,
+    this.searchQuery,
     this.retrieveAll = false,
   });
 
@@ -100,6 +104,9 @@ class ReviewSearchObject {
     if (userId != null) params['userId'] = userId.toString();
     if (minRating != null) params['minRating'] = minRating.toString();
     if (maxRating != null) params['maxRating'] = maxRating.toString();
+    if (rating != null) params['rating'] = rating.toString();
+    if (searchQuery != null && searchQuery!.isNotEmpty)
+      params['searchQuery'] = searchQuery!;
     if (retrieveAll) params['retrieveAll'] = 'true';
 
     return params;

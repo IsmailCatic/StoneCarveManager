@@ -17,9 +17,9 @@ namespace StoneCarveManager.Model.Responses
         public int EstimatedDays { get; set; }
         public bool IsInPortfolio { get; set; }
         public int ViewCount { get; set; }
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
         public string? CategoryName { get; set; }
-        public int MaterialId { get; set; }
+        public int? MaterialId { get; set; }
         public string? MaterialName { get; set; }
         public string ProductState { get; set; } = string.Empty;
         public int ReviewCount { get; set; }

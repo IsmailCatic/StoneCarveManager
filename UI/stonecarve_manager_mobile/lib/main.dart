@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:stonecarve_manager_mobile/config/stripe_config.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/favorites_provider.dart';
@@ -18,6 +20,7 @@ import 'package:stonecarve_manager_mobile/screens/mobile/blog_mobile_screen.dart
 import 'package:stonecarve_manager_mobile/screens/mobile/products_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/favorites_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/my_orders_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/my_payments_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/custom_order_form_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/profile_screen.dart';
@@ -26,6 +29,12 @@ import 'package:stonecarve_manager_mobile/screens/reset_password_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Stripe
+  Stripe.publishableKey = StripeConfig.publishableKey;
+  Stripe.merchantIdentifier = StripeConfig.merchantIdentifier;
+  Stripe.urlScheme = StripeConfig.urlScheme;
+  await Stripe.instance.applySettings();
 
   // Load token from storage before running app
   await AuthProvider.loadToken();
@@ -182,6 +191,10 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
               return MaterialPageRoute(builder: (_) => const FavoritesScreen());
             case '/orders':
               return MaterialPageRoute(builder: (_) => const MyOrdersScreen());
+            case '/payments':
+              return MaterialPageRoute(
+                builder: (_) => const MyPaymentsScreen(),
+              );
             case '/portfolio':
               return MaterialPageRoute(
                 builder: (_) => const PortfolioMobileScreen(),

@@ -30,15 +30,13 @@ namespace StoneCarveManager.Model.Validators
             RuleFor(x => x.EstimatedDays)
                 .InclusiveBetween(1, 365).WithMessage("Estimated days must be between 1 and 365.");
 
-            RuleFor(x => x.CategoryId)
-                .GreaterThan(0).WithMessage("Category is required.");
+            // CategoryId is now optional (nullable)
+            When(x => x.CategoryId.HasValue, () =>
+                RuleFor(x => x.CategoryId).GreaterThan(0).WithMessage("Category ID must be greater than 0 when provided."));
 
-            RuleFor(x => x.MaterialId)
-                .GreaterThan(0).WithMessage("Material is required.");
-
-            RuleFor(x => x.ProductState)
-                .NotEmpty().WithMessage("Product state is required.")
-                .MaximumLength(50).WithMessage("Product state cannot exceed 50 characters.");
+            // MaterialId is now optional (nullable)
+            When(x => x.MaterialId.HasValue, () =>
+                RuleFor(x => x.MaterialId).GreaterThan(0).WithMessage("Material ID must be greater than 0 when provided."));
         }
     }
 }

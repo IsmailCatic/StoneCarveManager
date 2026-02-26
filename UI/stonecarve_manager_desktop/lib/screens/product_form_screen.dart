@@ -392,6 +392,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: _categories
+                    .where((cat) => cat.id != null && cat.id! > 0)
                     .map(
                       (cat) => DropdownMenuItem(
                         value: cat.id,
@@ -419,6 +420,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: _materials
+                    .where((mat) => mat.id != null && mat.id! > 0)
                     .map(
                       (mat) => DropdownMenuItem(
                         value: mat.id,

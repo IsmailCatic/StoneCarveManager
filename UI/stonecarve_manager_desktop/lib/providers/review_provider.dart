@@ -26,6 +26,9 @@ class ReviewProvider {
       '$baseUrl/ProductReview',
     ).replace(queryParameters: queryParams);
 
+    print('[ReviewProvider] GET $uri');
+    print('[ReviewProvider] Query params: $queryParams');
+
     final response = await http.get(uri, headers: _createHeaders());
 
     if (response.statusCode == 200) {
@@ -44,14 +47,28 @@ class ReviewProvider {
   }
 
   /// Get pending reviews (awaiting approval)
-  Future<SearchResult<ProductReview>> getPendingReviews() async {
-    final search = ReviewSearchObject(isApproved: false, retrieveAll: true);
+  Future<SearchResult<ProductReview>> getPendingReviews({
+    String? searchQuery,
+    int? rating,
+  }) async {
+    final search = ReviewSearchObject(
+      isApproved: false,
+      searchQuery: searchQuery,
+      rating: rating,
+    );
     return getReviews(search);
   }
 
   /// Get approved reviews
-  Future<SearchResult<ProductReview>> getApprovedReviews() async {
-    final search = ReviewSearchObject(isApproved: true, retrieveAll: true);
+  Future<SearchResult<ProductReview>> getApprovedReviews({
+    String? searchQuery,
+    int? rating,
+  }) async {
+    final search = ReviewSearchObject(
+      isApproved: true,
+      searchQuery: searchQuery,
+      rating: rating,
+    );
     return getReviews(search);
   }
 

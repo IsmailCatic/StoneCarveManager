@@ -274,6 +274,12 @@ namespace StoneCarveManager.Services.Services
             if (search.DateTo.HasValue)
                 query = query.Where(o => o.OrderDate <= search.DateTo.Value);
 
+            // Filter by ProductState (for custom orders filtering)
+            if (!string.IsNullOrWhiteSpace(search.ProductState))
+            {
+                query = query.Where(o => o.OrderItems.Any(oi => oi.Product.ProductState == search.ProductState));
+            }
+
             if (search.IncludeItems)
                 query = query.Include(o => o.OrderItems);
 
@@ -587,28 +593,6 @@ namespace StoneCarveManager.Services.Services
                 // Log error if needed
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Get all custom orders (orders where any product has productState == "custom_order")
-        /// Only for Admin/Employee use
-        /// </summary>
-        public async Task<List<OrderResponse>> GetCustomOrdersAsync(CancellationToken cancellationToken = default)
-        {
-            var orders = await _context.Orders
-                .Include(o => o.User)
-                .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.Product)
-                .Include(o => o.ProgressImages)
-                    .ThenInclude(pi => pi.UploadedByUser)
-                .Include(o => o.StatusHistory)
-                    .ThenInclude(sh => sh.ChangedByUser)
-                .Include(o => o.Review)
-                .Where(o => o.OrderItems.Any(oi => oi.Product.ProductState == "custom_order"))
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync(cancellationToken);
-
-            return orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
         }
 
         private string GenerateOrderNumber()

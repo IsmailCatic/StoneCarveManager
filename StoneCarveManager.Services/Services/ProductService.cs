@@ -109,6 +109,7 @@ namespace StoneCarveManager.Services.Services
             var query = _context.Products
                 .Include(p => p.Images)
                 .Include(p => p.Reviews)
+                .Include(p => p.Category)  // Include Category for CategoryName filtering
                 .AsQueryable();
 
             // Apply filter & paginaciju kao u bazi
@@ -224,6 +225,12 @@ namespace StoneCarveManager.Services.Services
                 query = query.Where(p => p.CategoryId == search.CategoryId.Value);
             }
 
+            // Filter by CategoryName (for portfolio filtering)
+            if (!string.IsNullOrWhiteSpace(search.CategoryName))
+            {
+                query = query.Where(p => p.Category.Name == search.CategoryName);
+            }
+
             // Filter by MaterialId
             if (search.MaterialId.HasValue)
             {
@@ -242,23 +249,67 @@ namespace StoneCarveManager.Services.Services
                 query = query.Where(p => p.ProductState == search.ProductState);
             }
 
+            // Filter by CompletionYear (for portfolio filtering)
+            if (search.CompletionYear.HasValue)
+            {
+                query = query.Where(p => p.CompletionYear == search.CompletionYear.Value);
+            }
+
+            // Filter by Price Range
+            if (search.MinPrice.HasValue)
+            {
+                query = query.Where(p => p.Price >= search.MinPrice.Value);
+            }
+
+            if (search.MaxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= search.MaxPrice.Value);
+            }
+
+            // Apply Sorting
+            if (!string.IsNullOrWhiteSpace(search.SortBy))
+            {
+                query = search.SortBy.ToLower() switch
+                {
+                    "price_asc" => query.OrderBy(p => p.Price),
+                    "price_desc" => query.OrderByDescending(p => p.Price),
+                    "name_asc" => query.OrderBy(p => p.Name),
+                    "name_desc" => query.OrderByDescending(p => p.Name),
+                    "newest" => query.OrderByDescending(p => p.CreatedAt),
+                    "oldest" => query.OrderBy(p => p.CreatedAt),
+                    "popular" => query.OrderByDescending(p => p.ViewCount),
+                    _ => query.OrderBy(p => p.Id) // Default sorting
+                };
+            }
+            else
+            {
+                // Default sorting: newest first
+                query = query.OrderByDescending(p => p.CreatedAt);
+            }
+
             return query;
         }
 
         protected override async Task BeforeInsert(Product entity, ProductInsertRequest request)
         {
-            // Validate category exists
-            var categoryExists = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId);
-            if (!categoryExists)
+            // Validate category exists if provided
+            if (request.CategoryId.HasValue)
             {
-                throw new InvalidOperationException($"Category with ID {request.CategoryId} does not exist.");
+                var categoryExists = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId.Value);
+                if (!categoryExists)
+                {
+                    throw new InvalidOperationException($"Category with ID {request.CategoryId} does not exist.");
+                }
             }
 
-            // Validate material exists
-            var materialExists = await _context.Materials.AnyAsync(m => m.Id == request.MaterialId);
-            if (!materialExists)
+            // Validate material exists if provided
+            if (request.MaterialId.HasValue)
             {
-                throw new InvalidOperationException($"Material with ID {request.MaterialId} does not exist.");
+                var materialExists = await _context.Materials.AnyAsync(m => m.Id == request.MaterialId.Value);
+                if (!materialExists)
+                {
+                    throw new InvalidOperationException($"Material with ID {request.MaterialId} does not exist.");
+                }
             }
 
             await base.BeforeInsert(entity, request);

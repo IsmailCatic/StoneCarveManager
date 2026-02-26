@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:stonecarve_manager_flutter/models/category.dart';
 import 'package:stonecarve_manager_flutter/models/material.dart';
 import 'package:stonecarve_manager_flutter/models/product.dart';
+import 'package:stonecarve_manager_flutter/models/requests.dart';
 import 'package:stonecarve_manager_flutter/providers/category_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/stone_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/product_provider.dart';
@@ -28,7 +29,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   int? _categoryId;
   int? _materialId;
-  String? _productState;
 
   List<Category> _categories = [];
   List<StoneMaterial> _materials = [];
@@ -57,9 +57,28 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _estimatedDaysController.text =
             widget.product!.estimatedDays?.toString() ?? '';
         _weightController.text = widget.product!.weight?.toString() ?? '';
-        _categoryId = widget.product!.categoryId;
-        _materialId = widget.product!.materialId;
-        _productState = widget.product!.productState ?? 'draft';
+        // Normalize 0 to null and validate IDs exist in dropdown lists
+        _categoryId =
+            (widget.product!.categoryId == null ||
+                widget.product!.categoryId == 0)
+            ? null
+            : widget.product!.categoryId;
+        // Check if category exists in the list, if not set to null
+        if (_categoryId != null &&
+            !_categories.any((cat) => cat.id == _categoryId)) {
+          _categoryId = null;
+        }
+
+        _materialId =
+            (widget.product!.materialId == null ||
+                widget.product!.materialId == 0)
+            ? null
+            : widget.product!.materialId;
+        // Check if material exists in the list, if not set to null
+        if (_materialId != null &&
+            !_materials.any((mat) => mat.id == _materialId)) {
+          _materialId = null;
+        }
       }
     });
   }
@@ -67,36 +86,40 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_categoryId == null || _materialId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please fill all required fields")),
-      );
-      return;
-    }
-
-    final data = {
-      "name": _nameController.text.trim(),
-      "description": _descriptionController.text.trim(),
-      "dimensions": _dimensionsController.text.trim(),
-      "price": double.tryParse(_priceController.text.trim()),
-      "stockQuantity": int.tryParse(_stockController.text.trim()),
-      "estimatedDays": int.tryParse(_estimatedDaysController.text.trim()),
-      "weight": double.tryParse(_weightController.text.trim()),
-      "categoryId": _categoryId,
-      "materialId": _materialId,
-      "isInPortfolio": true,
-      "productState": _productState ?? "draft",
-    };
-
     try {
       final provider = ProductProvider();
       if (widget.product == null) {
-        await provider.addProduct(Product.fromJson(data));
-      } else {
-        await provider.updateProduct(
-          widget.product!.id!,
-          Product.fromJson(data),
+        // Create new product using ProductInsertRequest
+        final request = ProductInsertRequest(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          dimensions: _dimensionsController.text.trim(),
+          price: double.tryParse(_priceController.text.trim()),
+          stockQuantity: int.tryParse(_stockController.text.trim()),
+          estimatedDays: int.tryParse(_estimatedDaysController.text.trim()),
+          weight: double.tryParse(_weightController.text.trim()),
+          categoryId: _categoryId,
+          materialId: _materialId,
+          isActive: true,
+          isInPortfolio: true,
         );
+        await provider.addProduct(request.toJson());
+      } else {
+        // Update existing product using ProductUpdateRequest
+        final request = ProductUpdateRequest(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          dimensions: _dimensionsController.text.trim(),
+          price: double.tryParse(_priceController.text.trim()),
+          stockQuantity: int.tryParse(_stockController.text.trim()),
+          estimatedDays: int.tryParse(_estimatedDaysController.text.trim()),
+          weight: double.tryParse(_weightController.text.trim()),
+          categoryId: _categoryId,
+          materialId: _materialId,
+          isActive: true,
+          isInPortfolio: true,
+        );
+        await provider.updateProduct(widget.product!.id!, request.toJson());
       }
 
       if (mounted) {
@@ -177,6 +200,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             controller: _dimensionsController,
                             decoration: InputDecoration(
                               labelText: "Dimensions *",
+                              hintText: "e.g., 100x50x20 cm",
                               border: OutlineInputBorder(),
                             ),
                             validator: (v) => v == null || v.trim().isEmpty
@@ -288,67 +312,52 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             },
                           ),
                           const SizedBox(height: 16),
-                          DropdownButtonFormField<int>(
+                          DropdownButtonFormField<int?>(
                             value: _categoryId,
-                            items: _categories
-                                .map(
-                                  (c) => DropdownMenuItem(
-                                    value: c.id,
-                                    child: Text(c.name ?? ""),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) => setState(() => _categoryId = v),
-                            decoration: InputDecoration(
-                              labelText: "Category *",
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (v) =>
-                                v == null ? "This field is required" : null,
-                          ),
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<int>(
-                            value: _materialId,
-                            items: _materials
-                                .map(
-                                  (m) => DropdownMenuItem(
-                                    value: m.id,
-                                    child: Text(m.name ?? ""),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) => setState(() => _materialId = v),
-                            decoration: InputDecoration(
-                              labelText: "Material *",
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (v) =>
-                                v == null ? "This field is required" : null,
-                          ),
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<String>(
-                            value: _productState,
                             items: [
-                              DropdownMenuItem(
-                                value: "draft",
-                                child: Text("Draft"),
+                              const DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('Not assigned'),
                               ),
-                              DropdownMenuItem(
-                                value: "portfolio",
-                                child: Text("Portfolio"),
-                              ),
-                              DropdownMenuItem(
-                                value: "available",
-                                child: Text("Available"),
+                              ...{
+                                for (var c in _categories)
+                                  if (c.id != null && c.id! > 0) c.id: c,
+                              }.values.map(
+                                (c) => DropdownMenuItem<int?>(
+                                  value: c.id,
+                                  child: Text(c.name ?? ""),
+                                ),
                               ),
                             ],
-                            onChanged: (v) => setState(() => _productState = v),
-                            decoration: InputDecoration(
-                              labelText: "Product State *",
+                            onChanged: (v) => setState(() => _categoryId = v),
+                            decoration: const InputDecoration(
+                              labelText: "Category (Optional)",
                               border: OutlineInputBorder(),
                             ),
-                            validator: (v) =>
-                                v == null ? "This field is required" : null,
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<int?>(
+                            value: _materialId,
+                            items: [
+                              const DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('Not assigned'),
+                              ),
+                              ...{
+                                for (var m in _materials)
+                                  if (m.id != null && m.id! > 0) m.id: m,
+                              }.values.map(
+                                (m) => DropdownMenuItem<int?>(
+                                  value: m.id,
+                                  child: Text(m.name ?? ""),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) => setState(() => _materialId = v),
+                            decoration: const InputDecoration(
+                              labelText: "Material (Optional)",
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                           const SizedBox(height: 24),
                           Row(

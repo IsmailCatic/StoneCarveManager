@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/payment_provider.dart';
@@ -59,6 +60,7 @@ class _CheckoutConfirmationScreenState
       print('[Checkout] Order created with ID: ${order.id}');
 
       // 2. Create Payment Intent
+      print('[Checkout] Creating payment intent...');
       final paymentIntent = await PaymentProvider.createPaymentIntent(
         orderId: order.id,
         paymentMethod: 'stripe',
@@ -67,28 +69,74 @@ class _CheckoutConfirmationScreenState
       );
 
       print('[Checkout] Payment intent created: ${paymentIntent.id}');
+      print(
+        '[Checkout] Client secret received: ${paymentIntent.clientSecret?.substring(0, 20)}...',
+      );
 
-      // 3. Confirm Payment (simulating successful payment for now)
-      // In production, you would use clientSecret to collect payment with Stripe SDK
-      if (paymentIntent.id != null) {
-        await PaymentProvider.confirmPayment(
-          paymentIntentId: paymentIntent.id!,
-          orderId: order.id,
+      if (paymentIntent.clientSecret == null) {
+        throw Exception('Payment intent client secret is missing');
+      }
+
+      // 3. Confirm Payment with Stripe SDK
+      // This is where the actual payment happens client-side
+      print('[Checkout] Confirming payment with Stripe...');
+
+      try {
+        // Stripe SDK will use the card details entered in the CardField
+        // on the previous screen (checkout_payment_screen.dart)
+        final confirmedIntent = await Stripe.instance.confirmPayment(
+          paymentIntentClientSecret: paymentIntent.clientSecret!,
+          data: const PaymentMethodParams.card(
+            paymentMethodData: PaymentMethodData(),
+          ),
         );
 
+        print(
+          '[Checkout] Stripe confirmation successful: ${confirmedIntent.status}',
+        );
+      } on StripeException catch (e) {
+        print('[Checkout] Stripe error: ${e.error.message}');
+
+        // Even if Stripe SDK fails, the backend might auto-confirm in test mode
+        // Let's still try to confirm with backend
+        print(
+          '[Checkout] Attempting backend confirmation despite Stripe error...',
+        );
+      }
+
+      // 4. Confirm with backend to update database
+      // The backend will check Stripe's payment intent status and update accordingly
+      print('[Checkout] Confirming with backend...');
+      final payment = await PaymentProvider.confirmPayment(
+        paymentIntentId: paymentIntent.id!,
+        orderId: order.id,
+      );
+
+      print(
+        '[Checkout] Backend confirmation complete. Payment status: ${payment.status}',
+      );
+
+      if (payment.status == 'succeeded') {
+        // Payment successful!
         cartProvider.clear();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ Purchase completed successfully!'),
-              backgroundColor: Colors.blue,
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
             ),
           );
 
           // Navigate to order success screen or home
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
+      } else {
+        // Payment failed or pending
+        throw Exception(
+          'Payment ${payment.status}: ${payment.failureReason ?? "Unknown error"}',
+        );
       }
     } catch (e) {
       print('[Checkout] Error: $e');

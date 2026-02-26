@@ -639,8 +639,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
       text: product?.estimatedDays?.toString() ?? '',
     );
 
-    int? selectedCategoryId = product?.categoryId;
-    int? selectedMaterialId = product?.materialId;
+    // Normalize 0 to null and validate IDs exist in dropdown lists
+    int? selectedCategoryId =
+        (product?.categoryId == null || product?.categoryId == 0)
+        ? null
+        : product?.categoryId;
+    // Check if category exists in the list, if not set to null
+    if (selectedCategoryId != null &&
+        !_categories.any((cat) => cat.id == selectedCategoryId)) {
+      selectedCategoryId = null;
+    }
+
+    int? selectedMaterialId =
+        (product?.materialId == null || product?.materialId == 0)
+        ? null
+        : product?.materialId;
+    // Check if material exists in the list, if not set to null
+    if (selectedMaterialId != null &&
+        !_materials.any((mat) => mat.id == selectedMaterialId)) {
+      selectedMaterialId = null;
+    }
+
     bool isActive = product?.isActive ?? true;
 
     showDialog(
@@ -704,20 +723,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<int?>(
                       value: selectedCategoryId,
                       decoration: const InputDecoration(
-                        labelText: 'Category *',
+                        labelText: 'Category (Optional)',
                         border: OutlineInputBorder(),
                       ),
-                      items: _categories
-                          .map(
-                            (cat) => DropdownMenuItem(
-                              value: cat.id,
-                              child: Text(cat.name ?? ''),
-                            ),
-                          )
-                          .toList(),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('Not assigned'),
+                        ),
+                        ...{
+                          for (var cat in _categories)
+                            if (cat.id != null && cat.id! > 0) cat.id: cat,
+                        }.values.map(
+                          (cat) => DropdownMenuItem<int?>(
+                            value: cat.id,
+                            child: Text(cat.name ?? ''),
+                          ),
+                        ),
+                      ],
                       onChanged: (value) {
                         setState(() {
                           selectedCategoryId = value;
@@ -725,20 +751,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<int?>(
                       value: selectedMaterialId,
                       decoration: const InputDecoration(
-                        labelText: 'Material *',
+                        labelText: 'Material (Optional)',
                         border: OutlineInputBorder(),
                       ),
-                      items: _materials
-                          .map(
-                            (mat) => DropdownMenuItem(
-                              value: mat.id,
-                              child: Text(mat.name ?? ''),
-                            ),
-                          )
-                          .toList(),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('Not assigned'),
+                        ),
+                        ...{
+                          for (var mat in _materials)
+                            if (mat.id != null && mat.id! > 0) mat.id: mat,
+                        }.values.map(
+                          (mat) => DropdownMenuItem<int?>(
+                            value: mat.id,
+                            child: Text(mat.name ?? ''),
+                          ),
+                        ),
+                      ],
                       onChanged: (value) {
                         setState(() {
                           selectedMaterialId = value;
@@ -765,6 +798,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
+                    // Basic field validation
                     if (nameController.text.isEmpty ||
                         priceController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(

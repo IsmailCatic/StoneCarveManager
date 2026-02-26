@@ -32,11 +32,12 @@ namespace StoneCarveManager.Services.Database.Entities
         public int ViewCount { get; set; } = 0;
 
         // Category relationship
-        public int CategoryId { get; set; }
-        public Category Category { get; set; } = null!;
+        public int? CategoryId { get; set; }
+        public Category? Category { get; set; }
+        
         // Material relationship
-        public int MaterialId { get; set; }
-        public Material Material { get; set; } = null!;
+        public int? MaterialId { get; set; }
+        public Material? Material { get; set; }
 
         // Navigation property for assets (images)
         public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();

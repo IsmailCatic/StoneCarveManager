@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/user.dart';
@@ -15,16 +16,22 @@ class UsersScreen extends StatefulWidget {
 class _UsersScreenState extends State<UsersScreen> {
   final UserProvider _userProvider = UserProvider();
   List<User> _users = [];
-  List<User> _filteredUsers = [];
   bool _isLoading = true;
   String _searchQuery = '';
   List<String> _availableRoles = [];
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
     _loadRoles();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadRoles() async {
@@ -43,23 +50,40 @@ class _UsersScreenState extends State<UsersScreen> {
     }
   }
 
-  Future<void> _loadUsers() async {
+  Future<void> _loadUsers([String? searchQuery]) async {
     setState(() {
       _isLoading = true;
     });
     try {
-      final result = await _userProvider.get();
+      final filter = searchQuery != null && searchQuery.isNotEmpty
+          ? {'searchQuery': searchQuery}
+          : null;
+      final result = await _userProvider.get(filter: filter);
       setState(() {
         _users = result.items ?? [];
-        _filteredUsers = _users;
       });
     } catch (e) {
       // handle error
+      print('Error loading users: $e');
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
+  }
+
+  void _onSearchChanged(String value) {
+    // Cancel the previous timer
+    _searchDebounce?.cancel();
+
+    setState(() {
+      _searchQuery = value;
+    });
+
+    // Start a new timer
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      _loadUsers(value.isEmpty ? null : value);
+    });
   }
 
   @override
@@ -93,22 +117,11 @@ class _UsersScreenState extends State<UsersScreen> {
             TextField(
               decoration: const InputDecoration(
                 labelText: 'Search users...',
+                hintText: 'Search by email, name, or role...',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                  _filteredUsers = _users.where((user) {
-                    final query = value.toLowerCase();
-                    return user.displayName.toLowerCase().contains(query) ||
-                        (user.email?.toLowerCase().contains(query) ?? false) ||
-                        user.roles.any(
-                          (role) => role.toLowerCase().contains(query),
-                        );
-                  }).toList();
-                });
-              },
+              onChanged: _onSearchChanged,
             ),
             const SizedBox(height: 16),
             // User Statistics
@@ -140,12 +153,12 @@ class _UsersScreenState extends State<UsersScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _filteredUsers.isEmpty
+                  : _users.isEmpty
                   ? const Center(child: Text('No users found'))
                   : ListView.builder(
-                      itemCount: _filteredUsers.length,
+                      itemCount: _users.length,
                       itemBuilder: (context, index) {
-                        final user = _filteredUsers[index];
+                        final user = _users[index];
                         return Card(
                           elevation: 2,
                           margin: const EdgeInsets.only(bottom: 8),

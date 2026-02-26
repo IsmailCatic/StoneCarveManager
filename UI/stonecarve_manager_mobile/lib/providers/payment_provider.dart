@@ -66,7 +66,9 @@ class PaymentProvider {
         body: jsonEncode(request.toJson()),
       );
 
-      print('[PaymentProvider] Confirm response status: ${response.statusCode}');
+      print(
+        '[PaymentProvider] Confirm response status: ${response.statusCode}',
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -122,6 +124,63 @@ class PaymentProvider {
       }
     } catch (e) {
       print('[PaymentProvider] Error getting payment by ID: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all payments for the current user (with optional filters)
+  static Future<List<Payment>> getMyPayments({
+    String? status,
+    int? page,
+    int? pageSize,
+  }) async {
+    try {
+      print('[PaymentProvider] Getting my payments (status: $status)');
+
+      final headers = await AuthProvider.getAuthHeaders();
+
+      // Build query parameters
+      final queryParams = <String, String>{};
+      if (status != null && status.isNotEmpty) {
+        queryParams['Status'] = status;
+      }
+      if (page != null) {
+        queryParams['Page'] = page.toString();
+      }
+      if (pageSize != null) {
+        queryParams['PageSize'] = pageSize.toString();
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl/api/Payment',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      final response = await http.get(uri, headers: headers);
+
+      print('[PaymentProvider] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Backend returns PagedResult<PaymentResponse>
+        // Check if it has 'items' array or is directly an array
+        final List<dynamic> paymentsJson;
+        if (data is Map && data.containsKey('items')) {
+          paymentsJson = data['items'] as List<dynamic>;
+        } else if (data is List) {
+          paymentsJson = data;
+        } else {
+          throw Exception('Unexpected response format');
+        }
+
+        return paymentsJson
+            .map((json) => Payment.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Failed to get payments: ${response.body}');
+      }
+    } catch (e) {
+      print('[PaymentProvider] Error getting my payments: $e');
       rethrow;
     }
   }

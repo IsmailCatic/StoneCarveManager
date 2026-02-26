@@ -280,124 +280,238 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _post!.title,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Builder(
-                      builder: (context) {
-                        final imageUrl = _getBestImageUrl();
-                        if (imageUrl == null) {
-                          return Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.blue.shade300,
-                                  Colors.purple.shade300,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.article_outlined,
-                                    size: 64,
-                                    color: Colors.white,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'No image available',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                        return Image.network(
-                          imageUrl,
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            print(
-                              '❌ [BlogDetailScreen] Error loading image from URL: $imageUrl',
-                            );
-                            print('❌ [BlogDetailScreen] Error: $error');
-                            return Container(
-                              height: 200,
-                              color: Colors.grey[300],
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.broken_image,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text('Failed to load image'),
-                                ],
-                              ),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              height: 200,
-                              color: Colors.grey[200],
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  value:
-                                      loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                      : null,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
+                    // Header with image and title side by side
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (_post!.isPublished)
-                          const Chip(
-                            label: Text('Published'),
-                            backgroundColor: Colors.greenAccent,
+                        // Featured Image - constrained to 35% width
+                        Builder(
+                          builder: (context) {
+                            final imageUrl = _getBestImageUrl();
+                            return Container(
+                              width: 320,
+                              height: 220,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: imageUrl == null
+                                  ? Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.blue.shade300,
+                                            Colors.purple.shade300,
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: const Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.article_outlined,
+                                              size: 48,
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'No image',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        imageUrl,
+                                        width: 320,
+                                        height: 220,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[300],
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: const Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.broken_image,
+                                                      size: 40,
+                                                      color: Colors.grey,
+                                                    ),
+                                                    SizedBox(height: 8),
+                                                    Text('Failed to load'),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) {
+                                            return child;
+                                          }
+                                          return Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[200],
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Center(
+                                              child: CircularProgressIndicator(
+                                                value:
+                                                    loadingProgress
+                                                            .expectedTotalBytes !=
+                                                        null
+                                                    ? loadingProgress
+                                                              .cumulativeBytesLoaded /
+                                                          loadingProgress
+                                                              .expectedTotalBytes!
+                                                    : null,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 24),
+                        // Title and metadata - takes remaining space
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _post!.title,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  if (_post!.isPublished)
+                                    Chip(
+                                      label: const Text('Published'),
+                                      backgroundColor: Colors.green.shade100,
+                                      avatar: const Icon(
+                                        Icons.check_circle,
+                                        size: 18,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  if (!_post!.isPublished)
+                                    Chip(
+                                      label: const Text('Draft'),
+                                      backgroundColor: Colors.grey.shade200,
+                                      avatar: const Icon(
+                                        Icons.unpublished,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  if (_post!.isTutorial)
+                                    Chip(
+                                      label: const Text('Tutorial'),
+                                      backgroundColor: Colors.blue.shade100,
+                                      avatar: const Icon(
+                                        Icons.school,
+                                        size: 18,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 18,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${_post!.viewCount} views',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  if (_post!.publishedAt != null) ...[
+                                    Icon(
+                                      Icons.calendar_today,
+                                      size: 18,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${_post!.publishedAt!.day}/${_post!.publishedAt!.month}/${_post!.publishedAt!.year}',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (_post!.summary != null &&
+                                  _post!.summary!.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  _post!.summary!,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.grey.shade700,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        if (_post!.isTutorial)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8.0),
-                            child: Chip(
-                              label: Text('Tutorial'),
-                              backgroundColor: Colors.blueAccent,
-                            ),
-                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _post!.summary ?? '',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(_post!.content),
                     const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    // Content section
+                    Text(
+                      'Content',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _post!.content,
+                      style: const TextStyle(fontSize: 15, height: 1.6),
+                    ),
+                    const SizedBox(height: 24),
+                    // Images Gallery section
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Images:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        Text(
+                          'Image Gallery',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         IconButton(
                           icon: _uploading

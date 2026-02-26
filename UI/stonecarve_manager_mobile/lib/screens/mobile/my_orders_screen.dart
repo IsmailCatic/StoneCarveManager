@@ -276,8 +276,42 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
     );
   }
 
+  bool _isCustomOrder(Order order) {
+    // Custom orders typically have:
+    // 1. No productId in their order items (custom design)
+    // 2. Or have an attachment URL (design files)
+    // 3. Product name starts with "Custom" (auto-generated custom products)
+
+    final hasNoProductId =
+        order.orderItems.isEmpty ||
+        order.orderItems.every((item) => item.productId == null);
+    final hasAttachment =
+        order.attachmentUrl != null && order.attachmentUrl!.isNotEmpty;
+    final hasCustomProductName = order.orderItems.any(
+      (item) =>
+          item.productName != null &&
+          item.productName!.toLowerCase().startsWith('custom'),
+    );
+
+    final isCustom = hasNoProductId || hasAttachment || hasCustomProductName;
+
+    // Debug logging for ALL orders
+    print(
+      '[MyOrders] Order #${order.orderNumber}: '
+      'hasNoProductId=$hasNoProductId, hasAttachment=$hasAttachment, '
+      'hasCustomProductName=$hasCustomProductName, '
+      'itemsCount=${order.orderItems.length}, '
+      'firstItemProductId=${order.orderItems.isNotEmpty ? order.orderItems.first.productId : "N/A"}, '
+      'firstItemProductName=${order.orderItems.isNotEmpty ? order.orderItems.first.productName : "N/A"}, '
+      'isCustom=$isCustom',
+    );
+
+    return isCustom;
+  }
+
   Widget _buildOrderCard(Order order) {
     final statusInfo = _getStatusInfo(order.status);
+    final isCustomOrder = _isCustomOrder(order);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -319,12 +353,55 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'Order #${order.orderNumber}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'Order #${order.orderNumber}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isCustomOrder) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade100,
+                                  border: Border.all(
+                                    color: Colors.amber.shade700,
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_awesome,
+                                      size: 11,
+                                      color: Colors.amber.shade700,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Custom Order',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.amber.shade900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

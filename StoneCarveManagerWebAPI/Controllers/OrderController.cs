@@ -116,9 +116,35 @@ namespace StoneCarveManagerWebAPI.Controllers
 
         [HttpGet("custom-orders")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public async Task<IActionResult> GetCustomOrders([FromQuery] OrderSearchObject search, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetCustomOrders(
+            [FromQuery] int? status = null,
+            [FromQuery] bool? assignedToMe = null,
+            [FromQuery] bool? unassignedOnly = null,
+            [FromQuery] int page = 0,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
         {
-            search.ProductState = "custom_order";
+            var search = new OrderSearchObject
+            {
+                ProductState = "custom_order",
+                Status = status.HasValue ? (StoneCarveManager.Model.Requests.OrderStatus?)status.Value : null,
+                Page = page,
+                PageSize = pageSize
+            };
+
+            // Filter: assigned to me
+            if (assignedToMe == true)
+            {
+                var currentUserId = _currentUserService.GetUserId();
+                search.AssignedEmployeeId = currentUserId;
+            }
+
+            // Filter: unassigned only
+            if (unassignedOnly == true)
+            {
+                search.AssignedEmployeeId = -1; // Special value to indicate "unassigned"
+            }
+
             var result = await _orderService.GetAsync(search);
             return Ok(result);
         }
@@ -161,6 +187,47 @@ namespace StoneCarveManagerWebAPI.Controllers
                 return NotFound(new { message = "Progress image not found" });
 
             return NoContent();
+        }
+
+        /// <summary>
+        /// Assign employee to order
+        /// Admin only
+        /// </summary>
+        [HttpPatch("{id}/assign-employee")]
+        [Authorize(Roles = Roles.Admin)]
+        public async Task<IActionResult> AssignEmployee(
+            int id, 
+            [FromBody] AssignEmployeeRequest request, 
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var order = await _orderService.AssignEmployeeToOrderAsync(id, request.EmployeeId, cancellationToken);
+                
+                if (order == null)
+                    return NotFound(new { message = "Order not found" });
+
+                return Ok(order);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get orders assigned to currently logged-in employee
+        /// </summary>
+        [HttpGet("my-orders")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        public async Task<IActionResult> GetMyOrders(
+            [FromQuery] int? status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _orderService.GetMyOrdersAsync(status, page, pageSize, cancellationToken);
+            return Ok(result);
         }
     }
 }

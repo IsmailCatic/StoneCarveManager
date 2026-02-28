@@ -19,7 +19,7 @@ namespace StoneCarveManager.Model.Requests
             public string? ProfileImageUrl { get; set; }
             public bool IsActive { get; set; } = true;
             public bool IsBlocked { get; set; } = false;
-            public string Role { get; set; }
+            public List<string> Roles { get; set; } = new List<string>();
         }
 
         public class UserUpdateRequest
@@ -31,8 +31,7 @@ namespace StoneCarveManager.Model.Requests
             public string? ProfileImageUrl { get; set; }
             public bool? IsActive { get; set; }
             public bool? IsBlocked { get; set; }
-            public string Role { get; set; }
-
+            public List<string>? Roles { get; set; }
         }
 
         public class ChangePasswordRequest

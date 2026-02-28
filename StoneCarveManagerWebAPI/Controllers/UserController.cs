@@ -36,6 +36,14 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpGet("employees")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        public async Task<ActionResult<List<UserDTO>>> GetEmployees(CancellationToken cancellationToken)
+        {
+            var employees = await _userService.GetEmployeesAsync(cancellationToken);
+            return Ok(employees);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDTO>> GetByIdAsync(int id, CancellationToken cancellationToken)
         {

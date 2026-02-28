@@ -20,10 +20,8 @@ namespace StoneCarveManager.Model.Validators
             When(x => x.Email != null, () =>
                 RuleFor(x => x.Email).EmailAddress().WithMessage("Invalid email format."));
 
-            //When(x => x.DateOfBirth != null, () =>
-            //    RuleFor(x => x.DateOfBirth.Value).LessThan(DateOnly.FromDateTime(DateTime.Today)));
-
+            When(x => x.Roles != null, () =>
+                RuleFor(x => x.Roles).Must(roles => roles.Any()).WithMessage("If roles are provided, at least one role must be specified."));
         }
-
     }
 }

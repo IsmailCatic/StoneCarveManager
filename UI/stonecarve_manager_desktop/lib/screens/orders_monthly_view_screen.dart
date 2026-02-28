@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
+import 'package:stonecarve_manager_flutter/models/payment.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/payment_provider.dart';
 import 'order_details_screen.dart' show OrderDetailsScreen;
 
 class OrdersMonthlyViewScreen extends StatefulWidget {
@@ -15,7 +17,9 @@ class OrdersMonthlyViewScreen extends StatefulWidget {
 
 class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
   final OrderProvider _orderProvider = OrderProvider();
+  final PaymentProvider _paymentProvider = PaymentProvider();
   List<Order> _orders = [];
+  List<Payment> _payments = [];
   bool _isLoading = true;
   int _selectedYear = DateTime.now().year;
   Map<int, List<Order>> _ordersByMonth = {};
@@ -33,9 +37,17 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
         _isLoading = true;
       });
 
-      final result = await _orderProvider.get();
+      // Load both orders and payments
+      final orderResult = await _orderProvider.get();
+      final paymentSearch = PaymentSearchObject(
+        retrieveAll: true,
+        status: 'succeeded', // Only count succeeded payments for revenue
+      );
+      final paymentResult = await _paymentProvider.getPayments(paymentSearch);
+
       setState(() {
-        _orders = result.items ?? [];
+        _orders = orderResult.items ?? [];
+        _payments = paymentResult.items ?? [];
         _organizeOrdersByMonth();
         _isLoading = false;
       });
@@ -61,15 +73,42 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
       _monthlyRevenue[i] = 0.0;
     }
 
-    // Filter and organize orders by selected year
+    // Organize orders by selected year
     for (var order in _orders) {
       if (order.orderDate.year == _selectedYear) {
         int month = order.orderDate.month;
         _ordersByMonth[month]!.add(order);
-        _monthlyRevenue[month] =
-            (_monthlyRevenue[month] ?? 0) + order.totalAmount;
       }
     }
+
+    // Calculate revenue from succeeded payments only (better approach)
+    for (var payment in _payments) {
+      // Use completedAt date if available, otherwise createdAt
+      final paymentDate = payment.completedAt ?? payment.createdAt;
+      if (paymentDate.year == _selectedYear && payment.status == 'succeeded') {
+        int month = paymentDate.month;
+        _monthlyRevenue[month] = (_monthlyRevenue[month] ?? 0) + payment.amount;
+      }
+    }
+  }
+
+  double _calculateAveragePerMonth() {
+    // Count only months with actual revenue (not zero)
+    final monthsWithRevenue = _monthlyRevenue.values
+        .where((rev) => rev > 0)
+        .length;
+
+    // If no months have revenue, return 0
+    if (monthsWithRevenue == 0) return 0.0;
+
+    // Calculate total revenue
+    final totalRevenue = _monthlyRevenue.values.fold(
+      0.0,
+      (sum, value) => sum + value,
+    );
+
+    // Divide by months with actual revenue, not by 12
+    return totalRevenue / monthsWithRevenue;
   }
 
   Color _getStatusColor(int status) {
@@ -185,7 +224,7 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
                           ),
                           _buildStatCard(
                             'Avg per Month',
-                            '\$${(_monthlyRevenue.values.fold(0.0, (sum, value) => sum + value) / 12).toStringAsFixed(2)}',
+                            '\$${_calculateAveragePerMonth().toStringAsFixed(2)}',
                             Icons.trending_up,
                             Colors.orange,
                           ),
@@ -365,13 +404,15 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       elevation: 1,
       child: InkWell(
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => OrderDetailsScreen(order: order),
             ),
           );
+          // Refresh orders list when returning from details screen
+          _loadOrders();
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(

@@ -43,6 +43,7 @@ namespace StoneCarveManager.Services.Services
             var query = _context.Users
                 .AsNoTracking()
                 .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
                 .AsQueryable();
 
             // Apply filters
@@ -118,7 +119,7 @@ namespace StoneCarveManager.Services.Services
             if (!string.IsNullOrWhiteSpace(search.RoleName))
             {
                 query = query.Where(u => u.UserRoles.Any(ur => 
-                    ur.Role.Name.ToLower() == search.RoleName.ToLower()));
+                    ur.Role != null && ur.Role.Name.ToLower() == search.RoleName.ToLower()));
             }
 
             return query;
@@ -126,14 +127,12 @@ namespace StoneCarveManager.Services.Services
 
         public async Task<UserDTO> AddAsync(UserInsertRequest insertRequest, CancellationToken cancellationToken)
         {
-            // Check if a user with the given email already exists
             var existingUser = await _userManager.FindByEmailAsync(insertRequest.Email);
             if (existingUser != null)
             {
                 throw new Exception("User with this email already exists");
             }
 
-            // Create a new user entity
             var newUser = new User
             {
                 FirstName = insertRequest.FirstName,
@@ -145,37 +144,47 @@ namespace StoneCarveManager.Services.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            // Add the user to the database with the specified password
             var result = await _userManager.CreateAsync(newUser, insertRequest.Password);
             if (!result.Succeeded)
             {
                 throw new Exception($"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
 
-            var role = await _roleManager.FindByNameAsync(insertRequest.Role);
-            if (role == null) throw new Exception($"Role '{insertRequest.Role}' does not exist");
-
-            var userAddedToRole = await _userManager.AddToRoleAsync(newUser, role.Name);
-            if (!userAddedToRole.Succeeded)
+            // Dodaj sve role koje su poslate
+            if (insertRequest.Roles != null && insertRequest.Roles.Any())
             {
-                throw new Exception($"Failed to add user to role: {string.Join(", ", userAddedToRole.Errors.Select(e => e.Description))}");
-            }
-
-            // ✅ POŠALJI EMAIL PORUKU PREKO RabbitMQ (samo za Admin i Employee)
-            int roleId = role.Name == Roles.Admin ? 1 : (role.Name == Roles.Employee ? 2 : 3);
-            if (roleId != 3) // Ako nije obični korisnik, pošalji email sa lozinkom
-            {
-                SendToRabbitMQ(new
+                foreach (var roleName in insertRequest.Roles)
                 {
-                    Name = $"{newUser.FirstName} {newUser.LastName}",
-                    Email = newUser.Email,
-                    Password = insertRequest.Password, // Šalje se plaintext lozinka u emailu
-                    Role = roleId,
-                    KorisnickoIme = newUser.UserName
-                });
+                    var role = await _roleManager.FindByNameAsync(roleName);
+                    if (role == null)
+                        throw new Exception($"Role '{roleName}' does not exist");
+
+                    var addRoleResult = await _userManager.AddToRoleAsync(newUser, role.Name);
+                    if (!addRoleResult.Succeeded)
+                    {
+                        throw new Exception($"Failed to add user to role '{roleName}': {string.Join(", ", addRoleResult.Errors.Select(e => e.Description))}");
+                    }
+                }
+
+                // Za RabbitMQ email - uzmi prvu rolu (ili najvažniju)
+                var primaryRole = insertRequest.Roles.FirstOrDefault();
+                if (primaryRole != null)
+                {
+                    int roleId = primaryRole == Roles.Admin ? 1 : (primaryRole == Roles.Employee ? 2 : 3);
+                    if (roleId != 3)
+                    {
+                        SendToRabbitMQ(new
+                        {
+                            Name = $"{newUser.FirstName} {newUser.LastName}",
+                            Email = newUser.Email,
+                            Password = insertRequest.Password,
+                            Role = roleId,
+                            KorisnickoIme = newUser.UserName
+                        });
+                    }
+                }
             }
 
-            // Fetch user with details using DbContext
             var userWithDetails = await _context.Users
                 .Include(x => x.UserRoles)
                 .Where(x => x.Id == newUser.Id)
@@ -207,6 +216,8 @@ namespace StoneCarveManager.Services.Services
         {
             var list = await _context.Users
                 .AsNoTracking()
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
                 .Select(u => new UserDTO
                 {
                     Id = u.Id,
@@ -219,7 +230,7 @@ namespace StoneCarveManager.Services.Services
                     IsBlocked = u.IsBlocked,
                     CreatedAt = u.CreatedAt,
                     LastLoginAt = u.LastLoginAt,
-                    Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList()
+                    Roles = u.UserRoles.Where(ur => ur.Role != null).Select(ur => ur.Role.Name).ToList()
                 })
                 .OrderBy(x => x.FirstName)
                 .ToListAsync(cancellationToken);
@@ -309,22 +320,47 @@ namespace StoneCarveManager.Services.Services
             if (!string.IsNullOrWhiteSpace(updateRequest.PhoneNumber))
                 user.PhoneNumber = updateRequest.PhoneNumber;
 
-            if (!string.IsNullOrWhiteSpace(updateRequest.Role))
+            // Ažuriraj role ako su poslate
+            if (updateRequest.Roles != null && updateRequest.Roles.Any())
             {
-                var SelectedRole = await _context.Roles.FirstOrDefaultAsync(x => x.Name.ToLower() == updateRequest.Role.ToLower());
-                if(SelectedRole != null)
+                // Trenutne role korisnika
+                var currentRoleNames = user.UserRoles
+                    .Where(ur => ur.Role != null)
+                    .Select(ur => ur.Role.Name)
+                    .ToList();
+                var newRoleNames = updateRequest.Roles.ToList();
+
+                // Role koje treba dodati (postoje u newRoles ali ne u currentRoles)
+                var rolesToAdd = newRoleNames.Except(currentRoleNames).ToList();
+
+                // Role koje treba ukloniti (postoje u currentRoles ali ne u newRoles)
+                var rolesToRemove = currentRoleNames.Except(newRoleNames).ToList();
+
+                // Dodaj nove role
+                foreach (var roleName in rolesToAdd)
                 {
-                    user.UserRoles.Clear();
-                    user.UserRoles.Add(new UserRole
+                    var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == roleName.ToLower(), cancellationToken);
+                    if (role != null)
                     {
-                        UserId = user.Id,
-                        RoleId = SelectedRole.Id
-                    });
+                        user.UserRoles.Add(new UserRole
+                        {
+                            UserId = user.Id,
+                            RoleId = role.Id,
+                            Role = role
+                        });
+                    }
+                }
+
+                // Ukloni stare role
+                var userRolesToRemove = user.UserRoles
+                    .Where(ur => ur.Role != null && rolesToRemove.Contains(ur.Role.Name))
+                    .ToList();
+
+                foreach (var userRole in userRolesToRemove)
+                {
+                    user.UserRoles.Remove(userRole);
                 }
             }
-
-
-
 
             await _context.SaveChangesAsync(cancellationToken);
 
@@ -373,6 +409,21 @@ namespace StoneCarveManager.Services.Services
                 return null;
 
             return await MapToDTOAsync(user, cancellationToken);
+        }
+
+        // ✅ NOVI: Get employees (Admin + Employee roles)
+        public async Task<List<UserDTO>> GetEmployeesAsync(CancellationToken cancellationToken)
+        {
+            var employees = await _context.Users
+                .AsNoTracking()
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Where(u => u.UserRoles.Any(ur => ur.Role != null && (ur.Role.Name == Roles.Admin || ur.Role.Name == Roles.Employee)))
+                .Where(u => u.IsActive == true && u.IsBlocked == false)
+                .OrderBy(u => u.FirstName)
+                .ToListAsync(cancellationToken);
+
+            return await MapToDTOAsync(employees, cancellationToken);
         }
 
         // ✅ NOVI: Promjena lozinke

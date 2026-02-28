@@ -309,10 +309,10 @@ class _UsersScreenState extends State<UsersScreen> {
     // List of all possible roles
     final List<String> availableRoles = _availableRoles;
 
-    // Use a single role string for creation
-    String selectedRole = (user?.roles != null && user!.roles.isNotEmpty)
-        ? user.roles.first
-        : (_availableRoles.isNotEmpty ? availableRoles.first : 'User');
+    // Use a list of roles for creation/update
+    List<String> selectedRoles = (user?.roles != null && user!.roles.isNotEmpty)
+        ? List<String>.from(user.roles)
+        : [];
     bool isActive = user?.isActive ?? true;
     bool isBlocked = user?.isBlocked ?? false;
 
@@ -387,23 +387,57 @@ class _UsersScreenState extends State<UsersScreen> {
                         ),
                         const SizedBox(height: 8),
 
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: selectedRole,
-                          decoration: const InputDecoration(labelText: 'Role'),
-                          items: _availableRoles
-                              .map(
-                                (role) => DropdownMenuItem<String>(
-                                  value: role,
-                                  child: Text(role),
+                        const SizedBox(height: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Roles *',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _availableRoles.map((role) {
+                                final isSelected = selectedRoles.contains(role);
+                                return FilterChip(
+                                  label: Text(role),
+                                  selected: isSelected,
+                                  onSelected: (bool selected) {
+                                    setState(() {
+                                      if (selected) {
+                                        selectedRoles.add(role);
+                                      } else {
+                                        selectedRoles.remove(role);
+                                      }
+                                    });
+                                  },
+                                  selectedColor: Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.2),
+                                  checkmarkColor: Theme.of(
+                                    context,
+                                  ).primaryColor,
+                                );
+                              }).toList(),
+                            ),
+                            if (selectedRoles.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'Please select at least one role',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedRole = value!;
-                            });
-                          },
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         CheckboxListTile(
@@ -441,6 +475,17 @@ class _UsersScreenState extends State<UsersScreen> {
                       return;
                     }
 
+                    // Validate that at least one role is selected
+                    if (selectedRoles.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please select at least one role'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
                     final newUser = User(
                       id: user?.id,
                       firstName: firstNameController.text,
@@ -452,8 +497,10 @@ class _UsersScreenState extends State<UsersScreen> {
                           : phoneController.text,
                       isActive: isActive,
                       isBlocked: isBlocked,
-                      roles: user?.roles ?? [],
-                      role: selectedRole,
+                      roles: selectedRoles,
+                      role: selectedRoles.isNotEmpty
+                          ? selectedRoles.first
+                          : null,
                     );
 
                     try {

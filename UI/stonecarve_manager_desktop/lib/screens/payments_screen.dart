@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/payment.dart';
 import 'package:stonecarve_manager_flutter/providers/payment_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/order_details_screen.dart';
 
 class PaymentsScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class PaymentsScreen extends StatefulWidget {
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
   final PaymentProvider _paymentProvider = PaymentProvider();
+  final OrderProvider _orderProvider = OrderProvider();
 
   List<Payment> _payments = [];
   bool _isLoading = true;
@@ -193,7 +195,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailRow('Status', _getStatusBadge(payment.status)),
+              _buildDetailRow(
+                'Payment Status',
+                _getStatusBadge(payment.status),
+              ),
+              if (payment.orderStatus != null)
+                _buildDetailRow(
+                  'Order Status',
+                  _getOrderStatusBadge(payment.orderStatus!),
+                ),
               const Divider(),
               _buildDetailRow(
                 'Amount',
@@ -235,13 +245,45 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               child: const Text('Issue Refund'),
             ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              Navigator.pushNamed(
-                context,
-                '/order-details',
-                arguments: payment.orderId,
-              );
+              try {
+                // Show loading indicator
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) =>
+                      const Center(child: CircularProgressIndicator()),
+                );
+
+                // Fetch the order
+                final order = await _orderProvider.getOrderById(
+                  payment.orderId,
+                );
+
+                // Close loading indicator
+                if (mounted) Navigator.pop(context);
+
+                // Navigate to order details
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrderDetailsScreen(order: order),
+                    ),
+                  );
+                }
+              } catch (e) {
+                // Close loading indicator
+                if (mounted) Navigator.pop(context);
+
+                // Show error
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error loading order: $e')),
+                  );
+                }
+              }
             },
             child: const Text('View Order'),
           ),
@@ -597,6 +639,29 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                         _getStatusBadge(payment.status),
                       ],
                     ),
+                    if (payment.orderStatus != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.shopping_bag,
+                            size: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Order: ${_getOrderStatusLabel(payment.orderStatus!)}',
+                            style: TextStyle(
+                              color: _getOrderStatusColor(
+                                payment.orderStatus!,
+                              ).shade700,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       'Order #${payment.orderNumber} • ${payment.customerName ?? "Unknown"}',
@@ -620,21 +685,50 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '\$${payment.amount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                  // Show net amount if refunded
+                  if (payment.isRefunded) ...[
+                    Text(
+                      '\$${payment.amount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
-                  ),
+                    Text(
+                      '\$${payment.netAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    Text(
+                      '-\$${payment.refundAmount!.toStringAsFixed(2)} refunded',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.red.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      '\$${payment.amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     _getMethodLabel(payment.method),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   if (payment.status == 'succeeded' &&
-                      payment.stripePaymentIntentId != null) ...[
+                      payment.stripePaymentIntentId != null &&
+                      !payment.isFullyRefunded) ...[
                     const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: () => _issueRefund(payment),
@@ -646,9 +740,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                           vertical: 4,
                         ),
                       ),
-                      child: const Text(
-                        'Refund',
-                        style: TextStyle(fontSize: 12),
+                      child: Text(
+                        payment.isPartiallyRefunded ? 'Refund More' : 'Refund',
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ),
                   ],
@@ -663,6 +757,18 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   Widget _getStatusBadge(String status) {
     final color = _getStatusColor(status);
+    String label;
+    switch (status.toLowerCase()) {
+      case 'partially_refunded':
+        label = 'Partial Refund';
+        break;
+      case 'succeeded':
+        label = 'Paid';
+        break;
+      default:
+        label = status[0].toUpperCase() + status.substring(1);
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -671,7 +777,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         border: Border.all(color: color.shade300),
       ),
       child: Text(
-        status[0].toUpperCase() + status.substring(1),
+        label,
         style: TextStyle(
           fontSize: 11,
           color: color.shade700,
@@ -691,6 +797,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         return Colors.red;
       case 'cancelled':
         return Colors.grey;
+      case 'partially_refunded':
+        return Colors.orange;
       case 'refunded':
         return Colors.purple;
       default:
@@ -730,5 +838,51 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   String _formatDateTime(DateTime date) {
     return DateFormat('MMM d, y • h:mm a').format(date);
+  }
+
+  Widget _getOrderStatusBadge(String status) {
+    final color = _getOrderStatusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.shade300),
+      ),
+      child: Text(
+        _getOrderStatusLabel(status),
+        style: TextStyle(
+          fontSize: 11,
+          color: color.shade700,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  MaterialColor _getOrderStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'processing':
+        return Colors.blue;
+      case 'shipped':
+        return Colors.purple;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'returned':
+        return Colors.brown;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getOrderStatusLabel(String status) {
+    // Return the status with proper capitalization
+    return status.isNotEmpty
+        ? status[0].toUpperCase() + status.substring(1).toLowerCase()
+        : 'Unknown';
   }
 }

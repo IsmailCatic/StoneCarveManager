@@ -8,6 +8,7 @@ import 'package:stonecarve_manager_flutter/screens/categories_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/blog_post_list_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/orders_monthly_view_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/custom_orders_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/my_orders_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/users_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/analytics_dashboard_screen_comprehensive.dart';
 import 'package:stonecarve_manager_flutter/screens/portfolio_modern_screen.dart';
@@ -53,6 +54,7 @@ class StoneCarveManagerApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/orders': (context) => const OrdersMonthlyViewScreen(),
         '/custom-orders': (context) => const CustomOrdersScreen(),
+        '/my-orders': (context) => const MyOrdersScreen(),
         '/products': (context) => const ProductsScreen(),
         '/services': (context) => const ServicesScreen(),
         '/materials': (context) => const MaterialsScreen(),

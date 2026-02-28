@@ -22,6 +22,17 @@ class OrderProvider extends BaseProvider<Order> {
     return await update(id, order.toJson());
   }
 
+  Future<Order> getOrderById(int id) async {
+    var url = "http://localhost:5021/api/Order/$id";
+    var response = await http.get(Uri.parse(url), headers: createHeaders());
+
+    if (response.statusCode == 200) {
+      return Order.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception("Failed to load order: ${response.body}");
+    }
+  }
+
   Future<List<Order>> getAllOrders() async {
     var result = await get();
     return result.items ?? [];
@@ -283,6 +294,94 @@ class OrderProvider extends BaseProvider<Order> {
       return false;
     } else {
       throw Exception('Failed to delete sketch: ${response.body}');
+    }
+  }
+
+  /// Assign employee to order (Admin only)
+  Future<Order> assignEmployee(int orderId, int? employeeId) async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final response = await http.patch(
+      Uri.parse('http://localhost:5021/api/Order/$orderId/assign-employee'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'employeeId': employeeId}),
+    );
+
+    if (response.statusCode == 200) {
+      return Order.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied - Admin only');
+    } else if (response.statusCode == 404) {
+      throw Exception('Order not found');
+    } else if (response.statusCode == 400) {
+      throw Exception('Invalid employee: ${response.body}');
+    } else {
+      throw Exception('Failed to assign employee: ${response.body}');
+    }
+  }
+
+  /// Get my assigned orders
+  Future<List<Order>> getMyOrders({int? status}) async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    var url = 'http://localhost:5021/api/Order/my-orders?page=1&pageSize=100';
+    if (status != null) {
+      url += '&status=$status';
+    }
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final items = jsonData['items'] as List?;
+      return items?.map((e) => Order.fromJson(e)).toList() ?? [];
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied');
+    } else {
+      throw Exception('Failed to load my orders: ${response.body}');
+    }
+  }
+
+  /// Get custom orders with filters (extended)
+  Future<List<Order>> getCustomOrdersFiltered({
+    int? status,
+    bool? assignedToMe,
+    bool? unassignedOnly,
+  }) async {
+    final token = AuthProvider.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    var url =
+        'http://localhost:5021/api/Order/custom-orders?page=0&pageSize=100';
+    if (status != null) url += '&status=$status';
+    if (assignedToMe == true) url += '&assignedToMe=true';
+    if (unassignedOnly == true) url += '&unassignedOnly=true';
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final items = jsonData['items'] as List?;
+      return items?.map((e) => Order.fromJson(e)).toList() ?? [];
+    } else {
+      throw Exception('Failed to load custom orders: ${response.body}');
     }
   }
 }

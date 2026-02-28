@@ -28,9 +28,9 @@ namespace StoneCarveManager.Model.Validators
                 .NotEmpty().WithMessage("Password is required.")
                 .MinimumLength(6).WithMessage("Password must be at least 6 characters.");
 
-            //RuleFor(x => x.DateOfBirth)
-            //    .LessThan(DateOnly.FromDateTime(DateTime.Today)).WithMessage("Date of birth must be in the past.");
-
+            RuleFor(x => x.Roles)
+                .NotEmpty().WithMessage("At least one role is required.")
+                .Must(roles => roles != null && roles.Any()).WithMessage("At least one role must be specified.");
         }
     }
 }

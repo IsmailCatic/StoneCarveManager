@@ -36,6 +36,18 @@ namespace StoneCarveManager.Services.Services
         /// <summary>
         /// Create a custom order without a predefined product
         /// Automatically creates a custom product and order item
+        /// 
+        /// WORKFLOW:
+        /// 1. Validate category and material existence
+        /// 2. Create a custom product with ProductState = "custom_order"
+        /// 3. Create order and link to custom product
+        /// 4. Optionally save customer reference images
+        /// 
+        /// DESIGN NOTE:
+        /// Custom orders create products in the "custom_order" state, which is a permanent
+        /// state managed by CustomOrderProductState in the state machine. These products
+        /// follow a simplified lifecycle and can only transition to "portfolio" (showcase)
+        /// or "hidden" (privacy/cancellation).
         /// </summary>
         public async Task<OrderResponse> CreateCustomOrderAsync(
             CustomOrderInsertRequest request, 
@@ -54,6 +66,9 @@ namespace StoneCarveManager.Services.Services
             var userId = _currentUserService.GetUserId();
 
             // 3. Create a custom product for this order
+            // NOTE: ProductState is set to "custom_order" which is a permanent state
+            // managed by CustomOrderProductState in the state machine.
+            // This product will NOT enter the regular catalog lifecycle (draft → active).
             var customProduct = new Product
             {
                 Name = $"Custom {category.Name} - {DateTime.UtcNow:yyyyMMdd}",
@@ -64,7 +79,7 @@ namespace StoneCarveManager.Services.Services
                 EstimatedDays = 30, // Default for custom work, can be adjusted by admin later
                 CategoryId = request.CategoryId,
                 MaterialId = request.MaterialId,
-                ProductState = "custom_order",
+                ProductState = "custom_order", // Permanent state for made-to-order products
                 IsActive = true,
                 IsInPortfolio = false, // Not in portfolio yet (can be added after completion)
                 CreatedAt = DateTime.UtcNow
@@ -203,9 +218,23 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.Review)
                 .AsQueryable();
 
+            // Special handling for ProductState filtering
+            if (!string.IsNullOrWhiteSpace(search.ProductState))
+            {
+                // Get order IDs that have items with the specified product state
+                var orderIdsWithState = await _context.OrderItems
+                    .Where(oi => oi.Product.ProductState == search.ProductState)
+                    .Select(oi => oi.OrderId)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Filter query to only those order IDs
+                query = query.Where(o => orderIdsWithState.Contains(o.Id));
+            }
+
             query = ApplyFilter(query, search);
 
-            // ✅ Uvijek računaj total count
+            // Calculate total count
             int? totalCount = await query.CountAsync();
 
             if (!search.RetrieveAll)
@@ -251,6 +280,7 @@ namespace StoneCarveManager.Services.Services
             if (search == null)
                 return query;
 
+            // Apply FTS search
             if (!string.IsNullOrWhiteSpace(search.FTS))
             {
                 query = query.Where(o =>
@@ -259,27 +289,42 @@ namespace StoneCarveManager.Services.Services
                     (o.AdminNotes != null && o.AdminNotes.Contains(search.FTS)));
             }
 
+            // Apply user filter
             if (search.UserId.HasValue)
                 query = query.Where(o => o.UserId == search.UserId.Value);
 
+            // Apply assigned employee filter
             if (search.AssignedEmployeeId.HasValue)
-                query = query.Where(o => o.AssignedEmployeeId == search.AssignedEmployeeId.Value);
+            {
+                if (search.AssignedEmployeeId.Value == -1)
+                {
+                    // Special case: filter unassigned orders
+                    query = query.Where(o => o.AssignedEmployeeId == null);
+                }
+                else
+                {
+                    // Normal case: filter by specific employee
+                    query = query.Where(o => o.AssignedEmployeeId == search.AssignedEmployeeId.Value);
+                }
+            }
 
+            // Apply status filter
             if (search.Status.HasValue)
-                query = query.Where(o => o.Status == (Database.Entities.OrderStatus)search.Status.Value);
+            {
+                var statusEnum = (Database.Entities.OrderStatus)search.Status.Value;
+                query = query.Where(o => o.Status == statusEnum);
+            }
 
+            // Apply date filters
             if (search.DateFrom.HasValue)
                 query = query.Where(o => o.OrderDate >= search.DateFrom.Value);
 
             if (search.DateTo.HasValue)
                 query = query.Where(o => o.OrderDate <= search.DateTo.Value);
 
-            // Filter by ProductState (for custom orders filtering)
-            if (!string.IsNullOrWhiteSpace(search.ProductState))
-            {
-                query = query.Where(o => o.OrderItems.Any(oi => oi.Product.ProductState == search.ProductState));
-            }
+            // Note: ProductState filtering is handled separately in GetAsync() method
 
+            // Include items if requested
             if (search.IncludeItems)
                 query = query.Include(o => o.OrderItems);
 
@@ -341,8 +386,8 @@ namespace StoneCarveManager.Services.Services
 
         protected override async Task BeforeUpdate(Order entity, OrderUpdateRequest request)
         {
-            // Validate assigned employee if provided
-            if (request.AssignedEmployeeId.HasValue)
+            // Validate assigned employee if provided (skip validation for negative IDs like -999 which are system users)
+            if (request.AssignedEmployeeId.HasValue && request.AssignedEmployeeId.Value > 0)
             {
                 var employeeExists = await _context.Users.AnyAsync(u => u.Id == request.AssignedEmployeeId.Value);
                 if (!employeeExists)
@@ -598,6 +643,101 @@ namespace StoneCarveManager.Services.Services
         private string GenerateOrderNumber()
         {
             return $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString().Substring(0, 6).ToUpper()}";
+        }
+
+        /// <summary>
+        /// Assign employee to order (or unassign if employeeId is null)
+        /// Admin only
+        /// </summary>
+        public async Task<OrderResponse?> AssignEmployeeToOrderAsync(
+            int orderId, 
+            int? employeeId, 
+            CancellationToken cancellationToken = default)
+        {
+            var order = await _context.Orders
+                .Include(o => o.AssignedEmployee)
+                .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+
+            if (order == null)
+                return null;
+
+            // If employeeId is provided, validate employee exists and is active
+            if (employeeId.HasValue)
+            {
+                var employee = await _context.Users
+                    .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.Id == employeeId.Value, cancellationToken);
+
+                if (employee == null)
+                    throw new InvalidOperationException("Employee not found");
+
+                if (!employee.IsActive || employee.IsBlocked)
+                    throw new InvalidOperationException("Employee is not active");
+
+                // Check if user has Employee or Admin role
+                var hasEmployeeRole = employee.UserRoles
+                    .Any(ur => ur.Role.Name == "Employee" || ur.Role.Name == "Admin");
+
+                if (!hasEmployeeRole)
+                    throw new InvalidOperationException("User is not an employee");
+            }
+
+            // Assign (or unassign if null)
+            order.AssignedEmployeeId = employeeId;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Return updated order with all navigations
+            return await GetByIdAsync(orderId);
+        }
+
+        /// <summary>
+        /// Get orders assigned to currently logged-in employee
+        /// </summary>
+        public async Task<PagedResult<OrderResponse>> GetMyOrdersAsync(
+            int? status = null, 
+            int page = 1, 
+            int pageSize = 20, 
+            CancellationToken cancellationToken = default)
+        {
+            var currentUserId = _currentUserService.GetUserId();
+
+            var query = _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.StatusHistory)
+                    .ThenInclude(sh => sh.ChangedByUser)
+                .Include(o => o.Review)
+                .Where(o => o.AssignedEmployeeId == currentUserId);
+
+            // Apply status filter if provided
+            if (status.HasValue)
+            {
+                var statusEnum = (Database.Entities.OrderStatus)status.Value;
+                query = query.Where(o => o.Status == statusEnum);
+            }
+
+            // Calculate total count
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            // Apply pagination
+            var orders = await query
+                .OrderByDescending(o => o.OrderDate)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            var items = orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+
+            return new PagedResult<OrderResponse>
+            {
+                Items = items,
+                TotalCount = totalCount
+            };
         }
     }
 }

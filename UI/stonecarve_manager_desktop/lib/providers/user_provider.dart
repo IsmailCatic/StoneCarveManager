@@ -186,4 +186,31 @@ class UserProvider extends BaseProvider<User> {
       throw Exception("Failed to delete profile image: ${response.body}");
     }
   }
+
+  /// Get list of employees (users with Employee or Admin role)
+  Future<List<User>> getEmployees() async {
+    final url = "http://localhost:5021/api/User/employees";
+    final token = AuthProvider.token;
+
+    if (token == null) {
+      throw Exception('Not authenticated');
+    }
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => User.fromJson(json, roles: [])).toList();
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied');
+    } else {
+      throw Exception('Failed to load employees: ${response.body}');
+    }
+  }
 }

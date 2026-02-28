@@ -55,17 +55,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
     try {
       setState(() {
         _isLoading = true;
+        _products = [];
       });
 
-      final result = await _productProvider.get();
+      // Use retrieveAll parameter to get all products at once
+      // Backend now supports retrieveAll=true which bypasses pagination
+      final result = await _productProvider.get(filter: {"retrieveAll": true});
+
+      print(
+        '[ProductsScreen] Loaded all products: ${result.items?.length} items, totalCount: ${result.totalCount}',
+      );
+
       setState(() {
         // Filter out custom_order products - they should not be shown in regular products listing
-        _products = (result.items ?? [])
+        final filteredProducts = (result.items ?? [])
             .where(
               (product) =>
                   product.productState?.toLowerCase() != 'custom_order',
             )
             .toList();
+        _products = filteredProducts;
+        print(
+          '[ProductsScreen] After filter: ${_products.length} products displayed',
+        );
         _isLoading = false;
       });
     } catch (e) {
@@ -398,50 +410,51 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Product image at the top
-                                Stack(
-                                  children: [
-                                    SizedBox(
-                                      height: 140,
-                                      width: double.infinity,
-                                      child:
-                                          displayImageUrl != null &&
-                                              displayImageUrl.isNotEmpty
-                                          ? OptimizedImage(
-                                              imageUrl: displayImageUrl,
-                                              fit: BoxFit.cover,
-                                              height: 140,
-                                              width: double.infinity,
-                                              errorWidget: Container(
-                                                color: Colors.grey[200],
-                                                child: const Icon(
-                                                  Icons.broken_image,
-                                                  size: 48,
-                                                  color: Colors.grey,
+                                // Product image at the top (70% of card height)
+                                Flexible(
+                                  flex: 7,
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        color: Colors.grey[100],
+                                        child:
+                                            displayImageUrl != null &&
+                                                displayImageUrl.isNotEmpty
+                                            ? OptimizedImage(
+                                                imageUrl: displayImageUrl,
+                                                fit: BoxFit.contain,
+                                                width: double.infinity,
+                                                errorWidget: Container(
+                                                  color: Colors.grey[200],
+                                                  child: const Icon(
+                                                    Icons.broken_image,
+                                                    size: 48,
+                                                    color: Colors.grey,
+                                                  ),
                                                 ),
-                                              ),
-                                            )
-                                          : Container(
-                                              color: Colors.grey[100],
-                                              child: Icon(
+                                              )
+                                            : Icon(
                                                 Icons.image_not_supported,
                                                 size: 48,
                                                 color: Colors.grey[400],
                                               ),
-                                            ),
-                                    ),
-                                    // State chip overlay
-                                    Positioned(
-                                      top: 8,
-                                      right: 8,
-                                      child: ProductStateChip(
-                                        state: product.productState,
                                       ),
-                                    ),
-                                  ],
+                                      // State chip overlay
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: ProductStateChip(
+                                          state: product.productState,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                // Product details
-                                Expanded(
+                                // Product details (30% of card height)
+                                Flexible(
+                                  flex: 3,
                                   child: Padding(
                                     padding: const EdgeInsets.all(12.0),
                                     child: Column(

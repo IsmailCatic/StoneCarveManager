@@ -25,6 +25,9 @@ namespace StoneCarveManager.Services.IServices
         Task<UserDTO?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
         
+        // ✅ NOVI: Get employees (Admin + Employee roles)
+        Task<List<UserDTO>> GetEmployeesAsync(CancellationToken cancellationToken);
+        
         /// <summary>
         /// Upload user profile image
         /// Replaces existing image if present

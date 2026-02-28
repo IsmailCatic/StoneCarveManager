@@ -73,9 +73,15 @@ class User {
     "profileImageUrl": profileImageUrl,
     "isActive": isActive,
     "isBlocked": isBlocked,
-    "role": role,
+    "roles": roles,
   };
 
   String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();
   String get displayName => fullName.isNotEmpty ? fullName : 'Unknown User';
+
+  // Role helper methods
+  bool hasRole(String role) => roles.contains(role);
+  bool get isEmployee => hasRole('Employee');
+  bool get isAdmin => hasRole('Admin');
+  bool get isUser => hasRole('User');
 }

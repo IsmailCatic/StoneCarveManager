@@ -122,6 +122,18 @@ class _AppDrawerState extends State<AppDrawer> {
               onTap: () => _navigateTo(context, '/custom-orders'),
             ),
           ),
+          // My Orders - visible only for Employee and Admin
+          if (AuthProvider.isEmployee || AuthProvider.isAdmin)
+            Padding(
+              padding: const EdgeInsets.only(left: 32.0),
+              child: _DrawerItem(
+                icon: Icons.assignment,
+                title: 'My Orders',
+                route: '/my-orders',
+                currentRoute: widget.currentRoute,
+                onTap: () => _navigateTo(context, '/my-orders'),
+              ),
+            ),
           _DrawerItem(
             icon: Icons.inventory,
             title: 'Products',

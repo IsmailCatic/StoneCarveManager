@@ -7,9 +7,6 @@ namespace StoneCarveManager.Model.Validators
     {
         public OrderInsertRequestValidator()
         {
-            When(x => x.AssignedEmployeeId.HasValue, () =>
-                RuleFor(x => x.AssignedEmployeeId).GreaterThan(0).WithMessage("Assigned employee ID must be greater than 0."));
-
             When(x => x.CustomerNotes != null, () =>
                 RuleFor(x => x.CustomerNotes).MaximumLength(2000).WithMessage("Customer notes cannot exceed 2000 characters."));
 

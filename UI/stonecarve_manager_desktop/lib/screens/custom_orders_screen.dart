@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/optimized_image.dart';
 import 'package:stonecarve_manager_flutter/screens/order_details_screen.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,7 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
   List<Order> _customOrders = [];
   bool _isLoading = true;
   String _filterStatus = 'all'; // all, 0 (pending), 1 (processing), etc.
+  String _filterAssignment = 'all'; // all, my-orders, unassigned
 
   @override
   void initState() {
@@ -32,7 +34,17 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
       final statusFilter = _filterStatus == 'all'
           ? null
           : int.tryParse(_filterStatus);
-      final result = await _orderProvider.getCustomOrders(status: statusFilter);
+
+      final bool? assignedToMe = _filterAssignment == 'my-orders' ? true : null;
+      final bool? unassignedOnly = _filterAssignment == 'unassigned'
+          ? true
+          : null;
+
+      final result = await _orderProvider.getCustomOrdersFiltered(
+        status: statusFilter,
+        assignedToMe: assignedToMe,
+        unassignedOnly: unassignedOnly,
+      );
 
       setState(() {
         _customOrders = result;
@@ -201,37 +213,93 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
             const SizedBox(height: 20),
 
             // Filters
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Filter by status: ',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 8),
-                ...[
-                  ('all', 'All'),
-                  ('0', 'Pending'),
-                  ('1', 'Processing'),
-                  ('2', 'Shipped'),
-                  ('3', 'Delivered'),
-                ].map(
-                  (filter) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(filter.$2),
-                      selected: _filterStatus == filter.$1,
-                      onSelected: (selected) {
-                        setState(() => _filterStatus = filter.$1);
-                        _loadCustomOrders();
-                      },
+                // Status filter
+                Row(
+                  children: [
+                    const Text(
+                      'Filter by status: ',
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    ...[
+                      ('all', 'All'),
+                      ('0', 'Pending'),
+                      ('1', 'Processing'),
+                      ('2', 'Shipped'),
+                      ('3', 'Delivered'),
+                      ('4', 'Cancelled'),
+                      ('5', 'Returned'),
+                    ].map(
+                      (filter) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(filter.$2),
+                          selected: _filterStatus == filter.$1,
+                          onSelected: (selected) {
+                            setState(() => _filterStatus = filter.$1);
+                            _loadCustomOrders();
+                          },
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Refresh',
+                      onPressed: _loadCustomOrders,
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh',
-                  onPressed: _loadCustomOrders,
+                const SizedBox(height: 12),
+                // Assignment filter
+                Row(
+                  children: [
+                    const Text(
+                      'Filter by assignment: ',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 8),
+                    ...[
+                          ('all', 'All Orders', null),
+                          (
+                            'my-orders',
+                            'My Orders',
+                            AuthProvider.isEmployee || AuthProvider.isAdmin,
+                          ),
+                          ('unassigned', 'Unassigned', AuthProvider.isAdmin),
+                        ]
+                        .where((filter) => filter.$3 != false)
+                        .map(
+                          (filter) => Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    filter.$1 == 'my-orders'
+                                        ? Icons.person
+                                        : filter.$1 == 'unassigned'
+                                        ? Icons.person_off
+                                        : Icons.group,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(filter.$2),
+                                ],
+                              ),
+                              selected: _filterAssignment == filter.$1,
+                              onSelected: (selected) {
+                                setState(() => _filterAssignment = filter.$1);
+                                _loadCustomOrders();
+                              },
+                            ),
+                          ),
+                        ),
+                  ],
                 ),
               ],
             ),
@@ -641,6 +709,12 @@ class _CustomOrdersScreenState extends State<CustomOrdersScreen> {
         borderColor = Colors.red.shade300;
         textColor = Colors.red.shade700;
         label = 'Cancelled';
+        break;
+      case 5:
+        backgroundColor = Colors.brown.shade50;
+        borderColor = Colors.brown.shade300;
+        textColor = Colors.brown.shade700;
+        label = 'Returned';
         break;
       default:
         backgroundColor = Colors.grey.shade50;

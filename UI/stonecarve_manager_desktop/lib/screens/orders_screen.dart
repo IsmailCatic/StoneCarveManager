@@ -90,14 +90,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           child: InkWell(
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       OrderDetailsScreen(order: order),
                                 ),
                               );
+                              // Refresh orders list when returning from details screen
+                              _loadOrders();
                             },
                             child: ExpansionTile(
                               leading: const CircleAvatar(

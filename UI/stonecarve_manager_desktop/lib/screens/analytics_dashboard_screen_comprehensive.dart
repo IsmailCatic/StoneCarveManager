@@ -614,6 +614,16 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
                 'Total Revenue',
                 '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
               ),
+              if (_dashboardStats!.refundedAmount > 0) ...[
+                _buildPdfStatRow(
+                  'Total Refunds',
+                  '\$${NumberFormat('#,##0.00').format(_dashboardStats!.refundedAmount)}',
+                ),
+                _buildPdfStatRow(
+                  'Net Revenue',
+                  '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
+                ),
+              ],
               _buildPdfStatRow(
                 'Total Orders',
                 _dashboardStats!.totalOrders.toString(),
@@ -1093,8 +1103,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
                     title: 'Total Revenue',
                     value:
                         '\$${NumberFormat('#,##0.00').format(_dashboardStats!.totalRevenue)}',
-                    subtitle:
-                        '${_dashboardStats!.revenueChange >= 0 ? '+' : ''}${_dashboardStats!.revenueChange.toStringAsFixed(1)}%',
                     icon: Icons.attach_money,
                     gradient: LinearGradient(
                       colors: [Colors.green.shade400, Colors.green.shade600],
@@ -1104,8 +1112,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
                   _EnhancedStatCard(
                     title: 'Total Orders',
                     value: _dashboardStats!.totalOrders.toString(),
-                    subtitle:
-                        '${_dashboardStats!.ordersChange >= 0 ? '+' : ''}${_dashboardStats!.ordersChange}',
                     icon: Icons.shopping_cart,
                     gradient: LinearGradient(
                       colors: [Colors.blue.shade400, Colors.blue.shade600],
@@ -1132,6 +1138,22 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen>
                     ),
                     animation: _animationController,
                   ),
+                  if (_dashboardStats!.refundedAmount > 0)
+                    _EnhancedStatCard(
+                      title: 'Total Refunds',
+                      value:
+                          '\$${NumberFormat('#,##0.00').format(_dashboardStats!.refundedAmount)}',
+                      subtitle:
+                          '${(_dashboardStats!.refundedAmount / (_dashboardStats!.totalRevenue + _dashboardStats!.refundedAmount) * 100).toStringAsFixed(1)}% of gross revenue',
+                      icon: Icons.replay,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.orange.shade400,
+                          Colors.orange.shade600,
+                        ],
+                      ),
+                      animation: _animationController,
+                    ),
                 ],
               ),
             const SizedBox(height: 24),
@@ -2925,8 +2947,9 @@ class _EmployeePerformanceSection extends StatelessWidget {
                                       size: 14,
                                       color: Colors.teal.shade600,
                                     ),
+                                    const SizedBox(width: 4),
                                     Text(
-                                      '${employee.completionRate.toStringAsFixed(0)}%',
+                                      'Success rate: ${employee.completionRate.toStringAsFixed(0)}%',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey.shade700,

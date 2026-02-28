@@ -2,7 +2,8 @@ class Payment {
   final int id;
   final double amount;
   final String method; // stripe, cash, bank_transfer
-  final String status; // pending, succeeded, failed, cancelled, refunded
+  final String
+  status; // pending, succeeded, failed, cancelled, refunded, partially_refunded
   final String? transactionId;
   final String? stripePaymentIntentId;
   final String? failureReason;
@@ -10,8 +11,15 @@ class Payment {
   final DateTime? completedAt;
   final int orderId;
   final String? orderNumber;
+  final String?
+  orderStatus; // Order status: Pending, Processing, Shipped, Delivered, Cancelled, Returned
   final String? customerName;
   final String? customerEmail;
+
+  // Refund tracking fields
+  final double? refundAmount;
+  final String? refundReason;
+  final DateTime? refundedAt;
 
   Payment({
     required this.id,
@@ -25,9 +33,26 @@ class Payment {
     this.completedAt,
     required this.orderId,
     this.orderNumber,
+    this.orderStatus,
     this.customerName,
     this.customerEmail,
+    this.refundAmount,
+    this.refundReason,
+    this.refundedAt,
   });
+
+  // Calculated property for net amount after refunds
+  double get netAmount => amount - (refundAmount ?? 0.0);
+
+  // Check if payment has any refund
+  bool get isRefunded => refundAmount != null && refundAmount! > 0;
+
+  // Check if fully refunded
+  bool get isFullyRefunded => refundAmount != null && refundAmount! >= amount;
+
+  // Check if partially refunded
+  bool get isPartiallyRefunded =>
+      refundAmount != null && refundAmount! > 0 && refundAmount! < amount;
 
   factory Payment.fromJson(Map<String, dynamic> json) {
     print(
@@ -49,8 +74,16 @@ class Payment {
           : null,
       orderId: json['orderId'] ?? 0,
       orderNumber: json['orderNumber'],
+      orderStatus: json['orderStatus'],
       customerName: json['customerName'],
       customerEmail: json['customerEmail'],
+      refundAmount: json['refundAmount'] != null
+          ? (json['refundAmount'] as num).toDouble()
+          : null,
+      refundReason: json['refundReason'],
+      refundedAt: json['refundedAt'] != null
+          ? DateTime.parse(json['refundedAt'])
+          : null,
     );
   }
 
@@ -67,8 +100,12 @@ class Payment {
       'completedAt': completedAt?.toIso8601String(),
       'orderId': orderId,
       'orderNumber': orderNumber,
+      'orderStatus': orderStatus,
       'customerName': customerName,
       'customerEmail': customerEmail,
+      'refundAmount': refundAmount,
+      'refundReason': refundReason,
+      'refundedAt': refundedAt?.toIso8601String(),
     };
   }
 }

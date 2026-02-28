@@ -6,8 +6,20 @@ namespace StoneCarveManager.Model.Responses
     public class DashboardStatisticsResponse
     {
         // Revenue
+        /// <summary>
+        /// NET Revenue (Gross Revenue - Total Refunds)
+        /// This is the actual money you earned and kept after refunds.
+        /// </summary>
         public decimal TotalRevenue { get; set; }
-        public decimal RevenueChange { get; set; } // % change from previous period
+        
+        /// <summary>
+        /// Percentage change in NET revenue from previous period
+        /// </summary>
+        public decimal RevenueChange { get; set; }
+        
+        /// <summary>
+        /// Average order value based on NET revenue
+        /// </summary>
         public decimal AverageOrderValue { get; set; }
         
         // Orders
@@ -35,8 +47,16 @@ namespace StoneCarveManager.Model.Responses
         public int PendingReviews { get; set; }
         
         // Payments
+        /// <summary>
+        /// Count of successful payments (includes partially refunded)
+        /// </summary>
         public int SuccessfulPayments { get; set; }
+        
         public int FailedPayments { get; set; }
+        
+        /// <summary>
+        /// Total amount refunded to customers (sum of all RefundAmounts)
+        /// </summary>
         public decimal RefundedAmount { get; set; }
     }
 }

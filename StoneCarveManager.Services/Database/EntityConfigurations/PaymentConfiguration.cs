@@ -21,6 +21,16 @@ namespace StoneCarveManager.Services.Database.EntityConfigurations
                 .IsRequired()
                 .HasColumnType("decimal(18,2)");
 
+            builder.Property(x => x.RefundAmount)
+                .IsRequired(false)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Property(x => x.RefundReason)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.RefundedAt)
+                .IsRequired(false);
+
             builder.Property(x => x.Method)
                 .IsRequired()
                 .HasConversion<string>()
@@ -53,8 +63,9 @@ namespace StoneCarveManager.Services.Database.EntityConfigurations
             builder.HasIndex(x => x.Status);
             builder.HasIndex(x => x.CreatedAt);
 
-            // Check constraint
+            // Check constraints
             builder.ToTable(t => t.HasCheckConstraint("CK_Payment_Amount", "[Amount] > 0"));
+            builder.ToTable(t => t.HasCheckConstraint("CK_Payment_RefundAmount", "[RefundAmount] IS NULL OR ([RefundAmount] >= 0 AND [RefundAmount] <= [Amount])"));
         }
     }
 }

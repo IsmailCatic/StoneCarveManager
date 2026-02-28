@@ -202,6 +202,7 @@ namespace StoneCarveManager.Services.Services
         {
             var payment = await _context.Payments
                 .Include(p => p.Order)
+                    .ThenInclude(o => o.User)
                 .FirstOrDefaultAsync(p => p.OrderId == orderId, cancellationToken);
 
             if (payment == null)
@@ -214,6 +215,7 @@ namespace StoneCarveManager.Services.Services
         {
             var payment = await _context.Payments
                 .Include(p => p.Order)
+                    .ThenInclude(o => o.User)
                 .FirstOrDefaultAsync(p => p.Id == paymentId, cancellationToken);
 
             if (payment == null)
@@ -294,15 +296,26 @@ namespace StoneCarveManager.Services.Services
             if (payment == null)
                 throw new KeyNotFoundException("Payment not found");
 
-            if (payment.Status != "succeeded")
-                throw new InvalidOperationException("Can only refund succeeded payments");
+            if (payment.Status != "succeeded" && payment.Status != "partially_refunded")
+                throw new InvalidOperationException("Can only refund succeeded or partially refunded payments");
+
+            // Validate refund amount
+            var existingRefundAmount = payment.RefundAmount ?? 0;
+            var remainingAmount = payment.Amount - existingRefundAmount;
+            var refundAmount = request.Amount ?? remainingAmount; // null = full remaining refund
+
+            if (refundAmount <= 0)
+                throw new InvalidOperationException("Refund amount must be greater than 0");
+
+            if (refundAmount > remainingAmount)
+                throw new InvalidOperationException($"Cannot refund {refundAmount:C}. Only {remainingAmount:C} remaining.");
 
             // Create Stripe refund
             var refundService = new RefundService();
             var refundOptions = new RefundCreateOptions
             {
                 PaymentIntent = request.PaymentIntentId,
-                Amount = request.Amount.HasValue ? (long)(request.Amount.Value * 100) : null, // null = full refund
+                Amount = (long)(refundAmount * 100), // Convert to cents
                 Reason = request.Reason switch
                 {
                     "duplicate" => "duplicate",
@@ -313,25 +326,46 @@ namespace StoneCarveManager.Services.Services
                 Metadata = new Dictionary<string, string>
                 {
                     { "order_id", payment.OrderId.ToString() },
-                    { "order_number", payment.Order.OrderNumber }
+                    { "order_number", payment.Order.OrderNumber },
+                    { "refund_type", refundAmount >= remainingAmount ? "full" : "partial" }
                 }
             };
 
             if (string.IsNullOrEmpty(StripeConfiguration.ApiKey))
                 throw new Exception("Stripe API key is not set!");
 
-
             try
             {
                 var refund = await refundService.CreateAsync(refundOptions, cancellationToken: cancellationToken);
 
-                // Update payment status
-                payment.Status = "refunded";
-                payment.CompletedAt = DateTime.UtcNow;
-                payment.FailureReason = $"Refunded: {request.Reason}";
+                // Update payment with refund information
+                var totalRefundAmount = existingRefundAmount + refundAmount;
+                payment.RefundAmount = totalRefundAmount;
+                payment.RefundReason = request.Reason ?? "requested_by_customer";
+                payment.RefundedAt = DateTime.UtcNow;
 
-                // Update order status to cancelled
-                payment.Order.Status = DatabaseOrderStatus.Cancelled;
+                // Determine payment status and order status based on refund type
+                var isFullRefund = totalRefundAmount >= payment.Amount;
+                
+                if (isFullRefund)
+                {
+                    // Full refund - mark payment as refunded
+                    payment.Status = "refunded";
+                    
+                    // Update order status based on reason
+                    // Only change to Cancelled if it's not already Delivered
+                    if (payment.Order.Status != DatabaseOrderStatus.Delivered)
+                    {
+                        payment.Order.Status = DatabaseOrderStatus.Cancelled;
+                    }
+                    // If order was delivered, it stays Delivered but is fully refunded
+                }
+                else
+                {
+                    // Partial refund - keep as partially_refunded
+                    payment.Status = "partially_refunded";
+                    // Order status remains unchanged for partial refunds
+                }
 
                 await _context.SaveChangesAsync(cancellationToken);
 
@@ -405,21 +439,27 @@ namespace StoneCarveManager.Services.Services
 
             var payments = await query.ToListAsync(cancellationToken);
 
-            var successfulPayments = payments.Where(p => p.Status == "succeeded").ToList();
-            var totalRevenue = successfulPayments.Sum(p => p.Amount);
-            var refundedAmount = payments.Where(p => p.Status == "refunded").Sum(p => p.Amount);
+            // ✅ Include both succeeded and partially_refunded as successful
+            var successfulPayments = payments
+                .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded")
+                .ToList();
+            
+            // ✅ Calculate NET revenue (gross - refunds)
+            var grossRevenue = successfulPayments.Sum(p => p.Amount);
+            var totalRefunds = successfulPayments.Sum(p => p.RefundAmount ?? 0);
+            var netRevenue = grossRevenue - totalRefunds;
 
             var revenueByMethod = successfulPayments
                 .GroupBy(p => p.Method)
-                .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
+                .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount - (p.RefundAmount ?? 0))); // NET revenue by method
 
             return new PaymentStatisticsResponse
             {
-                TotalRevenue = totalRevenue,
-                SuccessfulCount = successfulPayments.Count,
+                TotalRevenue = netRevenue, // ✅ Return NET revenue
+                SuccessfulCount = successfulPayments.Count(p => p.Status == "succeeded" || p.Status == "partially_refunded"),
                 FailedCount = payments.Count(p => p.Status == "failed"),
                 PendingCount = payments.Count(p => p.Status == "pending"),
-                RefundedAmount = refundedAmount,
+                RefundedAmount = totalRefunds, // ✅ Total refund amount
                 RevenueByMethod = revenueByMethod
             };
         }
@@ -438,6 +478,10 @@ namespace StoneCarveManager.Services.Services
                 TransactionId = payment.TransactionId,
                 StripePaymentIntentId = payment.StripePaymentIntentId,
                 FailureReason = payment.FailureReason,
+                RefundAmount = payment.RefundAmount,
+                RefundReason = payment.RefundReason,
+                RefundedAt = payment.RefundedAt,
+                OrderStatus = payment.Order.Status.ToString(),
                 CreatedAt = payment.CreatedAt,
                 CompletedAt = payment.CompletedAt,
                 CustomerName = $"{payment.Order.User.FirstName} {payment.Order.User.LastName}",

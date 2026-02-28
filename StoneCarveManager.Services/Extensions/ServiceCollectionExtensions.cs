@@ -62,6 +62,7 @@ namespace StoneCarveManager.Services.Extensions
             services.AddTransient<ServiceProductState>();
             services.AddTransient<PortfolioProductState>();
             services.AddTransient<HiddenProductState>();
+            services.AddTransient<CustomOrderProductState>();
         }
     }
 }

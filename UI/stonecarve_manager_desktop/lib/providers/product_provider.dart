@@ -276,7 +276,7 @@ class ProductProvider {
     print('[ProductProvider] setPrimaryImage: $productId $imageId');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.patch(
-      Uri.parse('$baseUrl/$productId/images/$imageId/set-primary'),
+      Uri.parse('http://localhost:5021/api/ProductImage/$imageId/set-primary'),
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     print('[ProductProvider] Body: ${response.body}');

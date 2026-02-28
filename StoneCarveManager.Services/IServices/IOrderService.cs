@@ -26,5 +26,12 @@ namespace StoneCarveManager.Services.IServices
         /// Update order status and automatically create OrderStatusHistory entry
         /// Admin/Employee only
         Task<OrderResponse?> UpdateOrderStatusAsync(int orderId, Model.Requests.OrderStatus newStatus, string? comment = null, CancellationToken cancellationToken = default);
+        
+        /// Assign employee to order
+        /// Admin only
+        Task<OrderResponse?> AssignEmployeeToOrderAsync(int orderId, int? employeeId, CancellationToken cancellationToken = default);
+        
+        /// Get orders assigned to specific employee
+        Task<PagedResult<OrderResponse>> GetMyOrdersAsync(int? status = null, int page = 1, int pageSize = 20, CancellationToken cancellationToken = default);
     }
 }

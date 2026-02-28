@@ -18,6 +18,21 @@ class AuthProvider {
   static List<String>? get roles => _roles;
   static bool get isLoggedIn => _isLoggedIn;
 
+  // Role helper methods
+  static bool hasRole(String role) => _roles?.contains(role) ?? false;
+  static bool get isAdmin => hasRole('Admin');
+  static bool get isEmployee => hasRole('Employee');
+  static bool get isUser => hasRole('User');
+
+  // Get user role (primary role for display)
+  static String get userRole {
+    if (_roles == null || _roles!.isEmpty) return 'Unknown';
+    if (_roles!.contains('Admin')) return 'Admin';
+    if (_roles!.contains('Employee')) return 'Employee';
+    if (_roles!.contains('User')) return 'User';
+    return _roles!.first;
+  }
+
   static final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   // Getter za token

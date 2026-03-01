@@ -6,6 +6,7 @@ class ServiceOrderRequest {
   final List<String>? referenceImageUrls;
   final String? deliveryAddress;
   final String? deliveryCity;
+  final String? deliveryCountry;
   final String? deliveryZipCode;
   final DateTime? preferredDate;
 
@@ -17,6 +18,7 @@ class ServiceOrderRequest {
     this.referenceImageUrls,
     this.deliveryAddress,
     this.deliveryCity,
+    this.deliveryCountry,
     this.deliveryZipCode,
     this.preferredDate,
   });
@@ -33,6 +35,7 @@ class ServiceOrderRequest {
     }
     if (deliveryAddress != null) map['deliveryAddress'] = deliveryAddress;
     if (deliveryCity != null) map['deliveryCity'] = deliveryCity;
+    if (deliveryCountry != null) map['deliveryCountry'] = deliveryCountry;
     if (deliveryZipCode != null) map['deliveryZipCode'] = deliveryZipCode;
     if (preferredDate != null) {
       map['deliveryDate'] = preferredDate!.toIso8601String();

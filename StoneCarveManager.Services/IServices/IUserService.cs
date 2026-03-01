@@ -21,11 +21,11 @@ namespace StoneCarveManager.Services.IServices
         Task<bool> DeleteAsync(int id, CancellationToken cancellationToken);
         Task<List<UserDTO>> GetByUsernamesAsync(List<string> usernames, CancellationToken cancellationToken);
         
-        // ✅ NOVI: Metode za profile section
+        // Get currently logged-in user
         Task<UserDTO?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
         
-        // ✅ NOVI: Get employees (Admin + Employee roles)
+        // Get employees (Admin + Employee roles)
         Task<List<UserDTO>> GetEmployeesAsync(CancellationToken cancellationToken);
         
         /// <summary>

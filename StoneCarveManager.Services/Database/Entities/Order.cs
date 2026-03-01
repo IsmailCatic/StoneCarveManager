@@ -59,6 +59,8 @@ namespace StoneCarveManager.Services.Database.Entities
 
         public string? DeliveryZipCode { get; set; }
 
+        public string? DeliveryCountry { get; set; }
+
         public DateTime? DeliveryDate { get; set; }
 
     }

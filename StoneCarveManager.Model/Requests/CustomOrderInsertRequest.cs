@@ -17,21 +17,18 @@ namespace StoneCarveManager.Model.Requests
         /// </summary>
         public int? ServiceProductId { get; set; }
 
-        [Required]
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
 
         /// <summary>
         /// Material to use (Material ID)
         /// </summary>
-        [Required]
-        public int MaterialId { get; set; }
+        public int? MaterialId { get; set; }
 
         /// <summary>
         /// Dimensions specification (e.g., "120cm x 60cm x 15cm")
         /// </summary>
-        [Required]
         [StringLength(200)]
-        public string Dimensions { get; set; } = string.Empty;
+        public string? Dimensions { get; set; }
 
         /// <summary>
         /// Detailed description of the custom work idea and special requirements
@@ -65,6 +62,8 @@ namespace StoneCarveManager.Model.Requests
         public string? DeliveryCity { get; set; }
 
         public string? DeliveryZipCode { get; set; }
+
+        public string? DeliveryCountry { get; set; }
 
         public DateTime? DeliveryDate { get; set; }
     }

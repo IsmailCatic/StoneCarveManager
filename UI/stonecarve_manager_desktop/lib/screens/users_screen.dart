@@ -334,54 +334,77 @@ class _UsersScreenState extends State<UsersScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: TextField(
+                              child: TextFormField(
                                 controller: firstNameController,
                                 decoration: const InputDecoration(
                                   labelText: 'First Name *',
+                                  border: OutlineInputBorder(),
                                 ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                    ? 'First name is required'
+                                    : null,
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
-                              child: TextField(
+                              child: TextFormField(
                                 controller: lastNameController,
                                 decoration: const InputDecoration(
                                   labelText: 'Last Name *',
+                                  border: OutlineInputBorder(),
                                 ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                    ? 'Last name is required'
+                                    : null,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         if (user == null) ...[
-                          TextField(
+                          TextFormField(
                             controller: passwordController,
                             decoration: const InputDecoration(
                               labelText: 'Password *',
+                              border: OutlineInputBorder(),
                             ),
                             obscureText: true,
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty)
+                                return 'Password is required';
+                              if (v.length < 6)
+                                return 'Password must be at least 6 characters';
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 8),
                         ],
-                        TextField(
+                        TextFormField(
                           controller: emailController,
                           decoration: const InputDecoration(
                             labelText: 'Email *',
+                            border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.emailAddress,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty)
+                              return 'Email is required';
+                            final emailRegex = RegExp(
+                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                            );
+                            if (!emailRegex.hasMatch(v.trim()))
+                              return 'Enter a valid email address';
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 8),
-                        // TextField(
-                        //   controller: usernameController,
-                        //   decoration: const InputDecoration(
-                        //     labelText: 'Username *',
-                        //   ),
-                        // ),
-                        const SizedBox(height: 8),
-                        TextField(
+                        TextFormField(
                           controller: phoneController,
                           decoration: const InputDecoration(
                             labelText: 'Phone Number',
+                            border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.phone,
                         ),

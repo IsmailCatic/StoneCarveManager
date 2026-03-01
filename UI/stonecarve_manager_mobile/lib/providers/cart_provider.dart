@@ -11,9 +11,7 @@ class CartProvider with ChangeNotifier {
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
 
   double get subtotal => _items.fold(0.0, (sum, item) => sum + item.total);
-  double get shippingCost => 0.0; // Free shipping for now
-  double get tax => subtotal * 0.075; // 7.5% tax
-  double get total => subtotal + shippingCost + tax;
+  double get total => subtotal;
 
   ShippingAddress? get shippingAddress => _shippingAddress;
   bool get hasShippingAddress => _shippingAddress != null;

@@ -180,6 +180,14 @@ class AppDrawerMobile extends StatelessWidget {
               Navigator.pushNamed(context, '/blog');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('FAQ'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/faq');
+            },
+          ),
 
           const Divider(),
 

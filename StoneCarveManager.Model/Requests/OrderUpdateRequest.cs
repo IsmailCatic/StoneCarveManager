@@ -28,6 +28,8 @@ namespace StoneCarveManager.Model.Requests
 
         public string? DeliveryZipCode { get; set; }
 
+        public string? DeliveryCountry { get; set; }
+
         public DateTime? DeliveryDate { get; set; }
 
         public List<OrderItemUpdateRequest>? Items { get; set; }

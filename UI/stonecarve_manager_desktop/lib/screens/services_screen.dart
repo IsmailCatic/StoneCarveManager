@@ -509,6 +509,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   void _showEditServiceDialog(Product service) {
+    final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: service.name);
     final descriptionController = TextEditingController(
       text: service.description,
@@ -528,56 +529,80 @@ class _ServicesScreenState extends State<ServicesScreen> {
           content: SizedBox(
             width: 500,
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Service name *',
-                      prefixIcon: Icon(Icons.build),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      prefixIcon: Icon(Icons.description),
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: priceController,
-                          decoration: const InputDecoration(
-                            labelText: 'Price (€) *',
-                            prefixIcon: Icon(Icons.euro),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Service name *',
+                        prefixIcon: Icon(Icons.build),
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: estimatedDaysController,
-                          decoration: const InputDecoration(
-                            labelText: 'Duration (days)',
-                            prefixIcon: Icon(Icons.schedule),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Service name is required'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description *',
+                        prefixIcon: Icon(Icons.description),
+                        border: OutlineInputBorder(),
                       ),
-                    ],
-                  ),
-                ],
+                      maxLines: 3,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Description is required'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: priceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Price (€) *',
+                              prefixIcon: Icon(Icons.euro),
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty)
+                                return 'Price is required';
+                              final p = double.tryParse(v.trim());
+                              if (p == null) return 'Enter a valid number';
+                              if (p < 0) return 'Price cannot be negative';
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: estimatedDaysController,
+                            decoration: const InputDecoration(
+                              labelText: 'Duration (days)',
+                              prefixIcon: Icon(Icons.schedule),
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return null;
+                              final d = int.tryParse(v.trim());
+                              if (d == null) return 'Enter a whole number';
+                              if (d <= 0) return 'Must be greater than 0';
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -588,50 +613,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Validate name
-                if (nameController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Service name is required'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
+                if (!formKey.currentState!.validate()) return;
 
-                // Validate description
-                if (descriptionController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Description is required'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                // Validate price
-                final priceText = priceController.text.trim();
-                if (priceText.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Price is required'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                final price = double.tryParse(priceText);
-                if (price == null || price < 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter a valid price'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
+                final price = double.parse(priceController.text.trim());
 
                 // Use original service object and only update fields that are changing
                 final updatedService = Product(

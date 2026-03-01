@@ -14,8 +14,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
   CardFieldInputDetails? _cardDetails;
   bool _cardComplete = false;
-  bool _useSameAddress = true;
-
   @override
   void dispose() {
     super.dispose();
@@ -172,20 +170,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Checkbox
-                    CheckboxListTile(
-                      value: _useSameAddress,
-                      onChanged: (value) {
-                        setState(() => _useSameAddress = value ?? true);
-                      },
-                      title: const Text(
-                        'Use my shipping address for billing',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: Colors.blue,
-                    ),
                     const SizedBox(height: 32),
 
                     // Proceed Button

@@ -75,13 +75,13 @@ namespace StoneCarveManager.Services.Services
                 throw new System.Exception("User registration failed");
             }
 
-            // ✅ POŠALJI EMAIL PORUKU PREKO RabbitMQ
+            // Send email message via RabbitMQ
             SendToRabbitMQ(new
             {
                 Name = $"{newUser.FirstName} {newUser.LastName}",
                 Email = newUser.Email,
-                Role = 3, // Obični korisnik
-                KorisnickoIme = newUser.UserName
+                Role = 3, // Regular user
+                Username = newUser.UserName
             });
 
             var token = await GenerateJwtTokenAsync(newUser);
@@ -272,7 +272,7 @@ namespace StoneCarveManager.Services.Services
             return true;
         }
 
-        // ✅ HELPER METODA ZA SLANJE PORUKA U RabbitMQ
+        // Helper method for sending messages to RabbitMQ
         private async void SendToRabbitMQ(object message)
         {
             try
@@ -309,7 +309,7 @@ namespace StoneCarveManager.Services.Services
             }
         }
 
-        // ✅ NOVI: Helper metoda za slanje password reset poruka u RabbitMQ
+        // Helper method for sending password reset messages to RabbitMQ
         private async void SendPasswordResetToRabbitMQ(object message)
         {
             try

@@ -8,6 +8,7 @@ class CustomOrderRequest {
   final double? estimatedPrice;
   final String? deliveryAddress;
   final String? deliveryCity;
+  final String? deliveryCountry;
   final String? deliveryZipCode;
   final DateTime? deliveryDate;
 
@@ -21,6 +22,7 @@ class CustomOrderRequest {
     this.estimatedPrice,
     this.deliveryAddress,
     this.deliveryCity,
+    this.deliveryCountry,
     this.deliveryZipCode,
     this.deliveryDate,
   });
@@ -40,6 +42,8 @@ class CustomOrderRequest {
         'deliveryAddress': deliveryAddress,
       if (deliveryCity != null && deliveryCity!.isNotEmpty)
         'deliveryCity': deliveryCity,
+      if (deliveryCountry != null && deliveryCountry!.isNotEmpty)
+        'deliveryCountry': deliveryCountry,
       if (deliveryZipCode != null && deliveryZipCode!.isNotEmpty)
         'deliveryZipCode': deliveryZipCode,
       if (deliveryDate != null) 'deliveryDate': deliveryDate!.toIso8601String(),
@@ -59,6 +63,7 @@ class CustomOrderRequest {
       estimatedPrice: json['estimatedPrice']?.toDouble(),
       deliveryAddress: json['deliveryAddress'],
       deliveryCity: json['deliveryCity'],
+      deliveryCountry: json['deliveryCountry'],
       deliveryZipCode: json['deliveryZipCode'],
       deliveryDate: json['deliveryDate'] != null
           ? DateTime.parse(json['deliveryDate'])

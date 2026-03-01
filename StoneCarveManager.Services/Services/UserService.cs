@@ -150,7 +150,7 @@ namespace StoneCarveManager.Services.Services
                 throw new Exception($"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
 
-            // Dodaj sve role koje su poslate
+            // Add all roles that were provided
             if (insertRequest.Roles != null && insertRequest.Roles.Any())
             {
                 foreach (var roleName in insertRequest.Roles)
@@ -166,7 +166,7 @@ namespace StoneCarveManager.Services.Services
                     }
                 }
 
-                // Za RabbitMQ email - uzmi prvu rolu (ili najvažniju)
+                // For RabbitMQ email - take the first (or primary) role
                 var primaryRole = insertRequest.Roles.FirstOrDefault();
                 if (primaryRole != null)
                 {
@@ -179,7 +179,7 @@ namespace StoneCarveManager.Services.Services
                             Email = newUser.Email,
                             Password = insertRequest.Password,
                             Role = roleId,
-                            KorisnickoIme = newUser.UserName
+                            Username = newUser.UserName
                         });
                     }
                 }
@@ -320,23 +320,23 @@ namespace StoneCarveManager.Services.Services
             if (!string.IsNullOrWhiteSpace(updateRequest.PhoneNumber))
                 user.PhoneNumber = updateRequest.PhoneNumber;
 
-            // Ažuriraj role ako su poslate
+            // Update roles if provided
             if (updateRequest.Roles != null && updateRequest.Roles.Any())
             {
-                // Trenutne role korisnika
+                // Current user roles
                 var currentRoleNames = user.UserRoles
                     .Where(ur => ur.Role != null)
                     .Select(ur => ur.Role.Name)
                     .ToList();
                 var newRoleNames = updateRequest.Roles.ToList();
 
-                // Role koje treba dodati (postoje u newRoles ali ne u currentRoles)
+                // Roles to add (exist in newRoles but not in currentRoles)
                 var rolesToAdd = newRoleNames.Except(currentRoleNames).ToList();
 
-                // Role koje treba ukloniti (postoje u currentRoles ali ne u newRoles)
+                // Roles to remove (exist in currentRoles but not in newRoles)
                 var rolesToRemove = currentRoleNames.Except(newRoleNames).ToList();
 
-                // Dodaj nove role
+                // Add new roles
                 foreach (var roleName in rolesToAdd)
                 {
                     var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == roleName.ToLower(), cancellationToken);
@@ -351,7 +351,7 @@ namespace StoneCarveManager.Services.Services
                     }
                 }
 
-                // Ukloni stare role
+                // Remove old roles
                 var userRolesToRemove = user.UserRoles
                     .Where(ur => ur.Role != null && rolesToRemove.Contains(ur.Role.Name))
                     .ToList();
@@ -397,7 +397,7 @@ namespace StoneCarveManager.Services.Services
             }).ToList();
         }
 
-        // ✅ NOVI: Get trenutno ulogovanog korisnika
+        // Get currently logged-in user
         public async Task<UserDTO?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken)
         {
             var user = await _context.Users
@@ -411,7 +411,7 @@ namespace StoneCarveManager.Services.Services
             return await MapToDTOAsync(user, cancellationToken);
         }
 
-        // ✅ NOVI: Get employees (Admin + Employee roles)
+        // Get employees (Admin + Employee roles)
         public async Task<List<UserDTO>> GetEmployeesAsync(CancellationToken cancellationToken)
         {
             var employees = await _context.Users
@@ -426,7 +426,7 @@ namespace StoneCarveManager.Services.Services
             return await MapToDTOAsync(employees, cancellationToken);
         }
 
-        // ✅ NOVI: Promjena lozinke
+        // Change password
         public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -435,14 +435,14 @@ namespace StoneCarveManager.Services.Services
                 throw new KeyNotFoundException("User not found.");
             }
 
-            // Provjeri da li je trenutna lozinka ispravna
+            // Check if current password is correct
             var currentPasswordValid = await _userManager.CheckPasswordAsync(user, currentPassword);
             if (!currentPasswordValid)
             {
                 throw new UnauthorizedAccessException("Current password is incorrect.");
             }
 
-            // Promijeni lozinku
+            // Change password
             var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
             if (!result.Succeeded)
             {
@@ -542,7 +542,7 @@ namespace StoneCarveManager.Services.Services
             }
         }
 
-        // ✅ HELPER METODA ZA SLANJE PORUKA U RabbitMQ
+        // Helper method for sending messages to RabbitMQ
         private async void SendToRabbitMQ(object message)
         {
             try

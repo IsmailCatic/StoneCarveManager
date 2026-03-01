@@ -197,6 +197,11 @@ abstract class BaseProvider<T> with ChangeNotifier {
         if (responseBody is Map && responseBody.containsKey('title')) {
           throw new Exception(responseBody['title']);
         }
+
+        // Check for message field (e.g. InvalidOperationException from backend)
+        if (responseBody is Map && responseBody.containsKey('message')) {
+          throw new Exception(responseBody['message']);
+        }
       } catch (e) {
         // If it's already an Exception, rethrow it
         if (e is Exception) {
@@ -204,7 +209,9 @@ abstract class BaseProvider<T> with ChangeNotifier {
         }
       }
 
-      throw new Exception("Something bad happened please try again");
+      throw new Exception(
+        "Something bad happened (HTTP ${response.statusCode})",
+      );
     }
   }
 

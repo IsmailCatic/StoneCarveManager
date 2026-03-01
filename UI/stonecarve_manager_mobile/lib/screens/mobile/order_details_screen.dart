@@ -574,7 +574,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               const Divider(height: 24),
               _buildInfoRow(
                 'Delivery Address',
-                '${_order!.deliveryAddress}, ${_order!.deliveryCity}, ${_order!.deliveryZipCode}',
+                [
+                  _order!.deliveryAddress,
+                  _order!.deliveryCity,
+                  _order!.deliveryZipCode,
+                  _order!.deliveryCountry,
+                ].where((p) => p != null && p.isNotEmpty).join(', '),
                 Icons.location_on,
               ),
             ],

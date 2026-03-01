@@ -18,6 +18,8 @@ import 'package:stonecarve_manager_flutter/screens/reset_password_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/reviews_management_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/payments_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/custom_order_products_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/faq_screen.dart';
+import 'package:stonecarve_manager_flutter/screens/crud_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Required for async operations before runApp
@@ -68,6 +70,8 @@ class StoneCarveManagerApp extends StatelessWidget {
         '/analytics': (context) => const AnalyticsDashboardScreen(),
         '/payments': (context) => const PaymentsScreen(),
         '/reviews': (context) => const ReviewsManagementScreen(),
+        '/faq': (context) => const FaqScreen(),
+        '/crud': (context) => const CrudScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
       },

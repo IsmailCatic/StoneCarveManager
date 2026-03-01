@@ -4,7 +4,7 @@ class Validators {
   // Email validation
   static String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Email je obavezan';
+      return 'Email is required';
     }
 
     final emailRegex = RegExp(
@@ -12,7 +12,7 @@ class Validators {
     );
 
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Unesite validnu email adresu';
+      return 'Please enter a valid email address';
     }
 
     return null;
@@ -21,11 +21,11 @@ class Validators {
   // Password validation - minimum 6 characters
   static String? validatePassword(String? value, {int minLength = 6}) {
     if (value == null || value.isEmpty) {
-      return 'Lozinka je obavezna';
+      return 'Password is required';
     }
 
     if (value.length < minLength) {
-      return 'Lozinka mora imati najmanje $minLength karaktera';
+      return 'Password must be at least $minLength characters';
     }
 
     return null;
@@ -34,23 +34,23 @@ class Validators {
   // Strong password validation - requires uppercase, lowercase, number
   static String? validateStrongPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Lozinka je obavezna';
+      return 'Password is required';
     }
 
     if (value.length < 8) {
-      return 'Lozinka mora imati najmanje 8 karaktera';
+      return 'Password must be at least 8 characters';
     }
 
     if (!value.contains(RegExp(r'[A-Z]'))) {
-      return 'Lozinka mora sadržavati bar jedno veliko slovo';
+      return 'Password must contain at least one uppercase letter';
     }
 
     if (!value.contains(RegExp(r'[a-z]'))) {
-      return 'Lozinka mora sadržavati bar jedno malo slovo';
+      return 'Password must contain at least one lowercase letter';
     }
 
     if (!value.contains(RegExp(r'[0-9]'))) {
-      return 'Lozinka mora sadržavati bar jednu cifru';
+      return 'Password must contain at least one digit';
     }
 
     return null;
@@ -59,9 +59,7 @@ class Validators {
   // Required text field validation
   static String? validateRequired(String? value, {String? fieldName}) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null
-          ? '$fieldName je obavezan'
-          : 'Ovo polje je obavezno';
+      return fieldName != null ? '$fieldName is required' : 'This field is required';
     }
     return null;
   }
@@ -73,15 +71,13 @@ class Validators {
     String? fieldName,
   }) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null
-          ? '$fieldName je obavezan'
-          : 'Ovo polje je obavezno';
+      return fieldName != null ? '$fieldName is required' : 'This field is required';
     }
 
     if (value.trim().length < minLength) {
       return fieldName != null
-          ? '$fieldName mora imati najmanje $minLength karaktera'
-          : 'Mora imati najmanje $minLength karaktera';
+          ? '$fieldName must be at least $minLength characters'
+          : 'Must be at least $minLength characters';
     }
 
     return null;
@@ -95,8 +91,8 @@ class Validators {
   }) {
     if (value != null && value.trim().length > maxLength) {
       return fieldName != null
-          ? '$fieldName može imati maksimalno $maxLength karaktera'
-          : 'Može imati maksimalno $maxLength karaktera';
+          ? '$fieldName cannot exceed $maxLength characters'
+          : 'Cannot exceed $maxLength characters';
     }
 
     return null;
@@ -110,17 +106,15 @@ class Validators {
     String? fieldName,
   }) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null
-          ? '$fieldName je obavezan'
-          : 'Ovo polje je obavezno';
+      return fieldName != null ? '$fieldName is required' : 'This field is required';
     }
 
     final length = value.trim().length;
 
     if (length < minLength || length > maxLength) {
       return fieldName != null
-          ? '$fieldName mora imati između $minLength i $maxLength karaktera'
-          : 'Mora imati između $minLength i $maxLength karaktera';
+          ? '$fieldName must be between $minLength and $maxLength characters'
+          : 'Must be between $minLength and $maxLength characters';
     }
 
     return null;
@@ -129,7 +123,7 @@ class Validators {
   // Phone number validation
   static String? validatePhone(String? value, {bool required = false}) {
     if (value == null || value.trim().isEmpty) {
-      return required ? 'Broj telefona je obavezan' : null;
+      return required ? 'Phone number is required' : null;
     }
 
     // Remove spaces, dashes, and parentheses
@@ -137,7 +131,7 @@ class Validators {
 
     // Check if it contains only digits and optional + at start
     if (!RegExp(r'^\+?[0-9]{6,15}$').hasMatch(cleaned)) {
-      return 'Unesite validan broj telefona';
+      return 'Please enter a valid phone number';
     }
 
     return null;
@@ -151,22 +145,18 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null
-                ? '$fieldName je obavezan'
-                : 'Ovo polje je obavezno')
+          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
           : null;
     }
 
     final number = double.tryParse(value.trim());
 
     if (number == null) {
-      return 'Unesite validan broj';
+      return 'Please enter a valid number';
     }
 
     if (number <= 0) {
-      return fieldName != null
-          ? '$fieldName mora biti veći od 0'
-          : 'Mora biti veći od 0';
+      return fieldName != null ? '$fieldName must be greater than 0' : 'Must be greater than 0';
     }
 
     return null;
@@ -180,22 +170,18 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null
-                ? '$fieldName je obavezan'
-                : 'Ovo polje je obavezno')
+          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
           : null;
     }
 
     final number = double.tryParse(value.trim());
 
     if (number == null) {
-      return 'Unesite validan broj';
+      return 'Please enter a valid number';
     }
 
     if (number < 0) {
-      return fieldName != null
-          ? '$fieldName ne može biti negativan'
-          : 'Ne može biti negativan';
+      return fieldName != null ? '$fieldName cannot be negative' : 'Cannot be negative';
     }
 
     return null;
@@ -209,14 +195,12 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null
-                ? '$fieldName je obavezan'
-                : 'Ovo polje je obavezno')
+          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
           : null;
     }
 
     if (int.tryParse(value.trim()) == null) {
-      return 'Unesite validan cijeli broj';
+      return 'Please enter a valid whole number';
     }
 
     return null;
@@ -230,22 +214,18 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null
-                ? '$fieldName je obavezan'
-                : 'Ovo polje je obavezno')
+          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
           : null;
     }
 
     final number = int.tryParse(value.trim());
 
     if (number == null) {
-      return 'Unesite validan cijeli broj';
+      return 'Please enter a valid whole number';
     }
 
     if (number <= 0) {
-      return fieldName != null
-          ? '$fieldName mora biti veći od 0'
-          : 'Mora biti veći od 0';
+      return fieldName != null ? '$fieldName must be greater than 0' : 'Must be greater than 0';
     }
 
     return null;
@@ -254,19 +234,19 @@ class Validators {
   // Year validation (1900-current year + 10)
   static String? validateYear(String? value, {bool required = true}) {
     if (value == null || value.trim().isEmpty) {
-      return required ? 'Godina je obavezna' : null;
+      return required ? 'Year is required' : null;
     }
 
     final year = int.tryParse(value.trim());
 
     if (year == null) {
-      return 'Unesite validnu godinu';
+      return 'Please enter a valid year';
     }
 
     final currentYear = DateTime.now().year;
 
     if (year < 1900 || year > currentYear + 10) {
-      return 'Godina mora biti između 1900 i ${currentYear + 10}';
+      return 'Year must be between 1900 and ${currentYear + 10}';
     }
 
     return null;
@@ -275,7 +255,7 @@ class Validators {
   // URL validation
   static String? validateUrl(String? value, {bool required = false}) {
     if (value == null || value.trim().isEmpty) {
-      return required ? 'URL je obavezan' : null;
+      return required ? 'URL is required' : null;
     }
 
     final urlRegex = RegExp(
@@ -283,7 +263,7 @@ class Validators {
     );
 
     if (!urlRegex.hasMatch(value.trim())) {
-      return 'Unesite validan URL (mora počinjati sa http:// ili https://)';
+      return 'Please enter a valid URL (must start with http:// or https://)';
     }
 
     return null;
@@ -292,22 +272,22 @@ class Validators {
   // Price validation (positive decimal with max 2 decimal places)
   static String? validatePrice(String? value, {bool required = true}) {
     if (value == null || value.trim().isEmpty) {
-      return required ? 'Cijena je obavezna' : null;
+      return required ? 'Price is required' : null;
     }
 
     final price = double.tryParse(value.trim());
 
     if (price == null) {
-      return 'Unesite validnu cijenu';
+      return 'Please enter a valid price';
     }
 
     if (price < 0) {
-      return 'Cijena ne može biti negativna';
+      return 'Price cannot be negative';
     }
 
     // Check for max 2 decimal places
     if (value.contains('.') && value.split('.')[1].length > 2) {
-      return 'Cijena može imati maksimalno 2 decimale';
+      return 'Price can have at most 2 decimal places';
     }
 
     return null;
@@ -316,15 +296,15 @@ class Validators {
   // Username validation (alphanumeric, underscore, dot)
   static String? validateUsername(String? value, {int minLength = 3}) {
     if (value == null || value.trim().isEmpty) {
-      return 'Korisničko ime je obavezno';
+      return 'Username is required';
     }
 
     if (value.trim().length < minLength) {
-      return 'Korisničko ime mora imati najmanje $minLength karaktera';
+      return 'Username must be at least $minLength characters';
     }
 
     if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(value.trim())) {
-      return 'Korisničko ime može sadržavati samo slova, brojeve, tačke i donje crte';
+      return 'Username can only contain letters, numbers, dots and underscores';
     }
 
     return null;
@@ -333,19 +313,19 @@ class Validators {
   // Name validation (letters, spaces, hyphens)
   static String? validateName(String? value, {String? fieldName}) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null ? '$fieldName je obavezan' : 'Ime je obavezno';
+      return fieldName != null ? '$fieldName is required' : 'Name is required';
     }
 
     if (value.trim().length < 2) {
       return fieldName != null
-          ? '$fieldName mora imati najmanje 2 karaktera'
-          : 'Mora imati najmanje 2 karaktera';
+          ? '$fieldName must be at least 2 characters'
+          : 'Must be at least 2 characters';
     }
 
     if (!RegExp(r'^[a-zA-ZčćđšžČĆĐŠŽ\s\-]+$').hasMatch(value.trim())) {
       return fieldName != null
-          ? '$fieldName može sadržavati samo slova, razmake i crtice'
-          : 'Može sadržavati samo slova, razmake i crtice';
+          ? '$fieldName can only contain letters, spaces and hyphens'
+          : 'Can only contain letters, spaces and hyphens';
     }
 
     return null;
@@ -354,9 +334,7 @@ class Validators {
   // Dropdown validation
   static String? validateDropdown<T>(T? value, {String? fieldName}) {
     if (value == null) {
-      return fieldName != null
-          ? 'Molimo odaberite $fieldName'
-          : 'Molimo odaberite opciju';
+      return fieldName != null ? 'Please select $fieldName' : 'Please select an option';
     }
     return null;
   }

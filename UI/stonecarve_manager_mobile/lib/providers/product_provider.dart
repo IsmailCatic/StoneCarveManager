@@ -25,7 +25,7 @@ class ProductProvider {
       return items.map((item) => Product.fromJson(item)).toList();
     } else {
       throw Exception(
-        'Greška pri dohvaćanju portfolia: ${response.statusCode} ${response.body}',
+        'Failed to fetch portfolio: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -43,7 +43,7 @@ class ProductProvider {
       return items.map((item) => Product.fromJson(item)).toList();
     } else {
       throw Exception(
-        'Greška pri dohvaćanju usluga: ${response.statusCode} ${response.body}',
+        'Failed to fetch services: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -64,7 +64,7 @@ class ProductProvider {
       return actions.cast<String>();
     } else {
       throw Exception(
-        'Greška pri dohvaćanju dozvoljenih akcija: ${response.statusCode}',
+        'Failed to fetch allowed actions: ${response.statusCode}',
       );
     }
   }
@@ -78,7 +78,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri aktivaciji proizvoda: ${response.body}');
+      throw Exception('Failed to activate product: ${response.body}');
     }
   }
 
@@ -89,7 +89,7 @@ class ProductProvider {
     final response = await client.patch(Uri.parse('$baseUrl/$productId/hide'));
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri sakrivanju proizvoda: ${response.body}');
+      throw Exception('Failed to hide product: ${response.body}');
     }
   }
 
@@ -102,7 +102,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri konverziji u uslugu: ${response.body}');
+      throw Exception('Failed to convert product to service: ${response.body}');
     }
   }
 
@@ -117,7 +117,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Greška pri dodavanju u portfolio: ${response.body}');
+      throw Exception('Failed to add product to portfolio: ${response.body}');
     }
   }
 
@@ -134,7 +134,7 @@ class ProductProvider {
       return Product.fromJson(json.decode(response.body));
     } else {
       throw Exception(
-        'Greška pri dodavanju proizvoda: ${response.statusCode} ${response.body}',
+        'Failed to add product: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -152,7 +152,7 @@ class ProductProvider {
       return Product.fromJson(json.decode(response.body));
     } else {
       throw Exception(
-        'Greška pri ažuriranju proizvoda: ${response.statusCode} ${response.body}',
+        'Failed to update product: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -167,7 +167,7 @@ class ProductProvider {
       return true;
     } else {
       throw Exception(
-        'Greška pri brisanju proizvoda: ${response.statusCode} ${response.body}',
+        'Failed to delete product: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -199,7 +199,7 @@ class ProductProvider {
       return ProductImage.fromJson(data); // <-- expect a single object
     } else {
       throw Exception(
-        'Greška pri uploadu slike: ${response.statusCode} ${response.body}',
+        'Failed to upload image: ${response.statusCode} ${response.body}',
       );
     }
   }
@@ -216,7 +216,29 @@ class ProductProvider {
       return true;
     } else {
       throw Exception(
-        'Greška pri brisanju slike: ${response.statusCode} ${response.body}',
+        'Failed to delete image: ${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  /// Fetch cosine-similarity recommendations for a product.
+  /// The endpoint is AllowAnonymous — no auth header required.
+  Future<List<Product>> fetchRecommendations(
+    int productId, {
+    int count = 6,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/$productId/recommendations',
+    ).replace(queryParameters: {'count': '$count'});
+    print('[ProductProvider] fetchRecommendations: $uri');
+    final response = await http.get(uri);
+    print('[ProductProvider] Status: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      final List<dynamic> items = json.decode(response.body);
+      return items.map((item) => Product.fromJson(item)).toList();
+    } else {
+      throw Exception(
+        'Failed to fetch recommendations: ${response.statusCode} ${response.body}',
       );
     }
   }

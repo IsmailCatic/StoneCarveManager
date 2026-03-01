@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/models/cart.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
+import 'package:stonecarve_manager_mobile/utils/location_data.dart';
 
 class CheckoutShippingScreen extends StatefulWidget {
   const CheckoutShippingScreen({super.key});
@@ -15,63 +16,35 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
   final _zipCodeController = TextEditingController();
+  final _cityOtherController =
+      TextEditingController(); // used when city == 'Other'
 
-  String _selectedCountry = 'United States';
-  String _selectedState = 'Alaska';
-
-  final List<String> _countries = [
-    'United States',
-    'Bosnia and Herzegovina',
-    'Germany',
-    'Austria',
-    'Croatia',
-    'Serbia',
-    'United Kingdom',
-    'France',
-    'Italy',
-    'Spain',
-    'Netherlands',
-    'Belgium',
-    'Switzerland',
-    'Sweden',
-    'Norway',
-    'Denmark',
-    'Poland',
-    'Czech Republic',
-    'Canada',
-  ];
-  final List<String> _states = [
-    'Alaska',
-    'California',
-    'Texas',
-    'Florida',
-    'New York',
-    'Washington',
-    'Illinois',
-    'Pennsylvania',
-  ];
+  String _selectedCountry = 'Bosnia and Herzegovina';
+  String? _selectedCity; // null until user picks
 
   @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
     _zipCodeController.dispose();
+    _cityOtherController.dispose();
     super.dispose();
   }
 
   void _proceedToPayment() {
     if (_formKey.currentState!.validate()) {
+      final city = _selectedCity == 'Other'
+          ? _cityOtherController.text.trim()
+          : (_selectedCity ?? '');
       final address = ShippingAddress(
         fullName: _fullNameController.text,
         email: _emailController.text,
         address: _addressController.text,
-        city: _cityController.text,
+        city: city,
         country: _selectedCountry,
-        state: _selectedState,
+        state: '',
         zipCode: _zipCodeController.text,
       );
 
@@ -157,7 +130,8 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                     _buildLabel('Full name'),
                     TextFormField(
                       controller: _fullNameController,
-                      decoration: _inputDecoration('Ismail Calic'),
+                      decoration: _inputDecoration('e.g. John Smith'),
+                      textCapitalization: TextCapitalization.words,
                       validator: (value) =>
                           value?.isEmpty ?? true ? 'Required' : null,
                     ),
@@ -186,20 +160,42 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                     _buildLabel('Address'),
                     TextFormField(
                       controller: _addressController,
-                      decoration: _inputDecoration('Neka Ulica 22'),
+                      decoration: _inputDecoration('e.g. 123 Main Street'),
                       validator: (value) =>
                           value?.isEmpty ?? true ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
 
-                    // City
+                    // City — dropdown driven by selected country
                     _buildLabel('City'),
-                    TextFormField(
-                      controller: _cityController,
-                      decoration: _inputDecoration('Mostar'),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Required' : null,
+                    DropdownButtonFormField<String>(
+                      value: _selectedCity,
+                      decoration: _inputDecoration(''),
+                      hint: const Text('Select city'),
+                      items: LocationData.citiesFor(_selectedCountry)
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCity = value;
+                          if (value != 'Other') _cityOtherController.clear();
+                        });
+                      },
+                      validator: (v) =>
+                          v == null ? 'Please select a city' : null,
                     ),
+                    if (_selectedCity == 'Other') ...[
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _cityOtherController,
+                        decoration: _inputDecoration('Enter your city'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter your city'
+                            : null,
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Country
@@ -207,36 +203,22 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                     DropdownButtonFormField<String>(
                       value: _selectedCountry,
                       decoration: _inputDecoration(''),
-                      items: _countries.map((country) {
+                      items: LocationData.countries.map((country) {
                         return DropdownMenuItem(
                           value: country,
                           child: Text(country),
                         );
                       }).toList(),
                       onChanged: (value) {
-                        setState(() => _selectedCountry = value!);
+                        setState(() {
+                          _selectedCountry = value!;
+                          _selectedCity =
+                              null; // reset city when country changes
+                          _cityOtherController.clear();
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
-
-                    // State (only for United States)
-                    if (_selectedCountry == 'United States') ...[
-                      _buildLabel('State'),
-                      DropdownButtonFormField<String>(
-                        value: _selectedState,
-                        decoration: _inputDecoration(''),
-                        items: _states.map((state) {
-                          return DropdownMenuItem(
-                            value: state,
-                            child: Text(state),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() => _selectedState = value!);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                    ],
 
                     // Zip Code
                     _buildLabel('Zip Code'),
@@ -244,6 +226,14 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                       controller: _zipCodeController,
                       decoration: _inputDecoration('10000'),
                       keyboardType: TextInputType.number,
+                      maxLength: 10,
+                      buildCounter:
+                          (
+                            _, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
                       validator: (value) =>
                           value?.isEmpty ?? true ? 'Required' : null,
                     ),

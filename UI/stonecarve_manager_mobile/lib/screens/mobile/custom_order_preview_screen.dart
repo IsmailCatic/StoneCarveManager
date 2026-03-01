@@ -7,15 +7,15 @@ import 'package:stonecarve_manager_mobile/screens/mobile/order_payment_screen.da
 class CustomOrderPreviewScreen extends StatefulWidget {
   final CustomOrderRequest request;
   final List<File> sketchFiles;
-  final String categoryName;
-  final String materialName;
+  final String? categoryName;
+  final String? materialName;
 
   const CustomOrderPreviewScreen({
     super.key,
     required this.request,
     required this.sketchFiles,
-    required this.categoryName,
-    required this.materialName,
+    this.categoryName,
+    this.materialName,
   });
 
   @override
@@ -110,10 +110,23 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 _buildInfoCard('Order Details', Icons.category, [
-                  _buildInfoRow('Material Type', widget.categoryName),
-                  _buildInfoRow('Material', widget.materialName),
+                  if (widget.categoryName != null)
+                    _buildInfoRow('Category', widget.categoryName!),
+                  if (widget.materialName != null)
+                    _buildInfoRow('Material', widget.materialName!),
                   if (widget.request.dimensions != null)
                     _buildInfoRow('Dimensions', widget.request.dimensions!),
+                  if (widget.categoryName == null &&
+                      widget.materialName == null &&
+                      widget.request.dimensions == null)
+                    Text(
+                      'No specific category, material or dimensions specified — our team will advise during review.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                    ),
                 ]),
                 const SizedBox(height: 16),
                 _buildInfoCard('Description', Icons.description, [
@@ -133,7 +146,8 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
                   ]),
                 ],
                 if (widget.request.deliveryDate != null ||
-                    widget.request.deliveryAddress != null) ...[
+                    widget.request.deliveryAddress != null ||
+                    widget.request.deliveryCountry != null) ...[
                   const SizedBox(height: 16),
                   _buildInfoCard('Delivery Information', Icons.local_shipping, [
                     if (widget.request.deliveryDate != null)
@@ -145,6 +159,8 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
                       _buildInfoRow('Address', widget.request.deliveryAddress!),
                     if (widget.request.deliveryCity != null)
                       _buildInfoRow('City', widget.request.deliveryCity!),
+                    if (widget.request.deliveryCountry != null)
+                      _buildInfoRow('Country', widget.request.deliveryCountry!),
                     if (widget.request.deliveryZipCode != null)
                       _buildInfoRow(
                         'ZIP Code',

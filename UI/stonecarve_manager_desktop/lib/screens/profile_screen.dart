@@ -563,7 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextFormField(
             controller: _firstNameController,
             decoration: const InputDecoration(
-              labelText: 'First Name',
+              labelText: 'First Name *',
               prefixIcon: Icon(Icons.person),
               border: OutlineInputBorder(),
             ),
@@ -578,7 +578,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextFormField(
             controller: _lastNameController,
             decoration: const InputDecoration(
-              labelText: 'Last Name',
+              labelText: 'Last Name *',
               prefixIcon: Icon(Icons.person_outline),
               border: OutlineInputBorder(),
             ),

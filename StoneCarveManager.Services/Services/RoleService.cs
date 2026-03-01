@@ -48,6 +48,13 @@ namespace StoneCarveManager.Services.Services
             if (exists)
                 throw new InvalidOperationException($"Role '{request.Name}' already exists.");
 
+            // ASP.NET Identity requires NormalizedName and ConcurrencyStamp
+            entity.NormalizedName = request.Name.ToUpper();
+            entity.ConcurrencyStamp = Guid.NewGuid().ToString();
+
+            // Description column is NOT NULL — default to empty string if not provided
+            entity.Description = request.Description ?? string.Empty;
+
             await base.BeforeInsert(entity, request);
         }
 
@@ -60,6 +67,9 @@ namespace StoneCarveManager.Services.Services
 
                 if (exists)
                     throw new InvalidOperationException($"Role '{request.Name}' already exists.");
+
+                // Keep NormalizedName in sync with Identity requirements
+                entity.NormalizedName = request.Name.ToUpper();
             }
 
             await base.BeforeUpdate(entity, request);

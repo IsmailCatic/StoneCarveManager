@@ -9,6 +9,7 @@ import 'package:stonecarve_manager_mobile/models/custom_order_request.dart';
 import 'package:stonecarve_manager_mobile/providers/category_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/stone_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/custom_order_preview_screen.dart';
+import 'package:stonecarve_manager_mobile/utils/location_data.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 
 class CustomOrderFormScreen extends StatefulWidget {
@@ -27,14 +28,16 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
   final _descriptionController = TextEditingController();
   final _customerNotesController = TextEditingController();
   final _deliveryAddressController = TextEditingController();
-  final _deliveryCityController = TextEditingController();
   final _deliveryZipCodeController = TextEditingController();
+  final _cityOtherController = TextEditingController();
 
   // Form state
   int? _selectedCategoryId;
   int? _selectedMaterialId;
   DateTime? _selectedDeliveryDate;
   List<File> _selectedImages = [];
+  String _selectedCountry = 'Bosnia and Herzegovina';
+  String? _selectedCity;
 
   // Data from backend
   List<Category> _categories = [];
@@ -54,8 +57,8 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
     _descriptionController.dispose();
     _customerNotesController.dispose();
     _deliveryAddressController.dispose();
-    _deliveryCityController.dispose();
     _deliveryZipCodeController.dispose();
+    _cityOtherController.dispose();
 
     // Clean up temporary image files
     _cleanupTempImages();
@@ -169,11 +172,15 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
   }
 
   Future<void> _selectDeliveryDate() async {
+    final today = DateTime.now();
     final selectedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 30)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
+      initialDate:
+          _selectedDeliveryDate != null && _selectedDeliveryDate!.isAfter(today)
+          ? _selectedDeliveryDate!
+          : today.add(const Duration(days: 30)),
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 730)),
     );
 
     if (selectedDate != null) {
@@ -184,50 +191,45 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
   }
 
   void _previewOrder() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedCategoryId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a category')));
-      return;
-    }
-
-    if (_selectedMaterialId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a material')));
-      return;
-    }
+    final resolvedCity = _selectedCity == 'Other'
+        ? _cityOtherController.text.trim()
+        : (_selectedCity ?? '');
 
     final request = CustomOrderRequest(
-      categoryId: _selectedCategoryId!,
-      materialId: _selectedMaterialId!,
-      dimensions: _dimensionsController.text.trim(),
+      categoryId: _selectedCategoryId,
+      materialId: _selectedMaterialId,
+      dimensions: _dimensionsController.text.trim().isEmpty
+          ? null
+          : _dimensionsController.text.trim(),
       description: _descriptionController.text.trim(),
       customerNotes: _customerNotesController.text.trim().isEmpty
           ? null
           : _customerNotesController.text.trim(),
-      deliveryAddress: _deliveryAddressController.text.trim().isEmpty
-          ? null
-          : _deliveryAddressController.text.trim(),
-      deliveryCity: _deliveryCityController.text.trim().isEmpty
-          ? null
-          : _deliveryCityController.text.trim(),
-      deliveryZipCode: _deliveryZipCodeController.text.trim().isEmpty
-          ? null
-          : _deliveryZipCodeController.text.trim(),
+      deliveryAddress: _deliveryAddressController.text.trim(),
+      deliveryCity: resolvedCity,
+      deliveryCountry: _selectedCountry,
+      deliveryZipCode: _deliveryZipCodeController.text.trim(),
       deliveryDate: _selectedDeliveryDate,
     );
 
-    final selectedCategory = _categories.firstWhere(
-      (c) => c.id == _selectedCategoryId,
-    );
-    final selectedMaterial = _materials.firstWhere(
-      (m) => m.id == _selectedMaterialId,
-    );
+    final categoryName = _selectedCategoryId != null
+        ? _categories
+              .firstWhere(
+                (c) => c.id == _selectedCategoryId,
+                orElse: () => Category(),
+              )
+              .name
+        : null;
+    final materialName = _selectedMaterialId != null
+        ? _materials
+              .firstWhere(
+                (m) => m.id == _selectedMaterialId,
+                orElse: () => StoneMaterial(),
+              )
+              .name
+        : null;
 
     Navigator.push(
       context,
@@ -235,8 +237,8 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
         builder: (_) => CustomOrderPreviewScreen(
           request: request,
           sketchFiles: _selectedImages,
-          categoryName: selectedCategory.name ?? 'Unknown',
-          materialName: selectedMaterial.name ?? 'Unknown',
+          categoryName: categoryName,
+          materialName: materialName,
         ),
       ),
     );
@@ -320,18 +322,23 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Preferred Category *',
+          'Preferred Category (Optional)',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          'Leave blank if your idea doesn\'t fit a standard category',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           value: _selectedCategoryId,
           decoration: InputDecoration(
-            hintText: 'Select a category',
+            hintText: 'Select a category (optional)',
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -343,23 +350,16 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
               borderSide: BorderSide(color: Colors.grey[300]!),
             ),
           ),
-          items: _categories.map((category) {
-            return DropdownMenuItem<int>(
-              value: category.id,
-              child: Text(category.name ?? 'Unknown'),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCategoryId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null) {
-              return 'Please select a category';
-            }
-            return null;
-          },
+          items: [
+            const DropdownMenuItem<int>(value: null, child: Text('— None —')),
+            ..._categories.map(
+              (category) => DropdownMenuItem<int>(
+                value: category.id,
+                child: Text(category.name ?? 'Unknown'),
+              ),
+            ),
+          ],
+          onChanged: (value) => setState(() => _selectedCategoryId = value),
         ),
       ],
     );
@@ -370,18 +370,23 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Material *',
+          'Preferred Material (Optional)',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          'Leave blank if you\'re unsure — we can advise during review',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           value: _selectedMaterialId,
           decoration: InputDecoration(
-            hintText: 'Select material',
+            hintText: 'Select material (optional)',
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -393,23 +398,16 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
               borderSide: BorderSide(color: Colors.grey[300]!),
             ),
           ),
-          items: _materials.map((material) {
-            return DropdownMenuItem<int>(
-              value: material.id,
-              child: Text(material.name ?? 'Unknown'),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedMaterialId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null) {
-              return 'Please select a material';
-            }
-            return null;
-          },
+          items: [
+            const DropdownMenuItem<int>(value: null, child: Text('— None —')),
+            ..._materials.map(
+              (material) => DropdownMenuItem<int>(
+                value: material.id,
+                child: Text(material.name ?? 'Unknown'),
+              ),
+            ),
+          ],
+          onChanged: (value) => setState(() => _selectedMaterialId = value),
         ),
       ],
     );
@@ -444,11 +442,11 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
             ),
           ),
           maxLength: 200,
+          buildCounter:
+              (_, {required currentLength, required isFocused, maxLength}) =>
+                  null,
           validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter dimensions';
-            }
-            if (value.trim().length > 200) {
+            if (value != null && value.trim().length > 200) {
               return 'Dimensions must be less than 200 characters';
             }
             return null;
@@ -592,12 +590,26 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
     );
   }
 
+  InputDecoration _inputDecoration({String? hint}) => InputDecoration(
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: Colors.grey[300]!),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: Colors.grey[300]!),
+    ),
+  );
+
   Widget _buildDeliveryFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Delivery Information (Optional)',
+          'Delivery Information *',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -605,64 +617,74 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
           ),
         ),
         const SizedBox(height: 8),
+
+        // Address (required)
         TextFormField(
           controller: _deliveryAddressController,
-          decoration: InputDecoration(
-            hintText: 'Delivery Address',
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
+          decoration: _inputDecoration(hint: 'e.g. 123 Main Street'),
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Delivery address is required'
+              : null,
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: _deliveryCityController,
-                decoration: InputDecoration(
-                  hintText: 'City',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextFormField(
-                controller: _deliveryZipCodeController,
-                decoration: InputDecoration(
-                  hintText: 'ZIP',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                ),
-              ),
-            ),
-          ],
+
+        // Country
+        DropdownButtonFormField<String>(
+          value: _selectedCountry,
+          decoration: _inputDecoration(),
+          items: LocationData.countries
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedCountry = value!;
+              _selectedCity = null;
+              _cityOtherController.clear();
+            });
+          },
+        ),
+        const SizedBox(height: 8),
+
+        // City (dropdown)
+        DropdownButtonFormField<String>(
+          value: _selectedCity,
+          decoration: _inputDecoration(),
+          hint: const Text('Select city'),
+          items: LocationData.citiesFor(
+            _selectedCountry,
+          ).map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedCity = value;
+              if (value != 'Other') _cityOtherController.clear();
+            });
+          },
+          validator: (v) => v == null ? 'Please select a city' : null,
+        ),
+        if (_selectedCity == 'Other') ...[
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _cityOtherController,
+            decoration: _inputDecoration(hint: 'Enter your city'),
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? 'Please enter your city'
+                : null,
+          ),
+        ],
+        const SizedBox(height: 8),
+
+        // ZIP (required)
+        TextFormField(
+          controller: _deliveryZipCodeController,
+          decoration: _inputDecoration(hint: 'ZIP / Postal code'),
+          keyboardType: TextInputType.number,
+          maxLength: 10,
+          buildCounter:
+              (_, {required currentLength, required isFocused, maxLength}) =>
+                  null,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Postal code is required'
+              : null,
         ),
       ],
     );

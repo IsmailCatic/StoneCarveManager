@@ -43,37 +43,37 @@ namespace StoneCarveManager.Services.ProductStateMachine
 
         public virtual ProductResponse Insert(ProductInsertRequest request)
         {
-            throw new InvalidOperationException("Insert nije dozvoljen u ovom stanju");
+            throw new InvalidOperationException("Insert is not allowed in this state");
         }
 
         public virtual ProductResponse Update(int id, ProductUpdateRequest request)
         {
-            throw new InvalidOperationException("Update nije dozvoljen u ovom stanju");
+            throw new InvalidOperationException("Update is not allowed in this state");
         }
 
         public virtual ProductResponse Activate(int id)
         {
-            throw new InvalidOperationException("Activate nije dozvoljen u ovom stanju");
+            throw new InvalidOperationException("Activate is not allowed in this state");
         }
 
         public virtual ProductResponse Hide(int id)
         {
-            throw new InvalidOperationException("Hide nije dozvoljen u ovom stanju");
+            throw new InvalidOperationException("Hide is not allowed in this state");
         }
 
         public virtual ProductResponse MakeService(int id)
         {
-            throw new InvalidOperationException("MakeService nije dozvoljen u ovom stanju");
+            throw new InvalidOperationException("MakeService is not allowed in this state");
         }
 
         public virtual ProductResponse AddToPortfolio(int id)
         {
-            throw new InvalidOperationException("AddToPortfolio nije dozvoljen u ovom stanju");
+            throw new InvalidOperationException("AddToPortfolio is not allowed in this state");
         }
 
         public virtual List<string> AllowedActions(Product? entity)
         {
-            throw new InvalidOperationException("Metoda nije dozvoljena");
+            throw new InvalidOperationException("Method is not allowed in this state");
         }
 
         /// <summary>

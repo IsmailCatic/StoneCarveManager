@@ -17,22 +17,25 @@ namespace StoneCarveManagerWebAPI.Controllers
         private readonly IProductService _productService;
         private readonly IProductReviewService _reviewService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IRecommenderService _recommenderService;
         private readonly IValidator<ProductImageUploadRequest> _imageUploadValidator;
         private readonly IValidator<ProductReviewInsertRequest> _reviewValidator;
 
         public ProductController(
-            IProductService service, 
+            IProductService service,
             IProductReviewService reviewService,
             ICurrentUserService currentUserService,
+            IRecommenderService recommenderService,
             IValidator<ProductInsertRequest> insertValidator,
             IValidator<ProductUpdateRequest> updateValidator,
             IValidator<ProductImageUploadRequest> imageUploadValidator,
-            IValidator<ProductReviewInsertRequest> reviewValidator) 
+            IValidator<ProductReviewInsertRequest> reviewValidator)
             : base(service, insertValidator, updateValidator)
         {
             _productService = service;
             _reviewService = reviewService;
             _currentUserService = currentUserService;
+            _recommenderService = recommenderService;
             _imageUploadValidator = imageUploadValidator;
             _reviewValidator = reviewValidator;
         }
@@ -157,6 +160,14 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var actions = _productService.AllowedActions(id);
             return Ok(actions);
+        }
+
+        [HttpGet("{id}/recommendations")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRecommendations(int id, [FromQuery] int count = 6, CancellationToken cancellationToken = default)
+        {
+            var recommendations = await _recommenderService.GetRecommendedProductsAsync(id, count, cancellationToken);
+            return Ok(recommendations);
         }
 
         [HttpGet("services")]

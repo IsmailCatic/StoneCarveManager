@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
 import 'package:stonecarve_manager_mobile/providers/order_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/order_details_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/order_payment_screen.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -545,6 +546,77 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
 
               const SizedBox(height: 12),
 
+              // Pay Now banner (Pending + service/custom orders only)
+              if (order.status == 0 &&
+                  (order.orderType == 'service_request' ||
+                      order.orderType == 'custom_order')) ...[
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    border: Border.all(color: Colors.amber.shade400),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Colors.amber.shade800,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Payment required to start your order.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final orderTypeLabel =
+                          order.orderType == 'service_request'
+                          ? 'Service Request'
+                          : 'Custom Order';
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => OrderPaymentScreen(
+                            order: order,
+                            orderTypeLabel: orderTypeLabel,
+                          ),
+                        ),
+                      );
+                      _loadOrders();
+                    },
+                    icon: const Icon(Icons.payment, size: 18),
+                    label: const Text('Pay Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+
               // View Updates button
               Align(
                 alignment: Alignment.centerRight,
@@ -578,11 +650,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
 
   Map<String, dynamic> _getStatusInfo(int status) {
     switch (status) {
-      case 0: // Pending
+      case 0: // Pending — awaiting payment
         return {
-          'label': 'In Progress',
+          'label': 'Awaiting Payment',
           'color': Colors.orange,
-          'icon': Icons.hourglass_empty,
+          'icon': Icons.payment,
         };
       case 1: // Processing
         return {

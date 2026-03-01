@@ -7,6 +7,7 @@ import 'package:stonecarve_manager_mobile/models/product.dart';
 import 'package:stonecarve_manager_mobile/models/service_order_request.dart';
 import 'package:stonecarve_manager_mobile/providers/order_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/order_payment_screen.dart';
+import 'package:stonecarve_manager_mobile/utils/location_data.dart';
 
 class ServiceRequestScreen extends StatefulWidget {
   final Product service;
@@ -23,8 +24,11 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
 
   final _descriptionController = TextEditingController();
   final _locationAddressController = TextEditingController();
-  final _locationCityController = TextEditingController();
   final _locationZipController = TextEditingController();
+  final _cityOtherController = TextEditingController();
+
+  String _selectedCountry = 'Bosnia and Herzegovina';
+  String? _selectedCity;
 
   DateTime? _preferredDate;
   List<File> _selectedImages = [];
@@ -39,8 +43,8 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
   void dispose() {
     _descriptionController.dispose();
     _locationAddressController.dispose();
-    _locationCityController.dispose();
     _locationZipController.dispose();
+    _cityOtherController.dispose();
     _cleanupImages();
     super.dispose();
   }
@@ -106,9 +110,13 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final service = widget.service;
+    final resolvedCity = _selectedCity == 'Other'
+        ? _cityOtherController.text.trim()
+        : (_selectedCity ?? '');
     final location = [
       _locationAddressController.text.trim(),
-      _locationCityController.text.trim(),
+      resolvedCity,
+      _selectedCountry,
       _locationZipController.text.trim(),
     ].where((s) => s.isNotEmpty).join(', ');
 
@@ -164,9 +172,12 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
           deliveryAddress: _locationAddressController.text.trim().isEmpty
               ? null
               : _locationAddressController.text.trim(),
-          deliveryCity: _locationCityController.text.trim().isEmpty
-              ? null
-              : _locationCityController.text.trim(),
+          deliveryCity: _selectedCity == 'Other'
+              ? (_cityOtherController.text.trim().isEmpty
+                    ? null
+                    : _cityOtherController.text.trim())
+              : _selectedCity,
+          deliveryCountry: _selectedCountry,
           deliveryZipCode: _locationZipController.text.trim().isEmpty
               ? null
               : _locationZipController.text.trim(),
@@ -549,34 +560,77 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
 
                   // ── Location ──
                   _buildSectionLabel(
-                    'Location (Optional)',
+                    'Location *',
                     subtitle:
-                        'Where the work will take place, or where to deliver',
+                        'Where the work will take place or where to deliver',
                   ),
                   const SizedBox(height: 8),
+
+                  // Street address
                   TextFormField(
                     controller: _locationAddressController,
                     decoration: _inputDecoration(hint: 'Street and number'),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Address is required'
+                        : null,
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _locationCityController,
-                          decoration: _inputDecoration(hint: 'City'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 110,
-                        child: TextFormField(
-                          controller: _locationZipController,
-                          decoration: _inputDecoration(hint: 'ZIP code'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
+
+                  // Country dropdown
+                  DropdownButtonFormField<String>(
+                    value: _selectedCountry,
+                    decoration: _inputDecoration(hint: 'Country'),
+                    items: LocationData.countries
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCountry = value!;
+                        _selectedCity = null;
+                        _cityOtherController.clear();
+                      });
+                    },
+                    validator: (v) =>
+                        v == null ? 'Please select a country' : null,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // City dropdown
+                  DropdownButtonFormField<String>(
+                    value: _selectedCity,
+                    decoration: _inputDecoration(hint: 'City'),
+                    hint: const Text('Select city'),
+                    items: LocationData.citiesFor(_selectedCountry)
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCity = value;
+                        if (value != 'Other') _cityOtherController.clear();
+                      });
+                    },
+                    validator: (v) => v == null ? 'Please select a city' : null,
+                  ),
+                  if (_selectedCity == 'Other') ...[
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _cityOtherController,
+                      decoration: _inputDecoration(hint: 'Enter your city'),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Please enter your city'
+                          : null,
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+
+                  // ZIP
+                  SizedBox(
+                    width: 160,
+                    child: TextFormField(
+                      controller: _locationZipController,
+                      decoration: _inputDecoration(hint: 'ZIP / Postal code'),
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
                   const SizedBox(height: 20),
 

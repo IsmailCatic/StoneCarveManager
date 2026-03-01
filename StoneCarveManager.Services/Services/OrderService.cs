@@ -53,15 +53,23 @@ namespace StoneCarveManager.Services.Services
             CustomOrderInsertRequest request,
             CancellationToken cancellationToken = default)
         {
-            // 1. Validate category exists
-            var category = await _context.Categories.FindAsync(new object[] { request.CategoryId }, cancellationToken);
-            if (category == null)
-                throw new InvalidOperationException($"Category with ID {request.CategoryId} does not exist.");
+            // 1. Validate category exists (optional)
+            Category? category = null;
+            if (request.CategoryId.HasValue)
+            {
+                category = await _context.Categories.FindAsync(new object[] { request.CategoryId.Value }, cancellationToken);
+                if (category == null)
+                    throw new InvalidOperationException($"Category with ID {request.CategoryId} does not exist.");
+            }
 
-            // 2. Validate material exists
-            var material = await _context.Materials.FindAsync(new object[] { request.MaterialId }, cancellationToken);
-            if (material == null)
-                throw new InvalidOperationException($"Material with ID {request.MaterialId} does not exist.");
+            // 2. Validate material exists (optional)
+            Material? material = null;
+            if (request.MaterialId.HasValue)
+            {
+                material = await _context.Materials.FindAsync(new object[] { request.MaterialId.Value }, cancellationToken);
+                if (material == null)
+                    throw new InvalidOperationException($"Material with ID {request.MaterialId} does not exist.");
+            }
 
             var userId = _currentUserService.GetUserId();
 
@@ -69,11 +77,12 @@ namespace StoneCarveManager.Services.Services
             // NOTE: ProductState is set to "custom_order" which is a permanent state
             // managed by CustomOrderProductState in the state machine.
             // This product will NOT enter the regular catalog lifecycle (draft → active).
+            var productLabel = category?.Name ?? "Order";
             var customProduct = new Product
             {
-                Name = $"Custom {category.Name} - {DateTime.UtcNow:yyyyMMdd}",
+                Name = $"Custom {productLabel} - {DateTime.UtcNow:yyyyMMdd}",
                 Description = request.Description,
-                Price = request.EstimatedPrice ?? material.PricePerUnit, // Use estimated or calculate from material
+                Price = request.EstimatedPrice ?? material?.PricePerUnit ?? 0m, // Use estimated, or material price, or 0
                 StockQuantity = 0, // Custom products are not in stock
                 Dimensions = request.Dimensions,
                 EstimatedDays = 30, // Default for custom work, can be adjusted by admin later
@@ -246,7 +255,7 @@ namespace StoneCarveManager.Services.Services
             return await GetByIdAsync(order.Id);
         }
 
-        // OVERRIDE CreateAsync - KRITIČNO ZA MAPIRANJE!
+        // OVERRIDE CreateAsync - critical for mapping!
         public override async Task<OrderResponse> CreateAsync(OrderInsertRequest request)
         {
             var entity = new Order();
@@ -263,7 +272,7 @@ namespace StoneCarveManager.Services.Services
             _context.Orders.Add(entity);
             await _context.SaveChangesAsync();
 
-            // KLJUČNO: Učitaj sve navigacije nakon insert-a
+            // Load all navigations after insert
             var entityWithNavs = await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.AssignedEmployee)
@@ -292,20 +301,17 @@ namespace StoneCarveManager.Services.Services
 
         public override async Task<OrderResponse?> UpdateAsync(int id, OrderUpdateRequest request)
         {
-            // Ovo iz base: nađi entitet, mapiraj promjene iz requesta, SaveChanges itd.
+            // Find entity, map changes from request, SaveChanges, etc.
             var entity = await _context.Orders.FindAsync(id);
             if (entity == null)
                 return null;
 
-            // Mapiraj primitivne property-je iz requesta u entity (ili koristi MapUpdateToEntity ako imaš)
-            // (ili zovi svoju mapiraj metodu ako je već postoji)
+            // Map primitive properties from request into entity
             request.Adapt(entity);
-
 
             await _context.SaveChangesAsync();
 
-            // --- OVO JE KLJUČNO ---
-            // Sada ponovo učitaj order sa svim navigacijama!
+            // Reload order with all navigations
             var entityWithNavs = await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.AssignedEmployee)
@@ -320,7 +326,7 @@ namespace StoneCarveManager.Services.Services
             if (entityWithNavs == null)
                 return null;
 
-            // Mapiraj DTO (Mapster ili AutoMapper)
+            // Map DTO using Mapster
             var response = _mapper.Map<OrderResponse>(entityWithNavs);
 
             // Populate client and employee names
@@ -399,7 +405,7 @@ namespace StoneCarveManager.Services.Services
             };
         }
 
-        // GetById sa progres slikama
+        // GetById with progress images
         public override async Task<OrderResponse?> GetByIdAsync(int id)
         {
             var order = await _context.Orders

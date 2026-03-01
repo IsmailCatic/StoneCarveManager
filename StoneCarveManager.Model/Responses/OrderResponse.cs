@@ -59,6 +59,8 @@ namespace StoneCarveManager.Model.Responses
 
             public string? DeliveryZipCode { get; set; }
 
+            public string? DeliveryCountry { get; set; }
+
             public DateTime? DeliveryDate { get; set; }
 
             public string? ClientName { get; set; }

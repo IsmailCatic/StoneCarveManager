@@ -14,6 +14,7 @@ class Order {
   final List<OrderItem> orderItems;
   final String? deliveryAddress;
   final String? deliveryCity;
+  final String? deliveryCountry;
   final String? deliveryZipCode;
   final DateTime? deliveryDate;
   final Review? review;
@@ -21,6 +22,9 @@ class Order {
   final List<OrderStatusHistory> statusHistory;
   final String? clientName;
   final String? clientEmail;
+
+  /// "custom_order" | "service_request" | "standard"
+  final String? orderType;
 
   static String statusToString(dynamic status) {
     // Adjust this logic based on your actual status type and values
@@ -59,6 +63,7 @@ class Order {
     required this.orderItems,
     this.deliveryAddress,
     this.deliveryCity,
+    this.deliveryCountry,
     this.deliveryZipCode,
     this.deliveryDate,
     this.review,
@@ -66,6 +71,7 @@ class Order {
     required this.statusHistory,
     this.clientName,
     this.clientEmail,
+    this.orderType,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
@@ -92,6 +98,7 @@ class Order {
         [],
     deliveryAddress: json['deliveryAddress'],
     deliveryCity: json['deliveryCity'],
+    deliveryCountry: json['deliveryCountry'],
     deliveryZipCode: json['deliveryZipCode'],
     deliveryDate: json['deliveryDate'] != null
         ? DateTime.parse(json['deliveryDate'])
@@ -109,6 +116,7 @@ class Order {
         [],
     clientName: json['clientName'],
     clientEmail: json['clientEmail'],
+    orderType: json['orderType'],
   );
 
   Map<String, dynamic> toJson() => {
@@ -129,11 +137,13 @@ class Order {
     'orderItems': orderItems.map((e) => e.toJson()).toList(),
     'deliveryAddress': deliveryAddress,
     'deliveryCity': deliveryCity,
+    'deliveryCountry': deliveryCountry,
     'deliveryZipCode': deliveryZipCode,
     'deliveryDate': deliveryDate?.toIso8601String(),
     'review': review?.toJson(),
     'progressImages': progressImages.map((e) => e.toJson()).toList(),
     'statusHistory': statusHistory.map((e) => e.toJson()).toList(),
+    'orderType': orderType,
   };
 }
 
@@ -328,6 +338,7 @@ class CreateOrderRequest {
       'deliveryAddress': deliveryAddress,
       'deliveryCity': deliveryCity,
       'deliveryZipCode': deliveryZipCode,
+      'deliveryCountry': deliveryCountry,
       'customerNotes': customerNotes,
       'adminNotes': adminNotes,
       'attachmentUrl': attachmentUrl,

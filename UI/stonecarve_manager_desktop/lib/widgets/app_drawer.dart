@@ -220,6 +220,21 @@ class _AppDrawerState extends State<AppDrawer> {
             currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/reviews'),
           ),
+          _DrawerItem(
+            icon: Icons.help_outline,
+            title: 'FAQ',
+            route: '/faq',
+            currentRoute: widget.currentRoute,
+            onTap: () => _navigateTo(context, '/faq'),
+          ),
+          if (AuthProvider.isAdmin)
+            _DrawerItem(
+              icon: Icons.admin_panel_settings,
+              title: 'CRUD',
+              route: '/crud',
+              currentRoute: widget.currentRoute,
+              onTap: () => _navigateTo(context, '/crud'),
+            ),
           const Divider(height: 32, thickness: 1),
           // My Profile with user avatar
           Container(

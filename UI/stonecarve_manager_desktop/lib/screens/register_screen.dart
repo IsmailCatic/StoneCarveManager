@@ -49,14 +49,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SnackBar(content: Text('Registration successful!')),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration failed.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Registration failed.')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -74,36 +74,93 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               TextFormField(
                 controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                decoration: const InputDecoration(
+                  labelText: 'First Name *',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty)
+                    return 'First name is required';
+                  if (v.trim().length < 2)
+                    return 'First name must be at least 2 characters';
+                  return null;
+                },
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Last Name *',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty)
+                    return 'Last name is required';
+                  if (v.trim().length < 2)
+                    return 'Last name must be at least 2 characters';
+                  return null;
+                },
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: const InputDecoration(
+                  labelText: 'Email *',
+                  hintText: 'e.g. user@example.com',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Email is required';
+                  final emailRegex = RegExp(
+                    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                  );
+                  if (!emailRegex.hasMatch(v.trim()))
+                    return 'Enter a valid email address (e.g. user@example.com)';
+                  return null;
+                },
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: const InputDecoration(
+                  labelText: 'Password *',
+                  hintText:
+                      'Min. 8 characters with uppercase, lowercase, digit and special character',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Password is required';
+                  if (v.length < 8)
+                    return 'Password must be at least 8 characters';
+                  if (!v.contains(RegExp(r'[A-Z]')))
+                    return 'Password must contain at least one uppercase letter';
+                  if (!v.contains(RegExp(r'[a-z]')))
+                    return 'Password must contain at least one lowercase letter';
+                  if (!v.contains(RegExp(r'[0-9]')))
+                    return 'Password must contain at least one digit';
+                  if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]')))
+                    return 'Password must contain at least one special character';
+                  return null;
+                },
               ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _dateOfBirthController,
-                decoration: const InputDecoration(labelText: 'Date of Birth (yyyy-MM-dd)'),
+                decoration: const InputDecoration(
+                  labelText: 'Date of Birth *',
+                  hintText: 'yyyy-MM-dd (e.g. 1995-06-15)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.datetime,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'Required';
+                  if (v == null || v.isEmpty)
+                    return 'Date of birth is required';
                   try {
-                    DateFormat('yyyy-MM-dd').parse(v);
+                    DateFormat('yyyy-MM-dd').parseStrict(v);
                   } catch (_) {
-                    return 'Invalid date format';
+                    return 'Enter date in format yyyy-MM-dd (e.g. 1995-06-15)';
                   }
                   return null;
                 },

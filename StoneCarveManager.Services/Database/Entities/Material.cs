@@ -11,15 +11,15 @@ namespace StoneCarveManager.Services.Database.Entities
     public class Material
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty; // Mermer, Granit, Vapnenac
+        public string Name { get; set; } = string.Empty; // e.g. Marble, Granite, Limestone
 
         public string Description { get; set; } = string.Empty;
 
         public string? ImageUrl { get; set; }
 
-        public decimal PricePerUnit { get; set; } // Cijena po jedinici
+        public decimal PricePerUnit { get; set; } // Price per unit
 
-        public string Unit { get; set; } = "m²"; // m², kg, kom
+        public string Unit { get; set; } = "m²"; // m², kg, pcs
 
         public int QuantityInStock { get; set; } = 0;
 

@@ -9,6 +9,7 @@ import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/cart_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/favorites_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/cart_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/product_detail_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -424,7 +425,13 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                               product: product,
                               isFavorite: isFavorite,
                               onTap: () {
-                                // Navigate to product details
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ProductDetailScreen(product: product),
+                                  ),
+                                );
                               },
                               onToggleFavorite: () =>
                                   _toggleFavorite(product.id!),

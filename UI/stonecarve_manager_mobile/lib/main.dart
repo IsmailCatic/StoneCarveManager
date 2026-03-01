@@ -27,6 +27,7 @@ import 'package:stonecarve_manager_mobile/screens/mobile/profile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/services_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/forgot_password_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/reset_password_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/faq_mobile_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -210,6 +211,8 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
               );
             case '/profile':
               return MaterialPageRoute(builder: (_) => const ProfileScreen());
+            case '/faq':
+              return MaterialPageRoute(builder: (_) => const FaqMobileScreen());
             case '/forgot-password':
               return MaterialPageRoute(
                 builder: (_) => const ForgotPasswordScreen(),

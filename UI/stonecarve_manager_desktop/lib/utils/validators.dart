@@ -4,7 +4,7 @@ class Validators {
   // Email validation
   static String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Email je obavezan';
+      return 'Email is required';
     }
 
     final emailRegex = RegExp(
@@ -355,8 +355,8 @@ class Validators {
   static String? validateDropdown<T>(T? value, {String? fieldName}) {
     if (value == null) {
       return fieldName != null
-          ? 'Molimo odaberite $fieldName'
-          : 'Molimo odaberite opciju';
+          ? 'Please select a $fieldName'
+          : 'Please select an option';
     }
     return null;
   }

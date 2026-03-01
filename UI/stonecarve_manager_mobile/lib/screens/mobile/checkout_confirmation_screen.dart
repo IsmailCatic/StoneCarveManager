@@ -264,13 +264,6 @@ class _CheckoutConfirmationScreenState
                     'Subtotal',
                     '\$${cart.subtotal.toStringAsFixed(2)}',
                   ),
-                  const SizedBox(height: 8),
-                  _buildSummaryRow(
-                    'Shipping',
-                    '\$${cart.shippingCost.toStringAsFixed(2)}',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildSummaryRow('Taxes', '\$${cart.tax.toStringAsFixed(2)}'),
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 12),

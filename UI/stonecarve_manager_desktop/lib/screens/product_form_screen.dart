@@ -462,7 +462,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ? Validators.validateMinLength(
                         value,
                         20,
-                        fieldName: 'Portfolio opis',
+                        fieldName: 'Portfolio Description',
                       )
                     : null,
               ),
@@ -510,7 +510,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ? Validators.validateMinLength(
                         value,
                         15,
-                        fieldName: 'Rezultat projekta',
+                        fieldName: 'Project Outcome',
                       )
                     : null,
               ),
@@ -528,7 +528,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ? Validators.validateMinLength(
                               value,
                               3,
-                              fieldName: 'Lokacija',
+                              fieldName: 'Location',
                             )
                           : null,
                     ),
@@ -562,7 +562,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       keyboardType: TextInputType.number,
                       validator: (value) => Validators.validatePositiveInteger(
                         value,
-                        fieldName: 'Trajanje projekta',
+                        fieldName: 'Project Duration',
                         required: false,
                       ),
                     ),

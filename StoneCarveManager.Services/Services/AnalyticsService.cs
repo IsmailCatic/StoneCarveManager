@@ -1,14 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.Responses.Analytics;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -35,14 +35,14 @@ namespace StoneCarveManager.Services.Services
             // Current period payments (succeeded + partially_refunded)
             var currentPayments = await _context.Payments
                 .Include(p => p.Order)
-                .Where(p => (p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded") 
+                .Where(p => (p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded")
                     && p.CreatedAt >= startDate && p.CreatedAt <= endDate)
                 .ToListAsync(cancellationToken);
 
             // Previous period payments
             var previousPayments = await _context.Payments
                 .Include(p => p.Order)
-                .Where(p => (p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded") 
+                .Where(p => (p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded")
                     && p.CreatedAt >= previousStartDate && p.CreatedAt < previousEndDate)
                 .ToListAsync(cancellationToken);
 
@@ -67,8 +67,8 @@ namespace StoneCarveManager.Services.Services
             var previousTotalRefunds = previousPayments.Sum(p => p.RefundAmount ?? 0);
             var previousNetRevenue = previousGrossRevenue - previousTotalRefunds;
 
-            var revenueChange = previousNetRevenue > 0 
-                ? ((currentNetRevenue - previousNetRevenue) / previousNetRevenue) * 100 
+            var revenueChange = previousNetRevenue > 0
+                ? ((currentNetRevenue - previousNetRevenue) / previousNetRevenue) * 100
                 : 0;
 
             // ? Average order value from NET revenue (after refunds)
@@ -82,16 +82,16 @@ namespace StoneCarveManager.Services.Services
 
             // Customer statistics - count only users who have actually placed orders
             var customerIdsInPeriod = currentOrders.Select(o => o.UserId).Distinct().ToList();
-            
+
             var totalCustomers = customerIdsInPeriod.Count;
-            
+
             var orderCountsInPeriod = currentOrders
                 .GroupBy(o => o.UserId)
                 .ToDictionary(g => g.Key, g => g.Count());
-            
-            var newCustomers = customerIdsInPeriod.Count(userId => 
+
+            var newCustomers = customerIdsInPeriod.Count(userId =>
                 orderCountsInPeriod.ContainsKey(userId) && orderCountsInPeriod[userId] == 1);
-            
+
             var returningCustomers = customerIdsInPeriod.Count(userId =>
                 orderCountsInPeriod.ContainsKey(userId) && orderCountsInPeriod[userId] > 1);
 
@@ -104,8 +104,8 @@ namespace StoneCarveManager.Services.Services
             // Review statistics
             var reviews = await _context.ProductReviews.ToListAsync(cancellationToken);
             var approvedReviews = reviews.Where(r => r.IsApproved).ToList();
-            var averageRating = approvedReviews.Any() 
-                ? approvedReviews.Average(r => r.Rating) 
+            var averageRating = approvedReviews.Any()
+                ? approvedReviews.Average(r => r.Rating)
                 : 0;
 
             // Payment statistics
@@ -174,7 +174,7 @@ namespace StoneCarveManager.Services.Services
                 query = query.Where(p => p.CreatedAt <= endDate.Value);
 
             var payments = await query.ToListAsync(cancellationToken);
-            
+
             // ? Calculate NET revenue (gross - refunds)
             var grossRevenue = payments.Sum(p => p.Amount);
             var totalRefunds = payments.Sum(p => p.RefundAmount ?? 0);
@@ -203,7 +203,7 @@ namespace StoneCarveManager.Services.Services
         {
             var payments = await _context.Payments
                 .Include(p => p.Order)
-                .Where(p => (p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded") 
+                .Where(p => (p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded")
                     && p.CreatedAt >= startDate && p.CreatedAt <= endDate)
                 .ToListAsync(cancellationToken);
 
@@ -263,19 +263,22 @@ namespace StoneCarveManager.Services.Services
             int limit,
             CancellationToken cancellationToken = default)
         {
-            var query = _context.OrderItems
-                .Include(oi => oi.Product)
-                .Include(oi => oi.Order)
-                .AsQueryable();
+            // ? FIX: Filter by payment date instead of order date (consistent with revenue analytics)
+            var paymentsQuery = _context.Payments
+                .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded");
 
-            // Apply date filters if provided
             if (startDate.HasValue)
-                query = query.Where(oi => oi.Order.OrderDate >= startDate.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.CreatedAt >= startDate.Value);
 
             if (endDate.HasValue)
-                query = query.Where(oi => oi.Order.OrderDate <= endDate.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.CreatedAt <= endDate.Value);
 
-            var orderItems = await query.ToListAsync(cancellationToken);
+            var paidOrderIds = await paymentsQuery.Select(p => p.OrderId).ToListAsync(cancellationToken);
+
+            var orderItems = await _context.OrderItems
+                .Include(oi => oi.Product)
+                .Where(oi => paidOrderIds.Contains(oi.OrderId))
+                .ToListAsync(cancellationToken);
 
             var topProducts = orderItems
                 .GroupBy(oi => oi.ProductId)
@@ -284,11 +287,11 @@ namespace StoneCarveManager.Services.Services
                     ProductId = g.Key,
                     ProductName = g.First().Product.Name,
                     OrderCount = g.Select(oi => oi.OrderId).Distinct().Count(),
-                    
+
                     // Populate both legacy and new properties
                     QuantitySold = g.Sum(oi => oi.Quantity),
                     SoldQuantity = g.Sum(oi => oi.Quantity), // Legacy
-                    
+
                     TotalRevenue = g.Sum(oi => oi.TotalPrice),
                     TotalIncome = g.Sum(oi => oi.TotalPrice) // Legacy
                 })
@@ -304,20 +307,24 @@ namespace StoneCarveManager.Services.Services
             DateTime? endDate,
             CancellationToken cancellationToken = default)
         {
-            var query = _context.OrderItems
-                .Include(oi => oi.Product)
-                    .ThenInclude(p => p.Category)
-                .Include(oi => oi.Order)
-                .Where(oi => oi.Product.CategoryId.HasValue) // Filter out products without category
-                .AsQueryable();
+            // ? FIX: Filter by payment date instead of order date (consistent with revenue analytics)
+            var paymentsQuery = _context.Payments
+                .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded");
 
             if (startDate.HasValue)
-                query = query.Where(oi => oi.Order.OrderDate >= startDate.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.CreatedAt >= startDate.Value);
 
             if (endDate.HasValue)
-                query = query.Where(oi => oi.Order.OrderDate <= endDate.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.CreatedAt <= endDate.Value);
 
-            var orderItems = await query.ToListAsync(cancellationToken);
+            var paidOrderIds = await paymentsQuery.Select(p => p.OrderId).ToListAsync(cancellationToken);
+
+            var orderItems = await _context.OrderItems
+                .Include(oi => oi.Product)
+                    .ThenInclude(p => p.Category)
+                .Where(oi => paidOrderIds.Contains(oi.OrderId) && oi.Product.CategoryId.HasValue) // Only paid orders, exclude products without category
+                .ToListAsync(cancellationToken);
+
             var totalRevenue = orderItems.Sum(oi => oi.TotalPrice);
 
             var categories = orderItems
@@ -344,20 +351,20 @@ namespace StoneCarveManager.Services.Services
         // Legacy method - kept for backward compatibility
         // ? UPDATED: Returns NET revenue (gross - refunds)
         public async Task<decimal> GetTotalIncomeAsync(
-            DateTime? from = null, 
-            DateTime? to = null, 
+            DateTime? from = null,
+            DateTime? to = null,
             CancellationToken cancellationToken = default)
         {
             var query = _context.Payments
                 .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded");
-            
-            if (from.HasValue) 
+
+            if (from.HasValue)
                 query = query.Where(p => p.CreatedAt >= from.Value);
-            if (to.HasValue) 
+            if (to.HasValue)
                 query = query.Where(p => p.CreatedAt <= to.Value);
-            
+
             var payments = await query.ToListAsync(cancellationToken);
-            
+
             // ? NET Revenue = Gross Revenue - Total Refunds
             var grossRevenue = payments.Sum(p => p.Amount);
             var totalRefunds = payments.Sum(p => p.RefundAmount ?? 0);
@@ -367,51 +374,51 @@ namespace StoneCarveManager.Services.Services
         // Legacy method - kept for backward compatibility
         // ? UPDATED: Uses NET revenue for daily average
         public async Task<decimal> GetDailyAverageIncomeAsync(
-            DateTime? from = null, 
-            DateTime? to = null, 
+            DateTime? from = null,
+            DateTime? to = null,
             CancellationToken cancellationToken = default)
         {
             var query = _context.Payments
                 .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded");
-            
-            if (from.HasValue) 
+
+            if (from.HasValue)
                 query = query.Where(p => p.CreatedAt >= from.Value);
-            if (to.HasValue) 
+            if (to.HasValue)
                 query = query.Where(p => p.CreatedAt <= to.Value);
-            
+
             var payments = await query.ToListAsync(cancellationToken);
-            
+
             // ? NET Revenue calculation
             var grossRevenue = payments.Sum(p => p.Amount);
             var totalRefunds = payments.Sum(p => p.RefundAmount ?? 0);
             var netRevenue = grossRevenue - totalRefunds;
-            
+
             // Calculate days in range
             var actualFrom = from ?? await _context.Payments.MinAsync(p => p.CreatedAt, cancellationToken);
             var actualTo = to ?? DateTime.UtcNow;
             var days = (actualTo - actualFrom).TotalDays;
             var numDays = days > 0 ? days : 1;
-            
+
             return netRevenue / (decimal)numDays;
         }
 
         // Legacy method - kept for backward compatibility
         // ? UPDATED: Returns NET revenue per day
         public async Task<List<DailyIncomeResponse>> GetIncomePerDayAsync(
-            DateTime? from = null, 
-            DateTime? to = null, 
+            DateTime? from = null,
+            DateTime? to = null,
             CancellationToken cancellationToken = default)
         {
             var query = _context.Payments
                 .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded");
-                
+
             if (from.HasValue)
                 query = query.Where(p => p.CreatedAt >= from.Value);
             if (to.HasValue)
                 query = query.Where(p => p.CreatedAt <= to.Value);
-                
+
             var payments = await query.ToListAsync(cancellationToken);
-            
+
             // ? Group and calculate NET revenue per day
             return payments
                 .GroupBy(p => p.CreatedAt.Date)
@@ -451,7 +458,7 @@ namespace StoneCarveManager.Services.Services
                 ordersQuery = ordersQuery.Where(o => o.OrderDate <= endDate.Value);
 
             var ordersInPeriod = await ordersQuery.ToListAsync(cancellationToken);
-            
+
             // Total customers = distinct users who ordered in this period
             var customerIdsInPeriod = ordersInPeriod.Select(o => o.UserId).Distinct().ToList();
             var totalCustomers = customerIdsInPeriod.Count;
@@ -464,7 +471,7 @@ namespace StoneCarveManager.Services.Services
             // New customers = users with exactly 1 order in this period
             var newCustomers = customerIdsInPeriod.Count(userId =>
                 orderCountsInPeriod.ContainsKey(userId) && orderCountsInPeriod[userId] == 1);
-            
+
             // Returning customers = users with 2+ orders in this period
             var returningCustomers = customerIdsInPeriod.Count(userId =>
                 orderCountsInPeriod.ContainsKey(userId) && orderCountsInPeriod[userId] > 1);
@@ -474,20 +481,20 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.Payment)
                 .Where(o => customerIdsInPeriod.Contains(o.UserId))
                 .ToListAsync(cancellationToken);
-            
+
             // ? Use NET revenue from payments instead of Order.TotalAmount
             var totalSpent = allOrdersForCustomers
-                .Where(o => o.Payment != null && 
-                    (o.Payment.Status == "succeeded" || 
-                     o.Payment.Status == "partially_refunded" || 
+                .Where(o => o.Payment != null &&
+                    (o.Payment.Status == "succeeded" ||
+                     o.Payment.Status == "partially_refunded" ||
                      o.Payment.Status == "refunded"))
                 .Sum(o => o.Payment.Amount - (o.Payment.RefundAmount ?? 0));
-            
+
             var averageLifetimeValue = totalCustomers > 0 ? totalSpent / totalCustomers : 0;
-            
+
             // Average orders per customer (for customers in this period)
-            var averageOrdersPerCustomer = totalCustomers > 0 
-                ? (decimal)allOrdersForCustomers.Count / totalCustomers 
+            var averageOrdersPerCustomer = totalCustomers > 0
+                ? (decimal)allOrdersForCustomers.Count / totalCustomers
                 : 0;
 
             return new CustomerStatisticsResponse
@@ -519,14 +526,14 @@ namespace StoneCarveManager.Services.Services
                     CustomerName = $"{g.First().User.FirstName} {g.First().User.LastName}",
                     Email = g.First().User.Email ?? string.Empty,
                     // ? Count only orders with successful/refunded payments
-                    TotalOrders = g.Count(o => o.Payment != null && 
-                        (o.Payment.Status == "succeeded" || 
-                         o.Payment.Status == "partially_refunded" || 
+                    TotalOrders = g.Count(o => o.Payment != null &&
+                        (o.Payment.Status == "succeeded" ||
+                         o.Payment.Status == "partially_refunded" ||
                          o.Payment.Status == "refunded")),
                     // ? Calculate NET revenue (Amount - RefundAmount)
                     TotalSpent = g.Where(o => o.Payment != null &&
-                        (o.Payment.Status == "succeeded" || 
-                         o.Payment.Status == "partially_refunded" || 
+                        (o.Payment.Status == "succeeded" ||
+                         o.Payment.Status == "partially_refunded" ||
                          o.Payment.Status == "refunded"))
                         .Sum(o => o.Payment.Amount - (o.Payment.RefundAmount ?? 0)),
                     LastOrderDate = g.Max(o => o.OrderDate)
@@ -544,8 +551,8 @@ namespace StoneCarveManager.Services.Services
             var reviews = await _context.ProductReviews.ToListAsync(cancellationToken);
 
             var approvedReviews = reviews.Where(r => r.IsApproved).ToList();
-            var averageRating = approvedReviews.Any() 
-                ? approvedReviews.Average(r => r.Rating) 
+            var averageRating = approvedReviews.Any()
+                ? approvedReviews.Average(r => r.Rating)
                 : 0;
 
             var ratingDistribution = new Dictionary<int, int>();
@@ -554,8 +561,8 @@ namespace StoneCarveManager.Services.Services
                 ratingDistribution[i] = reviews.Count(r => r.Rating == i);
             }
 
-            var approvalRate = reviews.Count > 0 
-                ? (double)approvedReviews.Count / reviews.Count * 100 
+            var approvalRate = reviews.Count > 0
+                ? (double)approvedReviews.Count / reviews.Count * 100
                 : 0;
 
             return new ReviewStatisticsResponse
@@ -595,8 +602,8 @@ namespace StoneCarveManager.Services.Services
                     EmployeeName = $"{g.First().AssignedEmployee!.FirstName} {g.First().AssignedEmployee.LastName}",
                     AssignedOrders = g.Count(),
                     CompletedOrders = g.Count(o => o.Status == OrderStatus.Delivered),
-                    CompletionRate = g.Count() > 0 
-                        ? (double)g.Count(o => o.Status == OrderStatus.Delivered) / g.Count() * 100 
+                    CompletionRate = g.Count() > 0
+                        ? (double)g.Count(o => o.Status == OrderStatus.Delivered) / g.Count() * 100
                         : 0,
                     AverageCompletionDays = g.Where(o => o.CompletedAt.HasValue)
                         .Select(o => (o.CompletedAt!.Value - o.OrderDate).TotalDays)

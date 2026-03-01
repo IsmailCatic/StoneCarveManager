@@ -34,7 +34,12 @@ namespace StoneCarveManager.Services.Services
             }
 
             if (!string.IsNullOrWhiteSpace(search.Category))
-                query = query.Where(f => f.Category == search.Category);
+            {
+                if (search.Category.Equals("General", StringComparison.OrdinalIgnoreCase))
+                    query = query.Where(f => f.Category == null || f.Category == "" || f.Category == "General");
+                else
+                    query = query.Where(f => f.Category == search.Category);
+            }
 
             if (search.IsActive.HasValue)
                 query = query.Where(f => f.IsActive == search.IsActive.Value);

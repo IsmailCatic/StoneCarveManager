@@ -141,6 +141,16 @@ class _AppDrawerState extends State<AppDrawer> {
             currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/products'),
           ),
+          Padding(
+            padding: const EdgeInsets.only(left: 32.0),
+            child: _DrawerItem(
+              icon: Icons.assignment_turned_in,
+              title: 'Custom Order Products',
+              route: '/custom-order-products',
+              currentRoute: widget.currentRoute,
+              onTap: () => _navigateTo(context, '/custom-order-products'),
+            ),
+          ),
           _DrawerItem(
             icon: Icons.build_circle,
             title: 'Services',
@@ -162,13 +172,15 @@ class _AppDrawerState extends State<AppDrawer> {
             currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/categories'),
           ),
-          _DrawerItem(
-            icon: Icons.people,
-            title: 'Users',
-            route: '/users',
-            currentRoute: widget.currentRoute,
-            onTap: () => _navigateTo(context, '/users'),
-          ),
+          // Users - visible only for Admins
+          if (AuthProvider.isAdmin)
+            _DrawerItem(
+              icon: Icons.people,
+              title: 'Users',
+              route: '/users',
+              currentRoute: widget.currentRoute,
+              onTap: () => _navigateTo(context, '/users'),
+            ),
           _DrawerItem(
             icon: Icons.workspaces,
             title: 'Portfolio',
@@ -183,20 +195,24 @@ class _AppDrawerState extends State<AppDrawer> {
             currentRoute: widget.currentRoute,
             onTap: () => _navigateTo(context, '/blog'),
           ),
-          _DrawerItem(
-            icon: Icons.analytics,
-            title: 'Analytics',
-            route: '/analytics',
-            currentRoute: widget.currentRoute,
-            onTap: () => _navigateTo(context, '/analytics'),
-          ),
-          _DrawerItem(
-            icon: Icons.payment,
-            title: 'Payments',
-            route: '/payments',
-            currentRoute: widget.currentRoute,
-            onTap: () => _navigateTo(context, '/payments'),
-          ),
+          // Analytics - visible only for Admins
+          if (AuthProvider.isAdmin)
+            _DrawerItem(
+              icon: Icons.analytics,
+              title: 'Analytics',
+              route: '/analytics',
+              currentRoute: widget.currentRoute,
+              onTap: () => _navigateTo(context, '/analytics'),
+            ),
+          // Payments - visible only for Admins
+          if (AuthProvider.isAdmin)
+            _DrawerItem(
+              icon: Icons.payment,
+              title: 'Payments',
+              route: '/payments',
+              currentRoute: widget.currentRoute,
+              onTap: () => _navigateTo(context, '/payments'),
+            ),
           _DrawerItem(
             icon: Icons.rate_review,
             title: 'Reviews',

@@ -39,7 +39,8 @@ namespace StoneCarveManager.Services.Services
             if (product == null)
                 throw new KeyNotFoundException($"Product with ID {request.ProductId} not found");
 
-            if (!product.IsActive || product.ProductState != "active")
+            // if (!product.IsActive || product.ProductState != "active")
+            if (product.ProductState != "active")
                 throw new InvalidOperationException("Product is not available for purchase");
 
             if (product.StockQuantity < request.Quantity)

@@ -103,6 +103,12 @@ namespace StoneCarveManager.Services.Services
                 throw new UnauthorizedAccessException("Invalid username or password");
             }
 
+            // ⭐ Check if user is blocked
+            if (user.IsBlocked == true)
+            {
+                throw new Exception("Your account has been blocked. Please contact an administrator for assistance.");
+            }
+
             var token = await GenerateJwtTokenAsync(user);
 
             return token;

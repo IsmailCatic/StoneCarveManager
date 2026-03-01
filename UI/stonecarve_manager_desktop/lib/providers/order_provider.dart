@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
 import 'package:stonecarve_manager_flutter/models/order_update_request.dart';
@@ -29,7 +30,7 @@ class OrderProvider extends BaseProvider<Order> {
     if (response.statusCode == 200) {
       return Order.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception("Failed to load order: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'load order');
     }
   }
 
@@ -46,7 +47,7 @@ class OrderProvider extends BaseProvider<Order> {
     } else if (response.statusCode == 404) {
       return false;
     } else {
-      throw Exception("Failed to delete progress image: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'delete progress image');
     }
   }
 
@@ -120,7 +121,7 @@ class OrderProvider extends BaseProvider<Order> {
       return progressImage;
     } else {
       print('ERROR: ${response.body}');
-      throw Exception("Failed to upload progress image: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'upload progress image');
     }
   }
 
@@ -130,7 +131,10 @@ class OrderProvider extends BaseProvider<Order> {
     if (isValidResponse(response)) {
       return fromJson(jsonDecode(response.body));
     } else {
-      throw Exception("Failed to mark order as completed: ${response.body}");
+      throw HttpErrorHandler.createException(
+        response,
+        'mark order as completed',
+      );
     }
   }
 
@@ -141,7 +145,7 @@ class OrderProvider extends BaseProvider<Order> {
       if (response.body.isEmpty) return null;
       return Review.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception("Failed to fetch review: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'fetch order review');
     }
   }
 
@@ -155,7 +159,7 @@ class OrderProvider extends BaseProvider<Order> {
     if (isValidResponse(response)) {
       return Review.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception("Failed to add review: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'add order review');
     }
   }
 
@@ -189,7 +193,7 @@ class OrderProvider extends BaseProvider<Order> {
     } else if (response.statusCode == 404) {
       throw Exception('Order not found');
     } else {
-      throw Exception('Failed to update order status: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'update order status');
     }
   }
 
@@ -219,7 +223,7 @@ class OrderProvider extends BaseProvider<Order> {
     } else if (response.statusCode == 403) {
       throw Exception('Access denied - Admin/Employee only');
     } else {
-      throw Exception('Failed to load custom orders: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'load custom orders');
     }
   }
 
@@ -269,7 +273,10 @@ class OrderProvider extends BaseProvider<Order> {
       final jsonData = jsonDecode(response.body);
       return jsonData['url'] as String;
     } else {
-      throw Exception('Failed to upload sketch: ${response.body}');
+      throw HttpErrorHandler.createException(
+        response,
+        'upload custom order sketch',
+      );
     }
   }
 
@@ -293,7 +300,10 @@ class OrderProvider extends BaseProvider<Order> {
     } else if (response.statusCode == 404) {
       return false;
     } else {
-      throw Exception('Failed to delete sketch: ${response.body}');
+      throw HttpErrorHandler.createException(
+        response,
+        'delete custom order sketch',
+      );
     }
   }
 
@@ -318,9 +328,15 @@ class OrderProvider extends BaseProvider<Order> {
     } else if (response.statusCode == 404) {
       throw Exception('Order not found');
     } else if (response.statusCode == 400) {
-      throw Exception('Invalid employee: ${response.body}');
+      throw HttpErrorHandler.createException(
+        response,
+        'validate employee assignment',
+      );
     } else {
-      throw Exception('Failed to assign employee: ${response.body}');
+      throw HttpErrorHandler.createException(
+        response,
+        'assign employee to order',
+      );
     }
   }
 
@@ -349,7 +365,7 @@ class OrderProvider extends BaseProvider<Order> {
     } else if (response.statusCode == 403) {
       throw Exception('Access denied');
     } else {
-      throw Exception('Failed to load my orders: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'load my orders');
     }
   }
 
@@ -381,7 +397,10 @@ class OrderProvider extends BaseProvider<Order> {
       final items = jsonData['items'] as List?;
       return items?.map((e) => Order.fromJson(e)).toList() ?? [];
     } else {
-      throw Exception('Failed to load custom orders: ${response.body}');
+      throw HttpErrorHandler.createException(
+        response,
+        'load filtered custom orders',
+      );
     }
   }
 }

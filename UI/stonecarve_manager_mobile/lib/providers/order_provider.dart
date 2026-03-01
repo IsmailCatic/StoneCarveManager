@@ -6,6 +6,7 @@ import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
 import 'package:stonecarve_manager_mobile/models/custom_order_request.dart';
+import 'package:stonecarve_manager_mobile/models/service_order_request.dart';
 import 'package:stonecarve_manager_mobile/config/api_config.dart';
 
 class OrderProvider extends BaseProvider<Order> {
@@ -123,27 +124,22 @@ class OrderProvider extends BaseProvider<Order> {
     }
   }
 
-  /// Get all orders for current user
+  /// Get all orders for current user — uses /my-orders endpoint (user-scoped, matching desktop)
   static Future<List<Order>> getMyOrders({
     int? status,
-    DateTime? dateFrom,
-    DateTime? dateTo,
-    int page = 0,
-    int pageSize = 20,
+    int page = 1,
+    int pageSize = 100,
   }) async {
     final headers = await AuthProvider.getAuthHeaders();
 
-    var queryParams = <String, String>{
-      'Page': page.toString(),
-      'PageSize': pageSize.toString(),
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
     };
-
-    if (status != null) queryParams['Status'] = status.toString();
-    if (dateFrom != null) queryParams['DateFrom'] = dateFrom.toIso8601String();
-    if (dateTo != null) queryParams['DateTo'] = dateTo.toIso8601String();
+    if (status != null) queryParams['status'] = status.toString();
 
     final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Order',
+      '${BaseProvider.baseUrl}/api/Order/my-orders',
     ).replace(queryParameters: queryParams);
 
     print('[OrderProvider] Fetching my orders from: $uri');
@@ -163,84 +159,26 @@ class OrderProvider extends BaseProvider<Order> {
     }
   }
 
-  /// Get active orders (not completed/cancelled)
-  /// Active statuses: Pending (0), Processing (1), Shipped (2)
+  /// Get active orders (Pending=0, Processing=1, Shipped=2)
+  /// Fetches from /my-orders and filters by status range on the client
   static Future<List<Order>> getMyActiveOrders() async {
-    final headers = await AuthProvider.getAuthHeaders();
-
-    final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Order',
-    ).replace(queryParameters: {'PageSize': '100'});
-
-    print('[OrderProvider] Fetching all orders from: $uri');
-
-    final response = await http.get(uri, headers: headers);
-
-    print('[OrderProvider] Response status: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final allOrders = (data['items'] as List)
-          .map((json) => Order.fromJson(json))
-          .toList();
-
-      // Filter for active orders: Pending (0), Processing (1), Shipped (2)
-      final activeOrders = allOrders.where((order) {
-        return order.status >= 0 && order.status <= 2;
-      }).toList();
-
-      print(
-        '[OrderProvider] Loaded ${activeOrders.length} active orders (from ${allOrders.length} total)',
-      );
-      return activeOrders;
-    } else {
-      print(
-        '[OrderProvider] Active orders error: ${response.statusCode} - ${response.body}',
-      );
-      throw Exception(
-        'Failed to load active orders (${response.statusCode}): ${response.body}',
-      );
-    }
+    final all = await getMyOrders();
+    final active = all.where((o) => o.status >= 0 && o.status <= 2).toList();
+    print(
+      '[OrderProvider] Active orders: ${active.length} (from ${all.length} total)',
+    );
+    return active;
   }
 
-  /// Get order history (completed/cancelled)
-  /// History statuses: Delivered (3), Cancelled (4), Returned (5)
+  /// Get order history (Delivered=3, Cancelled=4, Returned=5)
+  /// Fetches from /my-orders and filters by status range on the client
   static Future<List<Order>> getMyOrderHistory() async {
-    final headers = await AuthProvider.getAuthHeaders();
-
-    final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Order',
-    ).replace(queryParameters: {'PageSize': '100'});
-
-    print('[OrderProvider] Fetching all orders from: $uri');
-
-    final response = await http.get(uri, headers: headers);
-
-    print('[OrderProvider] Response status: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final allOrders = (data['items'] as List)
-          .map((json) => Order.fromJson(json))
-          .toList();
-
-      // Filter for history orders: Delivered (3), Cancelled (4), Returned (5)
-      final historyOrders = allOrders.where((order) {
-        return order.status >= 3 && order.status <= 5;
-      }).toList();
-
-      print(
-        '[OrderProvider] Loaded ${historyOrders.length} history orders (from ${allOrders.length} total)',
-      );
-      return historyOrders;
-    } else {
-      print(
-        '[OrderProvider] Order history error: ${response.statusCode} - ${response.body}',
-      );
-      throw Exception(
-        'Failed to load order history (${response.statusCode}): ${response.body}',
-      );
-    }
+    final all = await getMyOrders();
+    final history = all.where((o) => o.status >= 3 && o.status <= 5).toList();
+    print(
+      '[OrderProvider] History orders: ${history.length} (from ${all.length} total)',
+    );
+    return history;
   }
 
   /// Get single order details
@@ -384,6 +322,65 @@ class OrderProvider extends BaseProvider<Order> {
       }
     } catch (e) {
       print('[OrderProvider] Error creating custom order: $e');
+      rethrow;
+    }
+  }
+
+  /// Create service request
+  /// Uploads images first, then POSTs to /api/Order/service-request
+  static Future<Order> createServiceRequest(
+    ServiceOrderRequest request,
+    List<File> imageFiles,
+  ) async {
+    final headers = await AuthProvider.getAuthHeaders();
+    final provider = OrderProvider();
+
+    try {
+      print('[OrderProvider] Starting service request creation');
+
+      // 1. Upload images
+      final uploadedUrls = <String>[];
+      for (int i = 0; i < imageFiles.length; i++) {
+        print('[OrderProvider] Uploading image ${i + 1}/${imageFiles.length}');
+        final url = await provider.uploadCustomSketch(imageFiles[i]);
+        uploadedUrls.add(url);
+      }
+
+      // 2. Build request with uploaded URLs
+      final requestWithUrls = ServiceOrderRequest(
+        serviceProductId: request.serviceProductId,
+        requirements: request.requirements,
+        dimensions: request.dimensions,
+        customerNotes: request.customerNotes,
+        referenceImageUrls: uploadedUrls.isNotEmpty ? uploadedUrls : null,
+        deliveryAddress: request.deliveryAddress,
+        deliveryCity: request.deliveryCity,
+        deliveryZipCode: request.deliveryZipCode,
+        preferredDate: request.preferredDate,
+      );
+
+      // 3. POST to service-request endpoint
+      final uri = Uri.parse('${ApiConfig.apiBaseUrl}Order/service-request');
+      print('[OrderProvider] POSTing service request to: $uri');
+      print('[OrderProvider] Body: ${requestWithUrls.toJson()}');
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(requestWithUrls.toJson()),
+      );
+
+      print('[OrderProvider] Service request response: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final order = Order.fromJson(jsonDecode(response.body));
+        print('[OrderProvider] Service request created: Order #${order.id}');
+        return order;
+      } else {
+        throw Exception('Failed to submit service request: ${response.body}');
+      }
+    } catch (e) {
+      print('[OrderProvider] Error creating service request: $e');
       rethrow;
     }
   }

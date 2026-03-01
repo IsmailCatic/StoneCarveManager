@@ -1,12 +1,9 @@
 import '../models/product.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import '../models/product.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:stonecarve_manager_flutter/utils/auth_client.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class ProductProvider {
   final String baseUrl = 'http://localhost:5021/api/Product';
@@ -97,7 +94,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Error activating product: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'activate product');
     }
   }
 
@@ -108,7 +105,7 @@ class ProductProvider {
     final response = await client.patch(Uri.parse('$baseUrl/$productId/hide'));
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Error hiding product: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'hide product');
     }
   }
 
@@ -121,7 +118,7 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Error converting to service: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'convert to service');
     }
   }
 
@@ -136,7 +133,10 @@ class ProductProvider {
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Error adding to portfolio: ${response.body}');
+      throw HttpErrorHandler.createException(
+        response,
+        'add product to portfolio',
+      );
     }
   }
 

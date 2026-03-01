@@ -32,11 +32,11 @@ namespace StoneCarveManager.Model.Validators
 
             // CategoryId is now optional (nullable)
             When(x => x.CategoryId.HasValue, () =>
-                RuleFor(x => x.CategoryId).GreaterThan(0).WithMessage("Category ID must be greater than 0 when provided."));
+                RuleFor(x => x.CategoryId).NotEqual(0).WithMessage("Category ID must be valid when provided."));
 
             // MaterialId is now optional (nullable)
             When(x => x.MaterialId.HasValue, () =>
-                RuleFor(x => x.MaterialId).GreaterThan(0).WithMessage("Material ID must be greater than 0 when provided."));
+                RuleFor(x => x.MaterialId).NotEqual(0).WithMessage("Material ID must be valid when provided."));
         }
     }
 }

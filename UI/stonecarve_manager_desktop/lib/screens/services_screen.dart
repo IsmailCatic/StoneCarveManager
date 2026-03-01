@@ -2,12 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/product.dart';
-import 'package:stonecarve_manager_flutter/models/category.dart';
-import 'package:stonecarve_manager_flutter/models/material.dart'
-    as stone_material;
 import 'package:stonecarve_manager_flutter/providers/product_provider.dart';
-import 'package:stonecarve_manager_flutter/providers/category_provider.dart';
-import 'package:stonecarve_manager_flutter/providers/stone_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/product_state_chip.dart';
 import '../utils/validators.dart';
 
@@ -20,11 +15,7 @@ class ServicesScreen extends StatefulWidget {
 
 class _ServicesScreenState extends State<ServicesScreen> {
   final ProductProvider _productProvider = ProductProvider();
-  final CategoryProvider _categoryProvider = CategoryProvider();
-  final MaterialProvider _materialProvider = MaterialProvider();
   List<Product> _services = [];
-  List<Category> _categories = [];
-  List<stone_material.StoneMaterial> _materials = [];
   bool _isLoading = true;
   String _searchQuery = '';
   Timer? _searchDebounce;
@@ -46,10 +37,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
       _isLoading = true;
     });
 
-    // Load categories and materials first (in parallel)
-    await Future.wait([_loadCategories(), _loadMaterials()]);
-
-    // Then load services and map the names
     await _loadServices();
   }
 
@@ -62,30 +49,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
         searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
       );
       print('✅ [ServicesScreen] Loaded ${services.length} services');
-      print(
-        '📋 [ServicesScreen] Available categories: ${_categories.length}, materials: ${_materials.length}',
-      );
-
-      // Map category and material names from loaded lists
-      for (var service in services) {
-        if (service.categoryId != null) {
-          final category = _categories.firstWhere(
-            (cat) => cat.id == service.categoryId,
-            orElse: () => Category(id: null, name: null),
-          );
-          service.categoryName = category.name;
-          print(
-            '  ✅ Service "${service.name}" -> Category: ${category.name ?? "null"} (ID: ${service.categoryId})',
-          );
-        }
-        if (service.materialId != null) {
-          final material = _materials.firstWhere(
-            (mat) => mat.id == service.materialId,
-            orElse: () => stone_material.StoneMaterial(id: null, name: null),
-          );
-          service.materialName = material.name;
-        }
-      }
 
       setState(() {
         _services = services;
@@ -103,30 +66,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
       }
     }
   }
-
-  Future<void> _loadCategories() async {
-    try {
-      final result = await _categoryProvider.get();
-      setState(() {
-        _categories = result.items ?? [];
-      });
-    } catch (e) {
-      print('❌ [ServicesScreen] Error loading categories: $e');
-    }
-  }
-
-  Future<void> _loadMaterials() async {
-    try {
-      final result = await _materialProvider.get();
-      setState(() {
-        _materials = result.items ?? [];
-      });
-    } catch (e) {
-      print('❌ [ServicesScreen] Error loading materials: $e');
-    }
-  }
-
-  // Filtering now done on backend
 
   @override
   Widget build(BuildContext context) {
@@ -516,46 +455,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 const Divider(),
                 Row(
                   children: [
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Dimensions',
-                        service.dimensions ?? 'N/A',
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Weight',
-                        service.weight != null ? '${service.weight} kg' : 'N/A',
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Category',
-                        service.categoryName ?? 'Not assigned',
-                      ),
-                    ),
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Material',
-                        service.materialName ?? 'Not assigned',
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDetailRow(
-                        'Status',
-                        service.isActive == true ? 'Active' : 'Inactive',
-                      ),
-                    ),
+                    Expanded(child: const SizedBox.shrink()),
                     Expanded(
                       child: _buildDetailRow(
                         'State',
@@ -619,33 +519,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
     final estimatedDaysController = TextEditingController(
       text: service.estimatedDays?.toString(),
     );
-    final dimensionsController = TextEditingController(
-      text: service.dimensions,
-    );
-    final weightController = TextEditingController(
-      text: service.weight?.toString(),
-    );
-
-    // Normalize 0 to null and validate IDs exist in dropdown lists
-    int? selectedCategoryId =
-        (service.categoryId == null || service.categoryId == 0)
-        ? null
-        : service.categoryId;
-    // Check if category exists in the list, if not set to null
-    if (selectedCategoryId != null &&
-        !_categories.any((cat) => cat.id == selectedCategoryId)) {
-      selectedCategoryId = null;
-    }
-
-    int? selectedMaterialId =
-        (service.materialId == null || service.materialId == 0)
-        ? null
-        : service.materialId;
-    // Check if material exists in the list, if not set to null
-    if (selectedMaterialId != null &&
-        !_materials.any((mat) => mat.id == selectedMaterialId)) {
-      selectedMaterialId = null;
-    }
 
     showDialog(
       context: context,
@@ -704,100 +577,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: dimensionsController,
-                          decoration: const InputDecoration(
-                            labelText: 'Dimensions',
-                            hintText:
-                                'Optional (e.g., 100x50x20 or leave empty)',
-                            prefixIcon: Icon(Icons.straighten),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: weightController,
-                          decoration: const InputDecoration(
-                            labelText: 'Weight (kg)',
-                            hintText: 'Optional (e.g., 50 or leave empty)',
-                            prefixIcon: Icon(Icons.monitor_weight),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  // Category Dropdown
-                  DropdownButtonFormField<int?>(
-                    value: selectedCategoryId,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      prefixIcon: Icon(Icons.category),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('Not assigned'),
-                      ),
-                      ...{
-                        for (var category in _categories)
-                          if (category.id != null && category.id! > 0)
-                            category.id: category,
-                      }.values.map((category) {
-                        return DropdownMenuItem<int?>(
-                          value: category.id,
-                          child: Text(category.name ?? 'N/A'),
-                        );
-                      }),
-                    ],
-                    onChanged: (value) {
-                      setDialogState(() {
-                        selectedCategoryId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  // Material Dropdown
-                  DropdownButtonFormField<int?>(
-                    value: selectedMaterialId,
-                    decoration: const InputDecoration(
-                      labelText: 'Material',
-                      prefixIcon: Icon(Icons.terrain),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('Not assigned'),
-                      ),
-                      ...{
-                        for (var material in _materials)
-                          if (material.id != null && material.id! > 0)
-                            material.id: material,
-                      }.values.map((material) {
-                        return DropdownMenuItem<int?>(
-                          value: material.id,
-                          child: Text(material.name ?? 'N/A'),
-                        );
-                      }),
-                    ],
-                    onChanged: (value) {
-                      setDialogState(() {
-                        selectedMaterialId = value;
-                      });
-                    },
-                  ),
                 ],
               ),
             ),
@@ -854,22 +633,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   return;
                 }
 
-                // Validate weight if provided
-                final weightText = weightController.text.trim();
-                double? weight;
-                if (weightText.isNotEmpty) {
-                  weight = double.tryParse(weightText);
-                  if (weight == null || weight < 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Weight must be a valid positive number'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                }
-
                 // Use original service object and only update fields that are changing
                 final updatedService = Product(
                   // Retain ALL existing fields from original object
@@ -878,16 +641,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   description: descriptionController.text.trim(),
                   price: price,
                   estimatedDays: int.tryParse(estimatedDaysController.text),
-                  dimensions: dimensionsController.text.trim().isEmpty
-                      ? null
-                      : dimensionsController.text.trim(),
-                  weight: weight,
-                  // Updated categoryId and materialId from dropdowns
-                  categoryId: selectedCategoryId,
-                  materialId: selectedMaterialId,
-                  // CRITICAL: Retain all other fields from original object
+                  // CRITICAL: Retain all other fields from original object (including dimensions, weight, etc.)
+                  dimensions: service.dimensions,
+                  weight: service.weight,
+                  categoryId: service.categoryId,
+                  materialId: service.materialId,
                   stockQuantity: service.stockQuantity,
-                  isActive: service.isActive,
+                  // ...removed isActive parameter...
                   createdAt: service.createdAt,
                   updatedAt: service.updatedAt,
                   isInPortfolio: service.isInPortfolio,
@@ -924,7 +684,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error updating service: $e'),
+                      content: Text('Failed to update service: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );

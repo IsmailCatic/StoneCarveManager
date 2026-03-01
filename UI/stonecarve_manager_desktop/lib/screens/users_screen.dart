@@ -509,7 +509,8 @@ class _UsersScreenState extends State<UsersScreen> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('User added successfully'),
+                              content: Text('User created successfully'),
+                              backgroundColor: Colors.green,
                             ),
                           );
                         }
@@ -519,6 +520,7 @@ class _UsersScreenState extends State<UsersScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('User updated successfully'),
+                              backgroundColor: Colors.green,
                             ),
                           );
                         }
@@ -527,9 +529,12 @@ class _UsersScreenState extends State<UsersScreen> {
                       _loadUsers();
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to save user: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                       }
                     }
                   },
@@ -552,8 +557,8 @@ class _UsersScreenState extends State<UsersScreen> {
           title: Text(isBlocking ? 'Block User' : 'Unblock User'),
           content: Text(
             isBlocking
-                ? 'Are you sure you want to block "${user.displayName}"? They will not be able to access the application.'
-                : 'Are you sure you want to unblock "${user.displayName}"? They will regain access to the application.',
+                ? 'Are you sure you want to block "${user.displayName}"? They will not be able to log in or access the application.'
+                : 'Are you sure you want to unblock "${user.displayName}"? They will be able to log in and access the application again.',
           ),
           actions: [
             TextButton(
@@ -583,9 +588,14 @@ class _UsersScreenState extends State<UsersScreen> {
                   if (!mounted) return;
                   Navigator.of(context).pop();
                   if (!mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to ${isBlocking ? "block" : "unblock"} user: $e',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(

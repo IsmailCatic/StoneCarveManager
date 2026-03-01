@@ -32,7 +32,6 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<ActionResult<PagedResult<ProductReviewResponse>>> GetAll([FromQuery] ProductReviewSearchObject search)
         {
             var reviews = await _reviewService.GetAsync(search);

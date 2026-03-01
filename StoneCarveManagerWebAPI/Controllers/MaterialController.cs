@@ -5,11 +5,12 @@ using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
 using StoneCarveManager.Services.IServices;
-using System.Threading;
-using System.Threading.Tasks;
+using static StoneCarveManager.Services.Constants;
 
 namespace StoneCarveManagerWebAPI.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class MaterialController
         : BaseCRUDController<MaterialResponse, MaterialSearchObject, MaterialInsertRequest, MaterialUpdateRequest>
     {
@@ -27,6 +28,30 @@ namespace StoneCarveManagerWebAPI.Controllers
             _imageUploadValidator = imageUploadValidator;
         }
 
+        // Override Create - Admin/Employee only
+        [HttpPost]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        public override async Task<MaterialResponse> Create([FromBody] MaterialInsertRequest request)
+        {
+            return await base.Create(request);
+        }
+
+        // Override Update - Admin/Employee only
+        [HttpPut("{id}")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        public override async Task<MaterialResponse?> Update(int id, [FromBody] MaterialUpdateRequest request)
+        {
+            return await base.Update(id, request);
+        }
+
+        // Override Delete - Admin/Employee only
+        [HttpDelete("{id}")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        public override async Task<bool> Delete(int id)
+        {
+            return await base.Delete(id);
+        }
+
         /// <summary>
         /// Upload material image
         /// Replaces existing image if present
@@ -36,7 +61,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         /// <param name="cancellationToken"></param>
         /// <returns>URL of uploaded image</returns>
         [HttpPost("{id}/image")]
-        [Authorize(Roles = "Admin,Employee")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> UploadImage(
             int id,
             [FromForm] MaterialImageUploadRequest request,
@@ -68,7 +93,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         /// <param name="id">Material ID</param>
         /// <param name="cancellationToken"></param>
         [HttpDelete("{id}/image")]
-        [Authorize(Roles = "Admin,Employee")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> DeleteImage(
             int id,
             CancellationToken cancellationToken = default)

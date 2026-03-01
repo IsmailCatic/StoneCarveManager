@@ -1,4 +1,10 @@
-﻿using Mapster;
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
+using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -10,12 +16,6 @@ using StoneCarveManager.Services.Base;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
-using System;
-using System.IO;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -50,7 +50,7 @@ namespace StoneCarveManager.Services.Services
         /// or "hidden" (privacy/cancellation).
         /// </summary>
         public async Task<OrderResponse> CreateCustomOrderAsync(
-            CustomOrderInsertRequest request, 
+            CustomOrderInsertRequest request,
             CancellationToken cancellationToken = default)
         {
             // 1. Validate category exists
@@ -80,7 +80,6 @@ namespace StoneCarveManager.Services.Services
                 CategoryId = request.CategoryId,
                 MaterialId = request.MaterialId,
                 ProductState = "custom_order", // Permanent state for made-to-order products
-                IsActive = true,
                 IsInPortfolio = false, // Not in portfolio yet (can be added after completion)
                 CreatedAt = DateTime.UtcNow
             };
@@ -89,18 +88,25 @@ namespace StoneCarveManager.Services.Services
             await _context.SaveChangesAsync(cancellationToken);
 
             // 4. Create the order
+            // Include Description as the primary customer-visible requirement in CustomerNotes
+            var customOrderNotes = string.IsNullOrWhiteSpace(request.CustomerNotes)
+                ? request.Description
+                : $"{request.Description}\n\n--- Additional Notes ---\n{request.CustomerNotes}";
+
             var order = new Order
             {
                 UserId = userId,
                 OrderNumber = GenerateOrderNumber(),
                 OrderDate = DateTime.UtcNow,
-                Status = Database.Entities.OrderStatus.Pending, // Custom orders start as Pending
-                CustomerNotes = request.CustomerNotes,
+                Status = Database.Entities.OrderStatus.Pending,
+                CustomerNotes = customOrderNotes,
                 DeliveryAddress = request.DeliveryAddress,
                 DeliveryCity = request.DeliveryCity,
                 DeliveryZipCode = request.DeliveryZipCode,
                 DeliveryDate = request.DeliveryDate,
-                TotalAmount = customProduct.Price
+                TotalAmount = customProduct.Price,
+                ServiceProductId = request.ServiceProductId,
+                OrderType = request.ServiceProductId.HasValue ? "service_request" : "custom_order"
             };
 
             _context.Orders.Add(order);
@@ -140,6 +146,106 @@ namespace StoneCarveManager.Services.Services
             return await GetByIdAsync(order.Id);
         }
 
+        /// <summary>
+        /// Create a service-request order from a catalog service product.
+        /// Category and material are inferred automatically from the service product.
+        /// The order is tagged with OrderType = "service_request".
+        /// </summary>
+        public async Task<OrderResponse> CreateServiceRequestAsync(
+            ServiceOrderInsertRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            // 1. Load the service product and validate it is a service-type product
+            var serviceProduct = await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Material)
+                .FirstOrDefaultAsync(p => p.Id == request.ServiceProductId, cancellationToken);
+
+            if (serviceProduct == null)
+                throw new KeyNotFoundException($"Service product with ID {request.ServiceProductId} not found.");
+
+            if (serviceProduct.ProductState != "service")
+                throw new InvalidOperationException($"Product '{serviceProduct.Name}' is not a service product.");
+
+            var userId = _currentUserService.GetUserId();
+
+            // 2. Create a work product that represents this specific job
+            var workProduct = new Product
+            {
+                Name = $"{serviceProduct.Name} - {DateTime.UtcNow:yyyyMMdd}",
+                Description = request.Requirements,
+                Price = serviceProduct.Price,
+                StockQuantity = 0,
+                Dimensions = request.Dimensions,
+                EstimatedDays = serviceProduct.EstimatedDays,
+                CategoryId = serviceProduct.CategoryId,
+                MaterialId = serviceProduct.MaterialId,
+                ProductState = "custom_order",
+                IsInPortfolio = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Products.Add(workProduct);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // 3. Create the order
+            // CustomerNotes is populated from Requirements (the main job description),
+            // with any extra customer notes appended if provided.
+            var combinedNotes = string.IsNullOrWhiteSpace(request.CustomerNotes)
+                ? request.Requirements
+                : $"{request.Requirements}\n\n--- Additional Notes ---\n{request.CustomerNotes}";
+
+            var order = new Order
+            {
+                UserId = userId,
+                OrderNumber = GenerateOrderNumber(),
+                OrderDate = DateTime.UtcNow,
+                Status = Database.Entities.OrderStatus.Pending,
+                CustomerNotes = combinedNotes,
+                DeliveryAddress = request.DeliveryAddress,
+                DeliveryCity = request.DeliveryCity,
+                DeliveryZipCode = request.DeliveryZipCode,
+                DeliveryDate = request.DeliveryDate,
+                TotalAmount = workProduct.Price,
+                ServiceProductId = serviceProduct.Id,
+                OrderType = "service_request"
+            };
+
+            _context.Orders.Add(order);
+
+            // 4. Order item linking to the work product
+            var orderItem = new OrderItem
+            {
+                Order = order,
+                ProductId = workProduct.Id,
+                Quantity = 1,
+                UnitPrice = workProduct.Price,
+                Discount = 0m
+            };
+
+            _context.OrderItems.Add(orderItem);
+
+            // 5. Save reference images if provided
+            if (request.ReferenceImageUrls != null && request.ReferenceImageUrls.Any())
+            {
+                foreach (var imageUrl in request.ReferenceImageUrls)
+                {
+                    _context.ProductImages.Add(new ProductImage
+                    {
+                        ProductId = workProduct.Id,
+                        ImageUrl = imageUrl,
+                        AltText = "Customer reference image",
+                        IsPrimary = false,
+                        DisplayOrder = 0
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return await GetByIdAsync(order.Id);
+        }
+
         // OVERRIDE CreateAsync - KRITIČNO ZA MAPIRANJE!
         public override async Task<OrderResponse> CreateAsync(OrderInsertRequest request)
         {
@@ -160,6 +266,7 @@ namespace StoneCarveManager.Services.Services
             // KLJUČNO: Učitaj sve navigacije nakon insert-a
             var entityWithNavs = await _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
@@ -169,7 +276,18 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.Review)
                 .FirstOrDefaultAsync(o => o.Id == entity.Id);
 
-            return _mapper.Map<OrderResponse>(entityWithNavs!);
+            var response = _mapper.Map<OrderResponse>(entityWithNavs!);
+
+            // Populate client and employee names
+            response.ClientName = entityWithNavs.User != null
+                ? $"{entityWithNavs.User.FirstName} {entityWithNavs.User.LastName}"
+                : null;
+            response.ClientEmail = entityWithNavs.User?.Email;
+            response.AssignedEmployeeName = entityWithNavs.AssignedEmployee != null
+                ? $"{entityWithNavs.AssignedEmployee.FirstName} {entityWithNavs.AssignedEmployee.LastName}"
+                : null;
+
+            return response;
         }
 
         public override async Task<OrderResponse?> UpdateAsync(int id, OrderUpdateRequest request)
@@ -190,6 +308,7 @@ namespace StoneCarveManager.Services.Services
             // Sada ponovo učitaj order sa svim navigacijama!
             var entityWithNavs = await _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages).ThenInclude(pi => pi.UploadedByUser)
@@ -202,13 +321,25 @@ namespace StoneCarveManager.Services.Services
                 return null;
 
             // Mapiraj DTO (Mapster ili AutoMapper)
-            return _mapper.Map<OrderResponse>(entityWithNavs); // ili entityWithNavs.Adapt<OrderResponse>() za Mapster
+            var response = _mapper.Map<OrderResponse>(entityWithNavs);
+
+            // Populate client and employee names
+            response.ClientName = entityWithNavs.User != null
+                ? $"{entityWithNavs.User.FirstName} {entityWithNavs.User.LastName}"
+                : null;
+            response.ClientEmail = entityWithNavs.User?.Email;
+            response.AssignedEmployeeName = entityWithNavs.AssignedEmployee != null
+                ? $"{entityWithNavs.AssignedEmployee.FirstName} {entityWithNavs.AssignedEmployee.LastName}"
+                : null;
+
+            return response;
         }
 
         public override async Task<PagedResult<OrderResponse>> GetAsync(OrderSearchObject search)
-         {
+        {
             var query = _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
@@ -245,34 +376,60 @@ namespace StoneCarveManager.Services.Services
             }
 
             var list = await query.ToListAsync();
-            var items = list.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+            var items = list.Select(o =>
+            {
+                var response = _mapper.Map<OrderResponse>(o);
+
+                // Populate client and employee names
+                response.ClientName = o.User != null
+                    ? $"{o.User.FirstName} {o.User.LastName}"
+                    : null;
+                response.ClientEmail = o.User?.Email;
+                response.AssignedEmployeeName = o.AssignedEmployee != null
+                    ? $"{o.AssignedEmployee.FirstName} {o.AssignedEmployee.LastName}"
+                    : null;
+
+                return response;
+            }).ToList();
 
             return new PagedResult<OrderResponse>
             {
                 Items = items,
                 TotalCount = totalCount
             };
-         }
+        }
 
-            // GetById sa progres slikama
-         public override async Task<OrderResponse?> GetByIdAsync(int id)
-            {
-                var order = await _context.Orders
-                    .Include(o => o.User)
-                    .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Product)
-                    .Include(o => o.ProgressImages)
-                        .ThenInclude(pi => pi.UploadedByUser)
-                    .Include(o => o.StatusHistory)
-                        .ThenInclude(sh => sh.ChangedByUser)
-                    .Include(o => o.Review)
-                    .FirstOrDefaultAsync(o => o.Id == id);
+        // GetById sa progres slikama
+        public override async Task<OrderResponse?> GetByIdAsync(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                .Include(o => o.ProgressImages)
+                    .ThenInclude(pi => pi.UploadedByUser)
+                .Include(o => o.StatusHistory)
+                    .ThenInclude(sh => sh.ChangedByUser)
+                .Include(o => o.Review)
+                .FirstOrDefaultAsync(o => o.Id == id);
 
-                if (order == null)
-                    return null;
+            if (order == null)
+                return null;
 
-                return _mapper.Map<OrderResponse>(order);
-          }
+            var response = _mapper.Map<OrderResponse>(order);
+
+            // Populate client and employee names
+            response.ClientName = order.User != null
+                ? $"{order.User.FirstName} {order.User.LastName}"
+                : null;
+            response.ClientEmail = order.User?.Email;
+            response.AssignedEmployeeName = order.AssignedEmployee != null
+                ? $"{order.AssignedEmployee.FirstName} {order.AssignedEmployee.LastName}"
+                : null;
+
+            return response;
+        }
 
 
         protected override IQueryable<Order> ApplyFilter(IQueryable<Order> query, OrderSearchObject? search)
@@ -470,12 +627,13 @@ namespace StoneCarveManager.Services.Services
         }
 
         public async Task<List<OrderResponse>> GetOrdersByDateRangeAsync(
-            DateTime startDate, 
-            DateTime endDate, 
+            DateTime startDate,
+            DateTime endDate,
             CancellationToken cancellationToken = default)
         {
             var orders = await _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
@@ -485,15 +643,30 @@ namespace StoneCarveManager.Services.Services
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync(cancellationToken);
 
-            return orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+            return orders.Select(o =>
+            {
+                var response = _mapper.Map<OrderResponse>(o);
+
+                // Populate client and employee names
+                response.ClientName = o.User != null
+                    ? $"{o.User.FirstName} {o.User.LastName}"
+                    : null;
+                response.ClientEmail = o.User?.Email;
+                response.AssignedEmployeeName = o.AssignedEmployee != null
+                    ? $"{o.AssignedEmployee.FirstName} {o.AssignedEmployee.LastName}"
+                    : null;
+
+                return response;
+            }).ToList();
         }
 
         public async Task<OrderMonthlySummaryResponse> GetMonthlySummaryAsync(
-            int year, 
+            int year,
             CancellationToken cancellationToken = default)
         {
             var orders = await _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
@@ -503,7 +676,21 @@ namespace StoneCarveManager.Services.Services
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync(cancellationToken);
 
-            var orderResponses = orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+            var orderResponses = orders.Select(o =>
+            {
+                var response = _mapper.Map<OrderResponse>(o);
+
+                // Populate client and employee names
+                response.ClientName = o.User != null
+                    ? $"{o.User.FirstName} {o.User.LastName}"
+                    : null;
+                response.ClientEmail = o.User?.Email;
+                response.AssignedEmployeeName = o.AssignedEmployee != null
+                    ? $"{o.AssignedEmployee.FirstName} {o.AssignedEmployee.LastName}"
+                    : null;
+
+                return response;
+            }).ToList();
 
             var monthlyGroups = orderResponses
                 .GroupBy(o => o.OrderDate.Month)
@@ -534,31 +721,31 @@ namespace StoneCarveManager.Services.Services
         /// Only for Admin/Employee use
         /// </summary>
         public async Task<OrderResponse?> UpdateOrderStatusAsync(
-            int orderId, 
-            Model.Requests.OrderStatus newStatus, 
+            int orderId,
+            Model.Requests.OrderStatus newStatus,
             string? comment = null,
             CancellationToken cancellationToken = default)
         {
             var order = await _context.Orders
                 .Include(o => o.StatusHistory)
                 .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
-            
+
             if (order == null)
                 return null;
-            
+
             // Get current user (admin/employee who is changing status)
             var currentUserId = _currentUserService.GetUserId();
             var oldStatus = order.Status;
-            
+
             // Don't create history if status hasn't changed
             if ((int)oldStatus == (int)newStatus)
             {
                 return await GetByIdAsync(orderId);
             }
-            
+
             // Update order status (cast to Database.Entities.OrderStatus)
             order.Status = (Database.Entities.OrderStatus)(int)newStatus;
-            
+
             // Create status history record
             var statusHistory = new OrderStatusHistory
             {
@@ -569,17 +756,17 @@ namespace StoneCarveManager.Services.Services
                 ChangedAt = DateTime.UtcNow,
                 ChangedByUserId = currentUserId
             };
-            
+
             _context.OrderStatusHistories.Add(statusHistory);
-            
+
             // If delivered, set completion date
             if (newStatus == Model.Requests.OrderStatus.Delivered && !order.CompletedAt.HasValue)
             {
                 order.CompletedAt = DateTime.UtcNow;
             }
-            
+
             await _context.SaveChangesAsync(cancellationToken);
-            
+
             // Return updated order with all navigations including new status history
             return await GetByIdAsync(orderId);
         }
@@ -599,7 +786,7 @@ namespace StoneCarveManager.Services.Services
             // Validate file type
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
             var extension = Path.GetExtension(request.File.FileName).ToLowerInvariant();
-            
+
             if (!allowedExtensions.Contains(extension))
                 throw new ArgumentException("Only JPG, PNG, and PDF files are allowed");
 
@@ -650,8 +837,8 @@ namespace StoneCarveManager.Services.Services
         /// Admin only
         /// </summary>
         public async Task<OrderResponse?> AssignEmployeeToOrderAsync(
-            int orderId, 
-            int? employeeId, 
+            int orderId,
+            int? employeeId,
             CancellationToken cancellationToken = default)
         {
             var order = await _context.Orders
@@ -696,15 +883,16 @@ namespace StoneCarveManager.Services.Services
         /// Get orders assigned to currently logged-in employee
         /// </summary>
         public async Task<PagedResult<OrderResponse>> GetMyOrdersAsync(
-            int? status = null, 
-            int page = 1, 
-            int pageSize = 20, 
+            int? status = null,
+            int page = 1,
+            int pageSize = 20,
             CancellationToken cancellationToken = default)
         {
             var currentUserId = _currentUserService.GetUserId();
 
             var query = _context.Orders
                 .Include(o => o.User)
+                .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Include(o => o.ProgressImages)
@@ -731,7 +919,21 @@ namespace StoneCarveManager.Services.Services
                 .Take(pageSize)
                 .ToListAsync(cancellationToken);
 
-            var items = orders.Select(o => _mapper.Map<OrderResponse>(o)).ToList();
+            var items = orders.Select(o =>
+            {
+                var response = _mapper.Map<OrderResponse>(o);
+
+                // Populate client and employee names
+                response.ClientName = o.User != null
+                    ? $"{o.User.FirstName} {o.User.LastName}"
+                    : null;
+                response.ClientEmail = o.User?.Email;
+                response.AssignedEmployeeName = o.AssignedEmployee != null
+                    ? $"{o.AssignedEmployee.FirstName} {o.AssignedEmployee.LastName}"
+                    : null;
+
+                return response;
+            }).ToList();
 
             return new PagedResult<OrderResponse>
             {

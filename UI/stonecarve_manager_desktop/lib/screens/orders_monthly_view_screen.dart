@@ -5,6 +5,7 @@ import 'package:stonecarve_manager_flutter/models/order.dart';
 import 'package:stonecarve_manager_flutter/models/payment.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/payment_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'order_details_screen.dart' show OrderDetailsScreen;
 
 class OrdersMonthlyViewScreen extends StatefulWidget {
@@ -37,17 +38,21 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
         _isLoading = true;
       });
 
-      // Load both orders and payments
+      // Load orders
       final orderResult = await _orderProvider.get();
-      final paymentSearch = PaymentSearchObject(
-        retrieveAll: true,
-        status: 'succeeded', // Only count succeeded payments for revenue
-      );
-      final paymentResult = await _paymentProvider.getPayments(paymentSearch);
+
+      // Load payments only for admins (employees don't have access)
+      if (AuthProvider.isAdmin) {
+        final paymentSearch = PaymentSearchObject(
+          retrieveAll: true,
+          status: 'succeeded', // Only count succeeded payments for revenue
+        );
+        final paymentResult = await _paymentProvider.getPayments(paymentSearch);
+        _payments = paymentResult.items ?? [];
+      }
 
       setState(() {
         _orders = orderResult.items ?? [];
-        _payments = paymentResult.items ?? [];
         _organizeOrdersByMonth();
         _isLoading = false;
       });
@@ -216,18 +221,21 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
                             Icons.receipt_long,
                             Colors.blue,
                           ),
-                          _buildStatCard(
-                            'Total Revenue',
-                            '\$${_monthlyRevenue.values.fold(0.0, (sum, value) => sum + value).toStringAsFixed(2)}',
-                            Icons.attach_money,
-                            Colors.green,
-                          ),
-                          _buildStatCard(
-                            'Avg per Month',
-                            '\$${_calculateAveragePerMonth().toStringAsFixed(2)}',
-                            Icons.trending_up,
-                            Colors.orange,
-                          ),
+                          // Revenue stats only visible to admins
+                          if (AuthProvider.isAdmin)
+                            _buildStatCard(
+                              'Total Revenue',
+                              '\$${_monthlyRevenue.values.fold(0.0, (sum, value) => sum + value).toStringAsFixed(2)}',
+                              Icons.attach_money,
+                              Colors.green,
+                            ),
+                          if (AuthProvider.isAdmin)
+                            _buildStatCard(
+                              'Avg per Month',
+                              '\$${_calculateAveragePerMonth().toStringAsFixed(2)}',
+                              Icons.trending_up,
+                              Colors.orange,
+                            ),
                         ],
                       ),
                     ],
@@ -336,14 +344,16 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
                         fontSize: 14,
                       ),
                     ),
-                    Text(
-                      '\$${monthRevenue.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                    // Revenue only visible to admins
+                    if (AuthProvider.isAdmin)
+                      Text(
+                        '\$${monthRevenue.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],

@@ -31,6 +31,19 @@ namespace StoneCarveManager.Services.Database.Entities
         public User User { get; set; } = null!;
         public int? AssignedEmployeeId { get; set; }
         public User? AssignedEmployee { get; set; }
+
+        /// <summary>
+        /// For service requests: the catalog service product the customer is requesting.
+        /// Null for freeform custom orders.
+        /// </summary>
+        public int? ServiceProductId { get; set; }
+        public Product? ServiceProduct { get; set; }
+
+        /// <summary>
+        /// "custom_order" | "service_request" | "standard" (default)
+        /// </summary>
+        public string OrderType { get; set; } = "standard";
+
         // Navigation property for OrderItems
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
         public ICollection<OrderStatusHistory> StatusHistory { get; set; } = new List<OrderStatusHistory>();

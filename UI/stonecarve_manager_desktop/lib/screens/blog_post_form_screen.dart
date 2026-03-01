@@ -78,8 +78,7 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
             isPublished: _isPublished,
             isTutorial: _isTutorial,
             isActive: _isActive,
-            authorId:
-                _authorId ?? 1, // TODO: Replace with actual author selection
+            authorId: _authorId ?? AuthProvider.userId ?? -999,
             categoryId:
                 _categoryId ??
                 1, // TODO: Replace with actual category selection
@@ -93,6 +92,14 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
         print(
           '🔵 [BlogFormScreen] Updating blog post ${widget.existingPost!.id}...',
         );
+        // Keep existing values as-is, including -999 for admin user
+        final updateAuthorId = _authorId ?? widget.existingPost!.authorId;
+        final updateCategoryId = _categoryId ?? widget.existingPost!.categoryId;
+
+        print(
+          '🔵 [BlogFormScreen] Update values - AuthorId: $updateAuthorId, CategoryId: $updateCategoryId',
+        );
+
         await _provider.updateBlogPost(
           context,
           widget.existingPost!.id,
@@ -105,8 +112,8 @@ class _BlogPostFormScreenState extends State<BlogPostFormScreen> {
             isPublished: _isPublished,
             isTutorial: _isTutorial,
             isActive: _isActive,
-            authorId: _authorId,
-            categoryId: _categoryId,
+            authorId: updateAuthorId,
+            categoryId: updateCategoryId,
           ),
         );
         createdPostId = widget.existingPost!.id;

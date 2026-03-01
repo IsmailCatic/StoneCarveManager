@@ -125,6 +125,9 @@ namespace StoneCarveManager.Services.Services
             if (search.CategoryId.HasValue)
                 query = query.Where(bp => bp.CategoryId == search.CategoryId.Value);
 
+            if (search.IsTutorial.HasValue)
+                query = query.Where(bp => bp.IsTutorial == search.IsTutorial.Value);
+
             return query;
         }
 

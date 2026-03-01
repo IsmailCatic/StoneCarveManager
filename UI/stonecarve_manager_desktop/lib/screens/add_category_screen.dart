@@ -97,6 +97,9 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     print(
       '  - widget.category?.parentCategoryId: ${widget.category?.parentCategoryId}',
     );
+    print(
+      '  - imageUrl: ${widget.category?.imageUrl} (preserved from existing)',
+    );
 
     final data = Category(
       id: widget.category?.id,
@@ -104,6 +107,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
       description: _descriptionController.text.trim(),
       parentCategoryId: _parentCategoryId,
       isActive: _isActive,
+      imageUrl: widget.category?.imageUrl, // Preserve existing image URL
     );
 
     print('Category data object created successfully');

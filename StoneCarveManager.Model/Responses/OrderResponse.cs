@@ -38,6 +38,18 @@ namespace StoneCarveManager.Model.Responses
             public int UserId { get; set; }
 
             public int? AssignedEmployeeId { get; set; }
+            
+            public string? AssignedEmployeeName { get; set; }
+
+            /// <summary>
+            /// For service requests: the catalog service product the customer requested.
+            /// </summary>
+            public int? ServiceProductId { get; set; }
+
+            /// <summary>
+            /// "standard" | "custom_order" | "service_request"
+            /// </summary>
+            public string OrderType { get; set; } = "standard";
 
             public List<OrderItemResponse> OrderItems { get; set; } = new();
 

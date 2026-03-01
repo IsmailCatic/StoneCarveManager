@@ -152,7 +152,7 @@ class PaymentProvider {
       }
 
       final uri = Uri.parse(
-        '$baseUrl/api/Payment',
+        '$baseUrl/api/Payment/my-payments',
       ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http.get(uri, headers: headers);

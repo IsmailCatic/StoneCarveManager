@@ -24,6 +24,7 @@ import 'package:stonecarve_manager_mobile/screens/mobile/my_payments_screen.dart
 import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/custom_order_form_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/profile_screen.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/services_mobile_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/forgot_password_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/reset_password_screen.dart';
 
@@ -198,6 +199,10 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
             case '/portfolio':
               return MaterialPageRoute(
                 builder: (_) => const PortfolioMobileScreen(),
+              );
+            case '/services':
+              return MaterialPageRoute(
+                builder: (_) => const ServicesMobileScreen(),
               );
             case '/custom-order':
               return MaterialPageRoute(

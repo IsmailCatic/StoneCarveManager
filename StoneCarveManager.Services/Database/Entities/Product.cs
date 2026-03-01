@@ -17,8 +17,6 @@ namespace StoneCarveManager.Services.Database.Entities
 
         public int StockQuantity { get; set; } = 0;
 
-        public bool IsActive { get; set; } = true;
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
@@ -52,8 +50,6 @@ namespace StoneCarveManager.Services.Database.Entities
         // Navigation property for cart items
         public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
         public string ProductState { get; set; } = "draft";
-
-
 
         // NEW: Portfolio-specific fields
         [StringLength(4000)]

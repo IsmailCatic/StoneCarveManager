@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/auth.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class AuthProvider {
   static String? _token;
@@ -78,6 +79,14 @@ class AuthProvider {
         return authResponse;
       } else if (response.statusCode == 401) {
         throw Exception('Invalid email or password');
+      } else if (response.statusCode == 403) {
+        // Account is blocked
+        final responseBody = jsonDecode(response.body);
+        final message =
+            responseBody['message'] ??
+            responseBody['error'] ??
+            'Your account has been blocked. Please contact an administrator.';
+        throw Exception('ACCOUNT_BLOCKED: $message');
       } else if (response.statusCode == 400) {
         throw Exception('Invalid request format');
       } else {
@@ -120,7 +129,7 @@ class AuthProvider {
 
         return authResponse;
       } else {
-        throw Exception('Registration failed: ${response.body}');
+        throw HttpErrorHandler.createException(response, 'register user');
       }
     } catch (e) {
       throw Exception('Registration error: $e');
@@ -202,7 +211,10 @@ class AuthProvider {
       } else if (response.statusCode == 400) {
         throw Exception('Invalid email format');
       } else {
-        throw Exception('Error sending request: ${response.body}');
+        throw HttpErrorHandler.createException(
+          response,
+          'send password reset request',
+        );
       }
     } catch (e) {
       print('[AuthProvider] Password reset request error: $e');
@@ -252,7 +264,7 @@ class AuthProvider {
           data['message'] ?? 'Invalid verification code or request',
         );
       } else {
-        throw Exception('Error resetting password: ${response.body}');
+        throw HttpErrorHandler.createException(response, 'reset password');
       }
     } catch (e) {
       print('[AuthProvider] Password reset error: $e');

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/custom_order_request.dart';
 import 'package:stonecarve_manager_mobile/providers/order_provider.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/order_payment_screen.dart';
 
 class CustomOrderPreviewScreen extends StatefulWidget {
   final CustomOrderRequest request;
@@ -58,94 +59,12 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
 
       if (!mounted) return;
 
-      // Show success dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          title: Row(
-            children: const [
-              Icon(Icons.check_circle, color: Colors.green, size: 28),
-              SizedBox(width: 12),
-              Text('Order Submitted!'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Your custom order has been successfully submitted.',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.receipt_long, color: Colors.blue[700]),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Order Number',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          Text(
-                            order.orderNumber,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'We will review your request and contact you shortly with a quote.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx); // Close dialog
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/orders',
-                  (route) => route.settings.name == '/home',
-                );
-              },
-              child: const Text('View My Orders'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx); // Close dialog
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/home',
-                  (route) => false,
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-              child: const Text('Go to Home'),
-            ),
-          ],
+      // Navigate to payment screen — order is created, now collect payment
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              OrderPaymentScreen(order: order, orderTypeLabel: 'Custom Order'),
         ),
       );
     } catch (e) {
@@ -193,7 +112,8 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
                 _buildInfoCard('Order Details', Icons.category, [
                   _buildInfoRow('Material Type', widget.categoryName),
                   _buildInfoRow('Material', widget.materialName),
-                  _buildInfoRow('Dimensions', widget.request.dimensions),
+                  if (widget.request.dimensions != null)
+                    _buildInfoRow('Dimensions', widget.request.dimensions!),
                 ]),
                 const SizedBox(height: 16),
                 _buildInfoCard('Description', Icons.description, [
@@ -388,6 +308,38 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
     );
   }
 
+  Future<void> _confirmAndSubmit() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.send, color: Colors.blue),
+            SizedBox(width: 10),
+            Text('Submit Order'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to submit this custom order request? Once submitted, the request will be sent to our team for review.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('Submit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _submitOrder();
+    }
+  }
+
   Widget _buildSubmitButton() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -405,7 +357,7 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: _isSubmitting ? null : _submitOrder,
+            onPressed: _isSubmitting ? null : _confirmAndSubmit,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,

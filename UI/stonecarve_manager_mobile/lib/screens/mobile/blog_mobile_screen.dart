@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/blog_post.dart';
+import '../../models/blog_post_requests.dart';
 import '../../providers/blog_post_provider.dart';
 import '../../utils/constants.dart';
 import '../../widgets/mobile/app_drawer_mobile.dart';
@@ -18,12 +19,15 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
   late final BlogPostProvider _provider;
   late TabController _tabController;
 
-  List<BlogPost> _allPosts = [];
-  List<BlogPost> _filteredPosts = [];
+  List<BlogPost> _posts = [];
   bool _isLoading = true;
   String? _errorMessage;
 
+  // Category filter — name for display, id for backend query
   String _selectedCategory = 'All';
+  int? _selectedCategoryId;
+  // populated from first unfiltered load: categoryName → categoryId
+  final Map<String, int> _categoryIdMap = {};
   final List<String> _categories = ['All'];
 
   @override
@@ -44,7 +48,16 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) {
-      _filterPosts();
+      // Reset category when switching tabs and re-fetch from backend
+      setState(() {
+        _selectedCategory = 'All';
+        _selectedCategoryId = null;
+        _categories
+          ..clear()
+          ..add('All');
+        _categoryIdMap.clear();
+      });
+      _loadPosts();
     }
   }
 
@@ -54,23 +67,46 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
       _errorMessage = null;
     });
 
-    try {
-      final posts = await _provider.fetchBlogPosts(context);
+    final isBlogTab = _tabController.index == 0;
 
-      // Extract unique categories
-      final catSet = <String>{'All'};
-      for (var post in posts) {
-        if (post.categoryName != null && post.categoryName!.isNotEmpty) {
-          catSet.add(post.categoryName!);
+    try {
+      // Send all filters to backend — same pattern as desktop app
+      final search = BlogPostSearch(
+        isPublished: true,
+        isTutorial: !isBlogTab,
+        categoryId: _selectedCategoryId,
+      );
+
+      final posts = await _provider.fetchBlogPosts(context, search: search);
+
+      // On unfiltered load, populate category chips from returned posts
+      if (_selectedCategoryId == null) {
+        final catSet = <String>{'All'};
+        final idMap = <String, int>{};
+        for (var post in posts) {
+          if (post.categoryName != null && post.categoryName!.isNotEmpty) {
+            catSet.add(post.categoryName!);
+            idMap[post.categoryName!] = post.categoryId;
+          }
         }
+        _categories
+          ..clear()
+          ..addAll(catSet);
+        _categoryIdMap
+          ..clear()
+          ..addAll(idMap);
       }
 
+      // Sort by publish date (newest first) — backend returns unsorted
+      posts.sort((a, b) {
+        final aDate = a.publishedAt ?? a.createdAt;
+        final bDate = b.publishedAt ?? b.createdAt;
+        return bDate.compareTo(aDate);
+      });
+
       setState(() {
-        _allPosts = posts;
-        _categories.clear();
-        _categories.addAll(catSet);
+        _posts = posts;
         _isLoading = false;
-        _filterPosts();
       });
     } catch (e) {
       setState(() {
@@ -78,32 +114,6 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
         _isLoading = false;
       });
     }
-  }
-
-  void _filterPosts() {
-    final isBlogTab = _tabController.index == 0;
-
-    setState(() {
-      _filteredPosts = _allPosts.where((post) {
-        // Filter by tab (Blog vs Tutorial)
-        final matchesTab = isBlogTab ? !post.isTutorial : post.isTutorial;
-
-        // Filter by category
-        final matchesCategory =
-            _selectedCategory == 'All' ||
-            post.categoryName == _selectedCategory;
-
-        // Only show published posts
-        return post.isPublished && matchesTab && matchesCategory;
-      }).toList();
-
-      // Sort by publish date (newest first)
-      _filteredPosts.sort((a, b) {
-        final aDate = a.publishedAt ?? a.createdAt;
-        final bDate = b.publishedAt ?? b.createdAt;
-        return bDate.compareTo(aDate);
-      });
-    });
   }
 
   @override
@@ -167,9 +177,7 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
               children: [
                 _buildCategoryFilter(),
                 Expanded(
-                  child: _filteredPosts.isEmpty
-                      ? _buildEmptyState()
-                      : _buildBlogList(),
+                  child: _posts.isEmpty ? _buildEmptyState() : _buildBlogList(),
                 ),
               ],
             ),
@@ -193,8 +201,13 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
                 onSelected: (selected) {
                   setState(() {
                     _selectedCategory = category;
-                    _filterPosts();
+                    // Look up categoryId for backend query
+                    _selectedCategoryId = (category == 'All')
+                        ? null
+                        : _categoryIdMap[category];
                   });
+                  // Re-fetch from backend with new category filter
+                  _loadPosts();
                 },
                 backgroundColor: Colors.grey[100],
                 selectedColor: Colors.blue.withOpacity(0.2),
@@ -216,9 +229,9 @@ class _BlogMobileScreenState extends State<BlogMobileScreen>
       onRefresh: _loadPosts,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _filteredPosts.length,
+        itemCount: _posts.length,
         itemBuilder: (context, index) {
-          final post = _filteredPosts[index];
+          final post = _posts[index];
           return _buildBlogCard(post);
         },
       ),

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/review.dart';
 import 'package:stonecarve_manager_flutter/models/search_result.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class ReviewProvider {
   static const String baseUrl = 'http://localhost:5021/api';
@@ -43,7 +44,7 @@ class ReviewProvider {
       );
     }
 
-    throw Exception('Failed to load reviews: ${response.body}');
+    throw HttpErrorHandler.createException(response, 'load reviews');
   }
 
   /// Get pending reviews (awaiting approval)
@@ -80,7 +81,7 @@ class ReviewProvider {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to approve review: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'approve review');
     }
   }
 
@@ -92,7 +93,7 @@ class ReviewProvider {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to reject review: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'reject review');
     }
   }
 
@@ -104,7 +105,7 @@ class ReviewProvider {
     );
 
     if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Failed to delete review: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'delete review');
     }
   }
 

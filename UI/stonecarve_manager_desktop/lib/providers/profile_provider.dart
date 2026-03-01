@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/profile.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/user_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class ProfileProvider extends ChangeNotifier {
   UserProfileResponse? _currentUser;
@@ -60,14 +61,8 @@ class ProfileProvider extends ChangeNotifier {
         _currentUser = UserProfileResponse.fromJson(data);
         _errorMessage = null;
         print('[ProfileProvider] ✅ Profile loaded');
-      } else if (response.statusCode == 401) {
-        throw Exception('Session expired. Please login again.');
-      } else if (response.statusCode == 404) {
-        throw Exception(
-          'User profile not found. Endpoint may not be implemented.',
-        );
       } else {
-        throw Exception('Failed to load profile: ${response.statusCode}');
+        throw HttpErrorHandler.createException(response, 'load profile');
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -114,28 +109,8 @@ class ProfileProvider extends ChangeNotifier {
         // Refresh profile after successful update
         await fetchCurrentUserProfile();
         return true;
-      } else if (response.statusCode == 401) {
-        throw Exception('Session expired. Please login again.');
-      } else if (response.statusCode == 403) {
-        throw Exception('You do not have permission to update this profile.');
-      } else if (response.statusCode == 400) {
-        // Try to parse validation errors
-        try {
-          final errorData = jsonDecode(response.body);
-          final errors = errorData['errors'] as Map<String, dynamic>?;
-          if (errors != null) {
-            final firstError = errors.values.first;
-            final errorMessage = firstError is List
-                ? firstError.first
-                : firstError.toString();
-            throw Exception(errorMessage);
-          }
-          throw Exception(errorData['message'] ?? 'Invalid request data');
-        } catch (_) {
-          throw Exception('Invalid request data');
-        }
       } else {
-        throw Exception('Failed to update profile (${response.statusCode})');
+        throw HttpErrorHandler.createException(response, 'update profile');
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -171,15 +146,8 @@ class ProfileProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         return true;
-      } else if (response.statusCode == 401) {
-        throw Exception('Session expired. Please login again.');
-      } else if (response.statusCode == 400) {
-        final errorData = jsonDecode(response.body);
-        throw Exception(
-          errorData['message'] ?? 'Current password is incorrect',
-        );
       } else {
-        throw Exception('Failed to change password');
+        throw HttpErrorHandler.createException(response, 'change password');
       }
     } catch (e) {
       _errorMessage = e.toString();

@@ -54,7 +54,14 @@ namespace StoneCarveManagerWebAPI.Controllers
                 }
             }
             
-            return await _crudService.UpdateAsync(id, request);
+            var result = await _crudService.UpdateAsync(id, request);
+            
+            if (result == null)
+            {
+                throw new KeyNotFoundException($"Entity with ID {id} not found.");
+            }
+            
+            return result;
         }
 
         [HttpDelete("{id}")]

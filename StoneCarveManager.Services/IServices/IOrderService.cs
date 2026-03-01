@@ -16,6 +16,13 @@ namespace StoneCarveManager.Services.IServices
         /// Create a custom order without a predefined product
         /// Automatically creates a custom product based on user specifications
         Task<OrderResponse> CreateCustomOrderAsync(CustomOrderInsertRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Create a service request order from a catalog service product.
+        /// Category and material are resolved automatically from the service product.
+        /// </summary>
+        Task<OrderResponse> CreateServiceRequestAsync(ServiceOrderInsertRequest request, CancellationToken cancellationToken = default);
+
         Task<string> UploadCustomOrderSketchAsync(CustomOrderSketchUploadRequest request, CancellationToken cancellationToken = default);
         Task<bool> DeleteCustomOrderSketchAsync(string url, CancellationToken cancellationToken = default);
         Task<OrderProgressImageResponse> AddOrderProgressImageAsync(int orderId, OrderProgressImageUploadRequest request, CancellationToken cancellationToken = default);

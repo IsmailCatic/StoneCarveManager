@@ -224,6 +224,45 @@ namespace StoneCarveManager.Services.Services
             return MapToPaymentResponse(payment);
         }
 
+        public async Task<PagedResult<PaymentResponse>> GetMyPaymentsAsync(
+            int userId,
+            PaymentSearchObject search,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.Payments
+                .Include(p => p.Order)
+                    .ThenInclude(o => o.User)
+                .Where(p => p.Order.UserId == userId)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search.Status))
+                query = query.Where(p => p.Status == search.Status);
+
+            if (search.StartDate.HasValue)
+                query = query.Where(p => p.CreatedAt >= search.StartDate.Value);
+
+            if (search.EndDate.HasValue)
+                query = query.Where(p => p.CreatedAt <= search.EndDate.Value);
+
+            query = query.OrderByDescending(p => p.CreatedAt);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            if (!search.RetrieveAll)
+            {
+                if (search.Page.HasValue && search.PageSize.HasValue)
+                    query = query.Skip(search.Page.Value * search.PageSize.Value).Take(search.PageSize.Value);
+            }
+
+            var payments = await query.ToListAsync(cancellationToken);
+
+            return new PagedResult<PaymentResponse>
+            {
+                Items = payments.Select(MapToPaymentResponse).ToList(),
+                TotalCount = totalCount
+            };
+        }
+
         public async Task<PagedResult<PaymentResponse>> GetPaymentsAsync(
             PaymentSearchObject search,
             CancellationToken cancellationToken = default)

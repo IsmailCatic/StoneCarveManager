@@ -1,7 +1,7 @@
 class CustomOrderRequest {
-  final int categoryId;
-  final int materialId;
-  final String dimensions;
+  final int? categoryId;
+  final int? materialId;
+  final String? dimensions;
   final String description;
   final String? customerNotes;
   final List<String> referenceImageUrls;
@@ -12,9 +12,9 @@ class CustomOrderRequest {
   final DateTime? deliveryDate;
 
   CustomOrderRequest({
-    required this.categoryId,
-    required this.materialId,
-    required this.dimensions,
+    this.categoryId,
+    this.materialId,
+    this.dimensions,
     required this.description,
     this.customerNotes,
     this.referenceImageUrls = const [],
@@ -27,9 +27,10 @@ class CustomOrderRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'categoryId': categoryId,
-      'materialId': materialId,
-      'dimensions': dimensions,
+      if (categoryId != null) 'categoryId': categoryId,
+      if (materialId != null) 'materialId': materialId,
+      if (dimensions != null && dimensions!.isNotEmpty)
+        'dimensions': dimensions,
       'description': description,
       if (customerNotes != null && customerNotes!.isNotEmpty)
         'customerNotes': customerNotes,
@@ -65,14 +66,7 @@ class CustomOrderRequest {
     );
   }
 
-  // Helper for validation
   bool isValid() {
-    return categoryId > 0 &&
-        materialId > 0 &&
-        dimensions.trim().isNotEmpty &&
-        dimensions.length <= 200 &&
-        description.trim().isNotEmpty &&
-        description.length <= 4000 &&
-        (customerNotes == null || customerNotes!.length <= 2000);
+    return description.trim().isNotEmpty && description.length <= 4000;
   }
 }

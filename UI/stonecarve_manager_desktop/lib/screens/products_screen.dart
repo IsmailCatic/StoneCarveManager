@@ -58,26 +58,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
         _products = [];
       });
 
-      // Use retrieveAll parameter to get all products at once
-      // Backend now supports retrieveAll=true which bypasses pagination
-      final result = await _productProvider.get(filter: {"retrieveAll": true});
+      // Backend filtering: exclude custom_order products using ProductStateExclude filter
+      final products = await _productProvider.getRegularProducts();
 
       print(
-        '[ProductsScreen] Loaded all products: ${result.items?.length} items, totalCount: ${result.totalCount}',
+        '[ProductsScreen] Loaded regular products: ${products.length} items',
       );
 
       setState(() {
-        // Filter out custom_order products - they should not be shown in regular products listing
-        final filteredProducts = (result.items ?? [])
-            .where(
-              (product) =>
-                  product.productState?.toLowerCase() != 'custom_order',
-            )
-            .toList();
-        _products = filteredProducts;
-        print(
-          '[ProductsScreen] After filter: ${_products.length} products displayed',
-        );
+        _products = products;
         _isLoading = false;
       });
     } catch (e) {
@@ -109,16 +98,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Image uploaded successfully!'),
+              content: Text('Product image uploaded successfully'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload product image: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }
@@ -132,16 +124,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Image deleted successfully!'),
+            content: Text('Product image removed successfully'),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error deleting image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete product image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -152,7 +147,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Primary image set successfully!'),
+            content: Text('Primary product image set successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -161,7 +156,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error setting primary image: $e')),
+          SnackBar(
+            content: Text('Failed to set primary image: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -673,8 +671,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
       selectedMaterialId = null;
     }
 
-    bool isActive = product?.isActive ?? true;
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -792,15 +788,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    CheckboxListTile(
-                      title: const Text('Is Active'),
-                      value: isActive,
-                      onChanged: (value) {
-                        setState(() {
-                          isActive = value!;
-                        });
-                      },
-                    ),
+                    // ...removed isActive checkbox...
                   ],
                 ),
               ),
@@ -837,7 +825,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       estimatedDays: int.tryParse(estimatedDaysController.text),
                       categoryId: selectedCategoryId,
                       materialId: selectedMaterialId,
-                      isActive: isActive,
                       // If editing an existing product, keep other fields
                       createdAt: product?.createdAt,
                       updatedAt: product?.updatedAt,
@@ -860,7 +847,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Product added successfully'),
+                            content: Text('Product created successfully'),
+                            backgroundColor: Colors.green,
                           ),
                         );
                       } else {
@@ -872,6 +860,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Product updated successfully'),
+                            backgroundColor: Colors.green,
                           ),
                         );
                       }
@@ -880,9 +869,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       _loadProducts();
                     } catch (e) {
                       if (!mounted) return;
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to save product: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
                   },
                   child: Text(product == null ? 'Add' : 'Update'),
@@ -959,7 +951,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Product deleted successfully'),
+                      content: Text('Product removed successfully'),
+                      backgroundColor: Colors.green,
                     ),
                   );
                   _loadProducts();
@@ -968,7 +961,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   Navigator.of(context).pop();
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error deleting product: $e')),
+                    SnackBar(
+                      content: Text('Failed to delete product: $e'),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               },

@@ -17,6 +17,7 @@ namespace StoneCarveManager.Services.IServices
         
         // New methods for admin
         Task<PagedResult<PaymentResponse>> GetPaymentsAsync(PaymentSearchObject search, CancellationToken cancellationToken = default);
+        Task<PagedResult<PaymentResponse>> GetMyPaymentsAsync(int userId, PaymentSearchObject search, CancellationToken cancellationToken = default);
         Task<PaymentResponse> IssueRefundAsync(RefundRequest request, CancellationToken cancellationToken = default);
         Task<PaymentResponse> RetryPaymentAsync(int orderId, CancellationToken cancellationToken = default);
         Task<PaymentStatisticsResponse> GetPaymentStatisticsAsync(DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default);

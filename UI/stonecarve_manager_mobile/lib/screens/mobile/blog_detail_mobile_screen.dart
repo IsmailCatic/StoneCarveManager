@@ -49,6 +49,14 @@ class _BlogDetailMobileScreenState extends State<BlogDetailMobileScreen> {
           print(
             '✅ [BlogDetailMobile] View count incremented for post ${widget.postId}',
           );
+          // Update local UI count immediately so user sees their view counted
+          if (mounted) {
+            setState(() {
+              if (_post != null) {
+                _post = _post!.copyWith(viewCount: _post!.viewCount + 1);
+              }
+            });
+          }
         }
       });
     } catch (e) {

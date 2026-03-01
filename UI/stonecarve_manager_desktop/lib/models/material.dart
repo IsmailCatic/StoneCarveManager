@@ -57,19 +57,22 @@ class StoneMaterial {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'imageUrl': imageUrl,
-      'pricePerUnit': pricePerUnit,
-      'unit': unit,
-      'quantityInStock': quantityInStock,
-      'isAvailable': isAvailable,
-      'isActive': isActive,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
-      'products': products?.map((v) => v.toJson()).toList(),
-    };
+    final Map<String, dynamic> data = {};
+
+    if (id != null) data['id'] = id;
+    if (name != null) data['name'] = name;
+    if (description != null) data['description'] = description;
+    if (imageUrl != null) data['imageUrl'] = imageUrl;
+    if (pricePerUnit != null) data['pricePerUnit'] = pricePerUnit;
+    if (unit != null) data['unit'] = unit;
+    if (quantityInStock != null) data['quantityInStock'] = quantityInStock;
+    if (isAvailable != null) data['isAvailable'] = isAvailable;
+    if (isActive != null) data['isActive'] = isActive;
+    if (createdAt != null) data['createdAt'] = createdAt!.toIso8601String();
+    if (updatedAt != null) data['updatedAt'] = updatedAt!.toIso8601String();
+    if (products != null)
+      data['products'] = products!.map((v) => v.toJson()).toList();
+
+    return data;
   }
 }

@@ -78,16 +78,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Image uploaded successfully!'),
+              content: Text('Category image uploaded successfully'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload category image: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }
@@ -106,7 +109,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Image deleted successfully!'),
+            content: Text('Category image removed successfully'),
             backgroundColor: Colors.green,
           ),
         );

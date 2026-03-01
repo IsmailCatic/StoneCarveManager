@@ -88,19 +88,18 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.grey),
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Back',
         ),
-        title: Text(
-          'StoneCarve Manager',
-          style: TextStyle(color: Colors.blue, fontSize: 16),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_cart, color: Colors.grey),
-            onPressed: () {},
+        title: const Text(
+          'Checkout',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
-        ],
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -171,8 +170,13 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                       decoration: _inputDecoration('email@example.com'),
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Required';
-                        if (!value!.contains('@')) return 'Invalid email';
+                        if (value == null || value.trim().isEmpty)
+                          return 'Email is required';
+                        final emailRegex = RegExp(
+                          r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                        );
+                        if (!emailRegex.hasMatch(value.trim()))
+                          return 'Please enter a valid email address';
                         return null;
                       },
                     ),

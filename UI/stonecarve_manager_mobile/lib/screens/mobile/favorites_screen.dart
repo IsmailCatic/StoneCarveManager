@@ -19,39 +19,44 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  List<Product> _allProducts = [];
+  List<Product> _favoriteProducts = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _fetchProducts();
+    _fetchFavorites();
   }
 
-  Future<void> _fetchProducts() async {
+  /// Loads favorite products from GET /api/Favorite — returns only this user's favorites
+  Future<void> _fetchFavorites() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      final url = '${BaseProvider.baseUrl}/api/Product';
+      final url = '${BaseProvider.baseUrl}/api/Favorite';
       final response = await http.get(
         Uri.parse(url),
         headers: AuthProvider.getAuthHeaders(),
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        final List<dynamic> items = jsonResponse['items'] ?? [];
+        final List<dynamic> items = json.decode(response.body);
         setState(() {
-          _allProducts = items.map((json) => Product.fromJson(json)).toList();
+          _favoriteProducts = items
+              .where((j) => j['product'] != null)
+              .map(
+                (j) => Product.fromJson(j['product'] as Map<String, dynamic>),
+              )
+              .toList();
           _isLoading = false;
         });
       } else {
         setState(() {
-          _errorMessage = 'Failed to load products';
+          _errorMessage = 'Failed to load favorites (${response.statusCode})';
           _isLoading = false;
         });
       }
@@ -68,6 +73,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final isNowFavorite = await favoritesProvider.toggleFavorite(productId);
 
     if (!mounted) return;
+
+    // Re-fetch the list from backend to reflect the change
+    await _fetchFavorites();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -206,7 +214,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: _fetchProducts,
+                    onPressed: _fetchFavorites,
                     icon: const Icon(Icons.refresh),
                     label: const Text('Retry'),
                   ),
@@ -215,14 +223,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             )
           : Consumer<FavoritesProvider>(
               builder: (context, favoritesProvider, child) {
-                // Filter only favorite products
-                final favoriteProducts = _allProducts
-                    .where(
-                      (product) =>
-                          product.id != null &&
-                          favoritesProvider.isFavorite(product.id),
-                    )
-                    .toList();
+                final favoriteProducts = _favoriteProducts;
 
                 if (favoriteProducts.isEmpty) {
                   return Center(
@@ -323,6 +324,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               if (confirm == true && mounted) {
                                 await favoritesProvider.clearAllFavorites();
                                 if (mounted) {
+                                  // Re-fetch to update the list
+                                  await _fetchFavorites();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('All favorites cleared'),
@@ -345,7 +348,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     // Products list
                     Expanded(
                       child: RefreshIndicator(
-                        onRefresh: _fetchProducts,
+                        onRefresh: _fetchFavorites,
                         child: ListView.builder(
                           itemCount: favoriteProducts.length,
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -354,7 +357,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
                             return ProductCard(
                               product: product,
-                              isFavorite: true,
+                              isFavorite: favoritesProvider.isFavorite(
+                                product.id,
+                              ),
                               onTap: () {
                                 // Navigate to product details
                               },

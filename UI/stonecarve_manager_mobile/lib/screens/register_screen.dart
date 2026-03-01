@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:stonecarve_manager_mobile/models/auth.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
+import 'package:stonecarve_manager_mobile/utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -44,18 +45,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final resp = await AuthProvider.register(req);
       if (resp != null) {
         if (!mounted) return;
+        // Clear all fields on success
+        _firstNameController.clear();
+        _lastNameController.clear();
+        _emailController.clear();
+        _passwordController.clear();
+        _dateOfBirthController.clear();
+        _formKey.currentState?.reset();
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful!')),
+          const SnackBar(
+            content: Text('Account created successfully! You can now log in.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration failed.')),
+          const SnackBar(
+            content: Text(
+              'Registration failed. Please check your details and try again.',
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text(
+            'Registration failed: ${e.toString().replaceAll('Exception:', '').trim()}',
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -86,17 +108,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                validator: Validators.validateEmail,
               ),
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                validator: Validators.validatePassword,
               ),
               TextFormField(
                 controller: _dateOfBirthController,
-                decoration: const InputDecoration(labelText: 'Date of Birth (yyyy-MM-dd)'),
+                decoration: const InputDecoration(
+                  labelText: 'Date of Birth (yyyy-MM-dd)',
+                ),
                 keyboardType: TextInputType.datetime,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Required';

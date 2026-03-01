@@ -45,6 +45,7 @@ namespace StoneCarveManager.Services.Database.Context
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<ProductReview> ProductReviews { get; set; }
+        public DbSet<Faq> Faqs { get; set; }
 
 
 

@@ -19,8 +19,6 @@ namespace StoneCarveManager.Model.Requests
         [Range(0, int.MaxValue)]
         public int StockQuantity { get; set; } = 0;
 
-        public bool IsActive { get; set; } = true;
-
         [StringLength(100)]
         public string? Dimensions { get; set; }
 

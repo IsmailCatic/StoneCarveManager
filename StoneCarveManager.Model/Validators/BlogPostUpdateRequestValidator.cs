@@ -20,10 +20,10 @@ namespace StoneCarveManager.Model.Validators
                 RuleFor(x => x.FeaturedImageUrl).MaximumLength(500));
 
             When(x => x.AuthorId.HasValue, () =>
-                RuleFor(x => x.AuthorId).GreaterThan(0).WithMessage("Author ID must be greater than 0."));
+                RuleFor(x => x.AuthorId).Must(id => id == -999 || id > 0).WithMessage("Author ID must be valid."));
 
             When(x => x.CategoryId.HasValue, () =>
-                RuleFor(x => x.CategoryId).GreaterThan(0).WithMessage("Category ID must be greater than 0."));
+                RuleFor(x => x.CategoryId).NotEqual(0).WithMessage("Category ID must be valid."));
         }
     }
 }

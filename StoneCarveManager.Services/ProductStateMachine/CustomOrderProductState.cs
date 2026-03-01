@@ -45,8 +45,6 @@ namespace StoneCarveManager.Services.ProductStateMachine
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             entity.ProductState = "hidden";
-            entity.IsActive = false;
-            entity.IsInPortfolio = false;
             entity.UpdatedAt = DateTime.UtcNow;
 
             Context.SaveChanges();
@@ -72,7 +70,6 @@ namespace StoneCarveManager.Services.ProductStateMachine
 
             entity.ProductState = "portfolio";
             entity.IsInPortfolio = true;
-            entity.IsActive = true; // Visible in portfolio section
             entity.UpdatedAt = DateTime.UtcNow;
 
             Context.SaveChanges();

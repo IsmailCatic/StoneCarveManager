@@ -30,6 +30,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<PagedResult<UserDTO>>> GetAll([FromQuery] UserSearchObject? search, CancellationToken cancellationToken)
         {
             var result = await _userService.GetAsync(search ?? new UserSearchObject(), cancellationToken);
@@ -37,7 +38,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("employees")]
-        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<List<UserDTO>>> GetEmployees(CancellationToken cancellationToken)
         {
             var employees = await _userService.GetEmployeesAsync(cancellationToken);
@@ -45,13 +46,40 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<UserDTO>> GetByIdAsync(int id, CancellationToken cancellationToken)
         {
+            // Get current user ID from JWT token
+            var userIdClaim = User.FindFirst("userid")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var currentUserId))
+            {
+                return Unauthorized(new { message = "Invalid user token" });
+            }
+
+            // Check roles
+            var isAdmin = User.IsInRole(Roles.Admin);
+
+            // Rules:
+            // - Admin can view any user
+            // - Any authenticated user can view their own profile
+            if (id != currentUserId && !isAdmin)
+            {
+                return Forbid();
+            }
+
             var result = await _userService.GetByIdAsync(id, cancellationToken);
+            
+            if (result == null)
+            {
+                return NotFound(new { message = "User not found" });
+            }
+
             return Ok(result);
         }
 
         [HttpGet("by-firstname/{firstName}")]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<UserDTO>> GetByFirstNameAsync(string firstName, CancellationToken cancellationToken)
         {
             var result = await _userService.GetByFirstNameAsync(firstName, cancellationToken);
@@ -65,6 +93,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("by-email/{email}")]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<UserDTO>> GetByEmailAsync(string email, CancellationToken cancellationToken)
         {
             var result = await _userService.GetByEmailAsync(email, cancellationToken);
@@ -78,13 +107,14 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpPost("by-usernames")]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<List<UserDTO>>> GetByUsernamesAsync([FromBody] List<string> usernames, CancellationToken cancellationToken)
         {
             var result = await _userService.GetByUsernamesAsync(usernames, cancellationToken);
             return Ok(result);
         }
 
-        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpDelete("delete-user/{id}")]
         public async Task<IActionResult> DeleteUser(int id, CancellationToken cancellationToken)
         {

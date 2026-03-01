@@ -2,13 +2,20 @@ class BlogPostSearch {
   final bool? isPublished;
   final int? authorId;
   final int? categoryId;
+  final bool? isTutorial;
 
-  BlogPostSearch({this.isPublished, this.authorId, this.categoryId});
+  BlogPostSearch({
+    this.isPublished,
+    this.authorId,
+    this.categoryId,
+    this.isTutorial,
+  });
 
   Map<String, dynamic> toJson() => {
     if (isPublished != null) 'isPublished': isPublished,
     if (authorId != null) 'authorId': authorId,
     if (categoryId != null) 'categoryId': categoryId,
+    if (isTutorial != null) 'isTutorial': isTutorial,
   };
 }
 

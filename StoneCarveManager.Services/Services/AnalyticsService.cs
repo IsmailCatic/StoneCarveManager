@@ -98,7 +98,7 @@ namespace StoneCarveManager.Services.Services
             // Product statistics
             var totalProducts = await _context.Products.CountAsync(cancellationToken);
             var lowStockProducts = await _context.Products
-                .Where(p => p.IsActive && p.StockQuantity > 0 && p.StockQuantity < 5)
+                .Where(p => p.ProductState == "active" && p.StockQuantity > 0 && p.StockQuantity < 5)
                 .CountAsync(cancellationToken);
 
             // Review statistics

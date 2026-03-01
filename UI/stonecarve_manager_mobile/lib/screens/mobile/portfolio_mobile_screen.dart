@@ -26,38 +26,15 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
   final MaterialProvider _materialProvider = MaterialProvider();
 
   List<Product> _projects = [];
-  List<Product> _filteredProjects = [];
   List<Category> _categories = [];
   List<stone_material.StoneMaterial> _materials = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
-  // Search and filter state
-  final TextEditingController _searchController = TextEditingController();
-  String? _selectedCategory;
-  String? _selectedMaterial;
-  String? _selectedStyle;
+  // Filter state
+  String? _selectedCategoryName;
+  int? _selectedMaterialId;
   String _selectedSort = 'date_desc';
-
-  // Filter options based on mockup
-  final List<String> _categoryOptions = [
-    'All',
-    'Crest',
-    'Sign/Lettering',
-    'Geometric',
-  ];
-  final List<String> _materialOptions = [
-    'All',
-    'Limestone',
-    'Granite',
-    'Marble',
-  ];
-  final List<String> _styleOptions = [
-    'All',
-    'Traditional',
-    'Contemporary',
-    'Modern',
-  ];
 
   @override
   bool get wantKeepAlive => true; // Preserve state when switching tabs
@@ -65,45 +42,48 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
   @override
   void initState() {
     super.initState();
-    _selectedCategory = 'All';
-    _selectedMaterial = 'All';
-    _selectedStyle = 'All';
-    _searchController.addListener(_filterProjects);
-    // Fetch portfolio once on initialization
+    // Fetch portfolio and filter data on initialization
     _fetchPortfolio();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchPortfolio() async {
+  Future<void> _fetchPortfolio({String? categoryName, int? materialId}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      // Load categories and materials first
-      await Future.wait([_loadCategories(), _loadMaterials()]);
+      // Load categories and materials on first load (if empty)
+      if (_categories.isEmpty || _materials.isEmpty) {
+        await Future.wait([_loadCategories(), _loadMaterials()]);
+      }
 
-      final url = '${BaseProvider.baseUrl}/api/Product/portfolio';
-      print('[PortfolioMobile] Fetching from: $url');
-      print(
-        '[PortfolioMobile] Auth token: ${AuthProvider.token?.substring(0, 20)}...',
-      );
+      // Build query params — matching desktop product_provider.dart pattern
+      final queryParams = <String, String>{};
+      if (categoryName != null && categoryName.isNotEmpty) {
+        queryParams['categoryName'] = categoryName;
+      }
+      if (materialId != null) {
+        queryParams['materialId'] = materialId.toString();
+      }
+
+      final uri = Uri.parse(
+        '${BaseProvider.baseUrl}/api/Product/portfolio',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      print('[PortfolioMobile] Fetching from: $uri');
 
       final response = await http.get(
-        Uri.parse(url),
+        uri,
         headers: AuthProvider.getAuthHeaders(),
       );
 
       print('[PortfolioMobile] Response status: ${response.statusCode}');
-      print(
-        '[PortfolioMobile] Response body: ${response.body.substring(0, 200)}...',
-      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -130,19 +110,21 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
           }
         }
 
+        if (!mounted) return;
         setState(() {
           _projects = projects;
-          _filteredProjects = List.from(_projects);
+          _applySorting();
           _isLoading = false;
         });
       } else {
+        if (!mounted) return;
         setState(() {
-          _errorMessage =
-              'Failed to load portfolio (${response.statusCode}): ${response.body}';
+          _errorMessage = 'Failed to load portfolio (${response.statusCode})';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error: $e';
         _isLoading = false;
@@ -168,63 +150,23 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
     }
   }
 
-  void _filterProjects() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredProjects = _projects.where((project) {
-        // Search filter
-        final nameMatch = project.name?.toLowerCase().contains(query) ?? false;
-        final descMatch =
-            project.description?.toLowerCase().contains(query) ?? false;
-        if (query.isNotEmpty && !nameMatch && !descMatch) return false;
-
-        // Category filter
-        if (_selectedCategory != 'All') {
-          final categoryMatch =
-              project.categoryName?.toLowerCase() ==
-              _selectedCategory?.toLowerCase();
-          if (!categoryMatch) return false;
-        }
-
-        // Material filter
-        if (_selectedMaterial != 'All') {
-          final materialMatch =
-              project.materialName?.toLowerCase() ==
-              _selectedMaterial?.toLowerCase();
-          if (!materialMatch) return false;
-        }
-
-        // Style filter (you may need to add a style field to Product model)
-        // For now, we'll skip this or use a workaround
-
-        return true;
-      }).toList();
-
-      _applySorting();
-    });
-  }
-
   void _applySorting() {
     switch (_selectedSort) {
       case 'date_desc':
-        _filteredProjects.sort(
+        _projects.sort(
           (a, b) => (b.completionYear ?? 0).compareTo(a.completionYear ?? 0),
         );
         break;
       case 'date_asc':
-        _filteredProjects.sort(
+        _projects.sort(
           (a, b) => (a.completionYear ?? 0).compareTo(b.completionYear ?? 0),
         );
         break;
       case 'price_asc':
-        _filteredProjects.sort(
-          (a, b) => (a.price ?? 0).compareTo(b.price ?? 0),
-        );
+        _projects.sort((a, b) => (a.price ?? 0).compareTo(b.price ?? 0));
         break;
       case 'price_desc':
-        _filteredProjects.sort(
-          (a, b) => (b.price ?? 0).compareTo(a.price ?? 0),
-        );
+        _projects.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
         break;
     }
   }
@@ -292,18 +234,34 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: _categoryOptions.map((category) {
-                      return _buildFilterChip(
-                        category,
-                        _selectedCategory == category,
+                    children: [
+                      // "All" chip
+                      _buildFilterChip(
+                        'All',
+                        _selectedCategoryName == null,
                         () {
-                          setState(() {
-                            _selectedCategory = category;
-                            _filterProjects();
-                          });
+                          setState(() => _selectedCategoryName = null);
+                          _fetchPortfolio(materialId: _selectedMaterialId);
                         },
-                      );
-                    }).toList(),
+                      ),
+                      ..._categories
+                          .where((c) => c.name != null)
+                          .map(
+                            (category) => _buildFilterChip(
+                              category.name!,
+                              _selectedCategoryName == category.name,
+                              () {
+                                setState(
+                                  () => _selectedCategoryName = category.name,
+                                );
+                                _fetchPortfolio(
+                                  categoryName: category.name,
+                                  materialId: _selectedMaterialId,
+                                );
+                              },
+                            ),
+                          ),
+                    ],
                   ),
                 ),
               ],
@@ -317,37 +275,28 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _materialOptions.map((material) {
-                  return _buildFilterChip(
-                    material,
-                    _selectedMaterial == material,
-                    () {
-                      setState(() {
-                        _selectedMaterial = material;
-                        _filterProjects();
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          // Style Filter
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _styleOptions.map((style) {
-                  return _buildFilterChip(style, _selectedStyle == style, () {
-                    setState(() {
-                      _selectedStyle = style;
-                      _filterProjects();
-                    });
-                  });
-                }).toList(),
+                children: [
+                  // "All" chip
+                  _buildFilterChip('All', _selectedMaterialId == null, () {
+                    setState(() => _selectedMaterialId = null);
+                    _fetchPortfolio(categoryName: _selectedCategoryName);
+                  }),
+                  ..._materials
+                      .where((m) => m.name != null)
+                      .map(
+                        (material) => _buildFilterChip(
+                          material.name!,
+                          _selectedMaterialId == material.id,
+                          () {
+                            setState(() => _selectedMaterialId = material.id);
+                            _fetchPortfolio(
+                              categoryName: _selectedCategoryName,
+                              materialId: material.id,
+                            );
+                          },
+                        ),
+                      ),
+                ],
               ),
             ),
           ),
@@ -375,14 +324,17 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
-                          onPressed: _fetchPortfolio,
+                          onPressed: () => _fetchPortfolio(
+                            categoryName: _selectedCategoryName,
+                            materialId: _selectedMaterialId,
+                          ),
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
                         ),
                       ],
                     ),
                   )
-                : _filteredProjects.isEmpty
+                : _projects.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -409,7 +361,10 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
                     ),
                   )
                 : RefreshIndicator(
-                    onRefresh: _fetchPortfolio,
+                    onRefresh: () => _fetchPortfolio(
+                      categoryName: _selectedCategoryName,
+                      materialId: _selectedMaterialId,
+                    ),
                     child: GridView.builder(
                       padding: const EdgeInsets.all(8),
                       gridDelegate:
@@ -419,9 +374,9 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
                           ),
-                      itemCount: _filteredProjects.length,
+                      itemCount: _projects.length,
                       itemBuilder: (context, index) {
-                        final project = _filteredProjects[index];
+                        final project = _projects[index];
                         return PortfolioCard(
                           project: project,
                           onTap: () {

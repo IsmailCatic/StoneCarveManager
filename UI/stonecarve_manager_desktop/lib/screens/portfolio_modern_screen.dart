@@ -22,6 +22,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
   final MaterialProvider _materialProvider = MaterialProvider();
 
   List<Product> _portfolioItems = [];
+  List<Product> _allPortfolioItems = [];
   List<Category> _categories = [];
   List<stone_material.StoneMaterial> _materials = [];
 
@@ -40,15 +41,20 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
     setState(() => _isLoading = true);
 
     // Load all data in parallel for better performance
+    // Load all portfolio items (unfiltered) for dropdowns
+    try {
+      final allItems = await _productProvider.fetchPortfolioProducts();
+      setState(() => _allPortfolioItems = allItems);
+    } catch (e) {
+      print('Error loading all portfolio items: $e');
+    }
     await Future.wait([
       _loadPortfolioItems(),
       _loadCategories(),
       _loadMaterials(),
     ]);
-
     // Map category and material names AFTER all data is loaded
     _mapCategoryAndMaterialNames();
-
     setState(() => _isLoading = false);
   }
 
@@ -107,7 +113,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
   // Removed frontend filtering - now done on backend
 
   List<int> get _availableYears {
-    final years = _portfolioItems
+    final years = _allPortfolioItems
         .where((item) => item.completionYear != null)
         .map((item) => item.completionYear!)
         .toSet()
@@ -323,37 +329,53 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
           // Year filter
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 120, maxWidth: 150),
-            child: DropdownButtonFormField<int?>(
-              value: _selectedYear,
-              decoration: InputDecoration(
-                labelText: 'Year',
-                prefixIcon: const Icon(Icons.calendar_today, size: 20),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem<int?>(
-                  value: null,
-                  child: Text('All Years'),
-                ),
-                ..._availableYears.map((year) {
-                  return DropdownMenuItem<int>(
-                    value: year,
-                    child: Text(year.toString()),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() => _selectedYear = value);
-                _loadPortfolioItems();
+            child: Builder(
+              builder: (context) {
+                // Ensure selected year is always present in dropdown items
+                final availableYears = _availableYears;
+                final dropdownYears = <int?>[null, ...availableYears];
+                int? selectedYear = _selectedYear;
+                if (selectedYear != null &&
+                    !availableYears.contains(selectedYear)) {
+                  // Reset selection if not present
+                  selectedYear = null;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) setState(() => _selectedYear = null);
+                  });
+                }
+                return DropdownButtonFormField<int?>(
+                  value: selectedYear,
+                  decoration: InputDecoration(
+                    labelText: 'Year',
+                    prefixIcon: const Icon(Icons.calendar_today, size: 20),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('All Years'),
+                    ),
+                    ...availableYears.map((year) {
+                      return DropdownMenuItem<int>(
+                        value: year,
+                        child: Text(year.toString()),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedYear = value);
+                    _loadPortfolioItems();
+                  },
+                );
               },
             ),
           ),

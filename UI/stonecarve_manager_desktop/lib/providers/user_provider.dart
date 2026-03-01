@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/utils/auth_client.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
 import 'package:stonecarve_manager_flutter/models/user.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
@@ -32,7 +33,7 @@ class UserProvider extends BaseProvider<User> {
       var data = jsonDecode(response.body);
       return fromJson(data);
     } else {
-      throw Exception("Failed to create user: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'create user');
     }
   }
 
@@ -87,7 +88,7 @@ class UserProvider extends BaseProvider<User> {
       return roles;
     } else {
       print('Failed to load roles, status: ${response.statusCode}');
-      throw Exception('Failed to load roles');
+      throw HttpErrorHandler.createException(response, 'load roles');
     }
   }
 
@@ -162,7 +163,7 @@ class UserProvider extends BaseProvider<User> {
       final data = jsonDecode(response.body);
       return data['imageUrl'];
     } else {
-      throw Exception("Failed to upload profile image: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'upload profile image');
     }
   }
 
@@ -183,7 +184,7 @@ class UserProvider extends BaseProvider<User> {
     if (response.statusCode == 200 || response.statusCode == 204) {
       return true;
     } else {
-      throw Exception("Failed to delete profile image: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'delete profile image');
     }
   }
 
@@ -210,7 +211,7 @@ class UserProvider extends BaseProvider<User> {
     } else if (response.statusCode == 403) {
       throw Exception('Access denied');
     } else {
-      throw Exception('Failed to load employees: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'load employees');
     }
   }
 }

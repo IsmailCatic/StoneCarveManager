@@ -21,12 +21,6 @@ class ProductProvider extends BaseProvider<Product> {
     return await delete(id);
   }
 
-  Future<List<Product>> getActiveProducts() async {
-    var filter = {"isActive": true};
-    var result = await get(filter: filter);
-    return result.items ?? [];
-  }
-
   Future<List<Product>> getProductsByCategory(int categoryId) async {
     var filter = {"categoryId": categoryId};
     var result = await get(filter: filter);
@@ -53,6 +47,18 @@ class ProductProvider extends BaseProvider<Product> {
 
   Future<List<Product>> searchProducts(String searchTerm) async {
     var filter = {"search": searchTerm};
+    var result = await get(filter: filter);
+    return result.items ?? [];
+  }
+
+  Future<List<Product>> getRegularProducts() async {
+    var filter = {"ProductStateExclude": "custom_order", "retrieveAll": true};
+    var result = await get(filter: filter);
+    return result.items ?? [];
+  }
+
+  Future<List<Product>> getCustomOrderProducts() async {
+    var filter = {"ProductState": "custom_order", "retrieveAll": true};
     var result = await get(filter: filter);
     return result.items ?? [];
   }

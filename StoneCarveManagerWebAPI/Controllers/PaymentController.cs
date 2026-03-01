@@ -36,6 +36,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PagedResult<PaymentResponse>>> GetAll([FromQuery] PaymentSearchObject search, CancellationToken cancellationToken)
         {
             var result = await _paymentService.GetPaymentsAsync(search, cancellationToken);
@@ -43,6 +44,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<PaymentResponse>> GetById(int id, CancellationToken cancellationToken)
         {
             var payment = await _paymentService.GetPaymentByIdAsync(id, cancellationToken);
@@ -106,7 +108,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("statistics")]
-        [Authorize(Roles = "Admin,Employee")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetStatistics([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, CancellationToken cancellationToken)
         {
             var stats = await _paymentService.GetPaymentStatisticsAsync(startDate, endDate, cancellationToken);
@@ -126,6 +128,15 @@ namespace StoneCarveManagerWebAPI.Controllers
                 return BadRequest(new { message = "Webhook processing failed" });
 
             return Ok();
+        }
+
+        [HttpGet("my-payments")]
+        [Authorize]
+        public async Task<ActionResult<PagedResult<PaymentResponse>>> GetMyPayments([FromQuery] PaymentSearchObject search, CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.GetUserId();
+            var result = await _paymentService.GetMyPaymentsAsync(userId, search, cancellationToken);
+            return Ok(result);
         }
     }
 }

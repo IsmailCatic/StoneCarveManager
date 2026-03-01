@@ -29,10 +29,10 @@ namespace StoneCarveManager.Model.Validators
                 RuleFor(x => x.EstimatedDays).InclusiveBetween(1, 365).WithMessage("Estimated days must be between 1 and 365."));
 
             When(x => x.CategoryId.HasValue, () =>
-                RuleFor(x => x.CategoryId).GreaterThan(0).WithMessage("Category ID must be greater than 0."));
+                RuleFor(x => x.CategoryId).NotEqual(0).WithMessage("Category ID must be valid."));
 
             When(x => x.MaterialId.HasValue, () =>
-                RuleFor(x => x.MaterialId).GreaterThan(0).WithMessage("Material ID must be greater than 0."));
+                RuleFor(x => x.MaterialId).NotEqual(0).WithMessage("Material ID must be valid."));
 
             When(x => x.ProductState != null, () =>
                 RuleFor(x => x.ProductState).MaximumLength(50));

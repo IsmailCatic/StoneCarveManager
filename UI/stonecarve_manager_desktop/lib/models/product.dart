@@ -7,7 +7,6 @@ class Product {
   String? description;
   double? price;
   int? stockQuantity;
-  bool? isActive;
   DateTime? createdAt;
   DateTime? updatedAt;
   String? dimensions;
@@ -45,7 +44,6 @@ class Product {
     this.description,
     this.price,
     this.stockQuantity,
-    this.isActive,
     this.createdAt,
     this.updatedAt,
     this.dimensions,
@@ -80,7 +78,6 @@ class Product {
     description = json['description'];
     price = json['price']?.toDouble();
     stockQuantity = json['stockQuantity'];
-    isActive = json['isActive'];
     createdAt = json['createdAt'] != null
         ? DateTime.parse(json['createdAt'])
         : null;
@@ -136,7 +133,6 @@ class Product {
       'description': description,
       'price': price,
       'stockQuantity': stockQuantity,
-      'isActive': isActive,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'dimensions': dimensions,

@@ -18,7 +18,6 @@ namespace StoneCarveManager.Services.ProductStateMachine
             var entity = Mapper.Map<Product>(request);
             entity.ProductState = "draft";
             entity.CreatedAt = DateTime.UtcNow;
-            entity.IsActive = false;
 
             Context.Products.Add(entity);
             Context.SaveChanges();

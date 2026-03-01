@@ -51,6 +51,9 @@ namespace StoneCarveManager.Services.Extensions
             // Register Favorite service
             services.AddScoped<IFavoriteService, FavoriteService>();
 
+            // Register FAQ service
+            services.AddScoped<IFaqService, FaqService>();
+
             // Register consolidated Analytics service (replaces BusinessAnalyticsService)
             services.AddScoped<IAnalyticsService, AnalyticsService>();
 

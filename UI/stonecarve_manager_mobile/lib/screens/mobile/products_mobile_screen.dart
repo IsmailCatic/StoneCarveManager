@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stonecarve_manager_mobile/models/product.dart';
@@ -21,13 +22,13 @@ class ProductsMobileScreen extends StatefulWidget {
 class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     with AutomaticKeepAliveClientMixin {
   List<Product> _products = [];
-  List<Product> _filteredProducts = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
   // Search and filter state
   final TextEditingController _searchController = TextEditingController();
   String _selectedSort = 'default';
+  Timer? _searchDebounce;
 
   // Filter options
   final List<Map<String, dynamic>> _sortOptions = [
@@ -43,18 +44,19 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_filterProducts);
+    _searchController.addListener(_onSearchChanged);
     // Fetch products once on initialization
     _fetchProducts();
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchProducts() async {
+  Future<void> _fetchProducts({String? search}) async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
@@ -62,21 +64,31 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     });
 
     try {
-      final url = '${BaseProvider.baseUrl}/api/Product';
-      print('[ProductsMobile] Fetching from: $url');
-      print(
-        '[ProductsMobile] Auth token: ${AuthProvider.token?.substring(0, 20)}...',
-      );
+      // Build query params — same pattern as desktop app
+      final queryParams = <String, String>{};
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      final uri = Uri.parse(
+        '${BaseProvider.baseUrl}/api/Product',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      print('[ProductsMobile] Fetching from: $uri');
 
       final response = await http.get(
-        Uri.parse(url),
+        uri,
         headers: AuthProvider.getAuthHeaders(),
       );
 
       print('[ProductsMobile] Response status: ${response.statusCode}');
-      print(
-        '[ProductsMobile] Response body: ${response.body.substring(0, 200)}...',
-      );
+
+      if (response.statusCode == 401) {
+        // Token expired or invalid — clear session and redirect to login
+        if (!mounted) return;
+        await AuthProvider.handleSessionExpired(context);
+        return;
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -84,26 +96,20 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
         print('[ProductsMobile] Loaded ${items.length} products');
         if (!mounted) return;
         setState(() {
-          // Filter out custom products (those created for custom orders)
+          // Show only products with productState == 'active'
           _products = items
               .map((json) => Product.fromJson(json))
               .where(
-                (product) =>
-                    product.name == null ||
-                    !product.name!.toLowerCase().startsWith('custom'),
+                (product) => product.productState?.toLowerCase() == 'active',
               )
               .toList();
-          print(
-            '[ProductsMobile] After filtering custom products: ${_products.length}',
-          );
-          _filteredProducts = List.from(_products);
+          _applySorting();
           _isLoading = false;
         });
       } else {
         if (!mounted) return;
         setState(() {
-          _errorMessage =
-              'Failed to load products (${response.statusCode}): ${response.body}';
+          _errorMessage = 'Failed to load products (${response.statusCode})';
           _isLoading = false;
         });
       }
@@ -117,43 +123,28 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     }
   }
 
-  void _filterProducts() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredProducts = _products.where((product) {
-        // Skip custom products
-        if (product.name != null &&
-            product.name!.toLowerCase().startsWith('custom')) {
-          return false;
-        }
-        final nameMatch = product.name?.toLowerCase().contains(query) ?? false;
-        final categoryMatch =
-            product.categoryName?.toLowerCase().contains(query) ?? false;
-        return nameMatch || categoryMatch;
-      }).toList();
-      _applySorting();
+  /// Debounced handler — matching desktop users_screen.dart pattern
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      final query = _searchController.text.trim();
+      _fetchProducts(search: query.isEmpty ? null : query);
     });
   }
 
   void _applySorting() {
     switch (_selectedSort) {
       case 'name_asc':
-        _filteredProducts.sort(
-          (a, b) => (a.name ?? '').compareTo(b.name ?? ''),
-        );
+        _products.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
         break;
       case 'price_asc':
-        _filteredProducts.sort(
-          (a, b) => (a.price ?? 0).compareTo(b.price ?? 0),
-        );
+        _products.sort((a, b) => (a.price ?? 0).compareTo(b.price ?? 0));
         break;
       case 'price_desc':
-        _filteredProducts.sort(
-          (a, b) => (b.price ?? 0).compareTo(a.price ?? 0),
-        );
+        _products.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
         break;
       default:
-        // Keep default order
+        // Keep order returned by backend
         break;
     }
   }
@@ -375,14 +366,18 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
-                          onPressed: _fetchProducts,
+                          onPressed: () => _fetchProducts(
+                            search: _searchController.text.trim().isEmpty
+                                ? null
+                                : _searchController.text.trim(),
+                          ),
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
                         ),
                       ],
                     ),
                   )
-                : _filteredProducts.isEmpty
+                : _products.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -409,14 +404,18 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                     ),
                   )
                 : RefreshIndicator(
-                    onRefresh: _fetchProducts,
+                    onRefresh: () => _fetchProducts(
+                      search: _searchController.text.trim().isEmpty
+                          ? null
+                          : _searchController.text.trim(),
+                    ),
                     child: Consumer<FavoritesProvider>(
                       builder: (context, favoritesProvider, child) {
                         return ListView.builder(
-                          itemCount: _filteredProducts.length,
+                          itemCount: _products.length,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemBuilder: (context, index) {
-                            final product = _filteredProducts[index];
+                            final product = _products[index];
                             final isFavorite = favoritesProvider.isFavorite(
                               product.id,
                             );

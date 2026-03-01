@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace StoneCarveManager.Model.Responses
 {
@@ -9,7 +10,6 @@ namespace StoneCarveManager.Model.Responses
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int StockQuantity { get; set; }
-        public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string? Dimensions { get; set; }

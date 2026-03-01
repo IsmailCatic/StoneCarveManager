@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -7,6 +8,7 @@ using StoneCarveManager.Services.IServices;
 
 namespace StoneCarveManagerWebAPI.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class RoleController
         : BaseCRUDController<RoleResponse, RoleSearchObject, RoleInsertRequest, RoleUpdateRequest>
     {

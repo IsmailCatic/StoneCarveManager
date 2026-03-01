@@ -67,6 +67,16 @@ namespace StoneCarveManagerWebAPI.Controllers
             }
             catch (Exception ex)
             {
+                // Check if this is a blocked account error
+                if (ex.Message.Contains("account has been blocked", StringComparison.OrdinalIgnoreCase))
+                {
+                    return StatusCode(403, new 
+                    { 
+                        message = ex.Message,
+                        error = "Account blocked"
+                    });
+                }
+                
                 return BadRequest(new { message = ex.Message });
             }
         }

@@ -21,9 +21,11 @@ class BlogPostProvider extends BaseProvider {
   }) async {
     try {
       final token = AuthProvider.token;
-      final uri = Uri.parse(
-        '$apiUrl/BlogPost',
-      ).replace(queryParameters: search?.toJson());
+      final uri = Uri.parse('$apiUrl/BlogPost').replace(
+        queryParameters: search?.toJson().map(
+          (k, v) => MapEntry(k, v.toString()),
+        ),
+      );
 
       print('🔵 [BlogPost] Fetching blog posts from: $uri');
       print('🔵 [BlogPost] Token available: ${token != null}');

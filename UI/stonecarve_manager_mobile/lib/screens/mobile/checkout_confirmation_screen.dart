@@ -18,6 +18,41 @@ class _CheckoutConfirmationScreenState
     extends State<CheckoutConfirmationScreen> {
   bool _isProcessing = false;
 
+  Future<void> _confirmAndCompletePurchase() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.payment, color: Colors.blue),
+            SizedBox(width: 10),
+            Text('Confirm Purchase'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to complete this purchase? Your card will be charged and the order will be placed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text(
+              'Confirm & Pay',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _completePurchase();
+    }
+  }
+
   Future<void> _completePurchase() async {
     setState(() => _isProcessing = true);
 
@@ -163,19 +198,18 @@ class _CheckoutConfirmationScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.grey),
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Back',
         ),
-        title: Text(
-          'StoneCarve Manager',
-          style: TextStyle(color: Colors.blue, fontSize: 16),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_cart, color: Colors.grey),
-            onPressed: () {},
+        title: const Text(
+          'Order Confirmation',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
-        ],
+        ),
       ),
       body: Consumer<CartProvider>(
         builder: (context, cart, child) {
@@ -251,7 +285,9 @@ class _CheckoutConfirmationScreenState
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isProcessing ? null : _completePurchase,
+                      onPressed: _isProcessing
+                          ? null
+                          : _confirmAndCompletePurchase,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         padding: const EdgeInsets.symmetric(vertical: 16),

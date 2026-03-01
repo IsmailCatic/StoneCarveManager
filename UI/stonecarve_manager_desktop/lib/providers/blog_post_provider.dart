@@ -10,6 +10,7 @@ import '../models/blog_image.dart';
 import '../models/blog_image_upload_request.dart';
 import 'base_provider.dart';
 import 'auth_provider.dart';
+import '../utils/http_error_handler.dart';
 
 class BlogPostProvider extends BaseProvider {
   final String apiUrl;
@@ -61,9 +62,7 @@ class BlogPostProvider extends BaseProvider {
         print(
           '❌ [BlogPost] Failed with status ${response.statusCode}: ${response.body}',
         );
-        throw Exception(
-          'Failed to load blog posts: ${response.statusCode} - ${response.body}',
-        );
+        throw HttpErrorHandler.createException(response, 'load blog posts');
       }
     } catch (e, stackTrace) {
       print('❌ [BlogPost] Error fetching blog posts: $e');
@@ -90,7 +89,7 @@ class BlogPostProvider extends BaseProvider {
         print(
           '❌ [BlogPost] Failed with status ${response.statusCode}: ${response.body}',
         );
-        throw Exception('Failed to load blog post: ${response.statusCode}');
+        throw HttpErrorHandler.createException(response, 'load blog post');
       }
     } catch (e, stackTrace) {
       print('❌ [BlogPost] Error fetching blog post $id: $e');
@@ -125,7 +124,7 @@ class BlogPostProvider extends BaseProvider {
         print(
           '❌ [BlogPost] Failed with status ${response.statusCode}: ${response.body}',
         );
-        throw Exception('Failed to insert blog post: ${response.statusCode}');
+        throw HttpErrorHandler.createException(response, 'insert blog post');
       }
     } catch (e, stackTrace) {
       print('❌ [BlogPost] Error inserting blog post: $e');
@@ -141,15 +140,20 @@ class BlogPostProvider extends BaseProvider {
   ) async {
     final token = AuthProvider.token;
     final uri = Uri.parse('$apiUrl/BlogPost/$id');
+    print(
+      '🔵 [BlogPost] Updating post $id with data: ${json.encode(request.toJson())}',
+    );
     final response = await http.put(
       uri,
       headers: _headers(token!),
       body: json.encode(request.toJson()),
     );
+    print('🔵 [BlogPost] Update response status: ${response.statusCode}');
     if (response.statusCode == 200) {
       return BlogPost.fromJson(json.decode(response.body));
     } else {
-      throw Exception('Failed to update blog post');
+      print('❌ [BlogPost] Update failed with body: ${response.body}');
+      throw HttpErrorHandler.createException(response, 'update blog post');
     }
   }
 
@@ -158,7 +162,7 @@ class BlogPostProvider extends BaseProvider {
     final uri = Uri.parse('$apiUrl/BlogPost/$id');
     final response = await http.delete(uri, headers: _headers(token!));
     if (response.statusCode != 204 && response.statusCode != 200) {
-      throw Exception('Failed to delete blog post');
+      throw HttpErrorHandler.createException(response, 'delete blog post');
     }
   }
 
@@ -216,7 +220,7 @@ class BlogPostProvider extends BaseProvider {
         return BlogImageResponse.fromJson(json.decode(response.body));
       } else {
         print('❌ [BlogPost] Upload failed: ${response.body}');
-        throw Exception('Failed to upload image: ${response.statusCode}');
+        throw HttpErrorHandler.createException(response, 'upload blog image');
       }
     } catch (e, stackTrace) {
       print('❌ [BlogPost] Error uploading image: $e');
@@ -280,7 +284,10 @@ class BlogPostProvider extends BaseProvider {
         return imageUrl;
       } else {
         print('❌ [BlogPost] Upload failed: ${response.body}');
-        throw Exception('Failed to upload featured image');
+        throw HttpErrorHandler.createException(
+          response,
+          'upload featured image',
+        );
       }
     } catch (e, stackTrace) {
       print('❌ [BlogPost] Error uploading featured image: $e');
@@ -298,7 +305,7 @@ class BlogPostProvider extends BaseProvider {
     final uri = Uri.parse('$apiUrl/BlogPost/$postId/images/$imageId');
     final response = await http.delete(uri, headers: _headers(token!));
     if (response.statusCode != 204 && response.statusCode != 200) {
-      throw Exception('Failed to delete image');
+      throw HttpErrorHandler.createException(response, 'delete blog image');
     }
   }
 

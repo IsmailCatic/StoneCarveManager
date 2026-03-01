@@ -524,10 +524,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             keyboardType: TextInputType.phone,
             validator: (value) {
-              if (value != null && value.trim().isNotEmpty) {
-                if (value.trim().length < 8) {
-                  return 'Please enter a valid phone number';
-                }
+              if (value == null || value.trim().isEmpty)
+                return null; // optional
+              final cleaned = value.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+              if (!RegExp(r'^\+?[0-9]{6,15}$').hasMatch(cleaned)) {
+                return 'Please enter a valid phone number (e.g., +387 61 123 456)';
               }
               return null;
             },

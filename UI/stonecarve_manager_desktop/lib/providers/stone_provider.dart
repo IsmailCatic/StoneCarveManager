@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
   MaterialProvider() : super("Material");
@@ -120,7 +121,7 @@ class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
       final data = jsonDecode(response.body);
       return data['imageUrl'];
     } else {
-      throw Exception("Failed to upload image: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'upload material image');
     }
   }
 
@@ -139,7 +140,7 @@ class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
     if (response.statusCode == 200 || response.statusCode == 204) {
       return true;
     } else {
-      throw Exception("Failed to delete image: ${response.body}");
+      throw HttpErrorHandler.createException(response, 'delete material image');
     }
   }
 }

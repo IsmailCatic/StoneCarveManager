@@ -87,7 +87,6 @@ namespace StoneCarveManager.Services.Database.EntityConfigurations
             builder.HasIndex(x => x.CategoryId);
             builder.HasIndex(x => x.MaterialId);
             builder.HasIndex(x => x.Price);
-            builder.HasIndex(x => x.IsActive);
             builder.HasIndex(x => x.CreatedAt);
         }
     }

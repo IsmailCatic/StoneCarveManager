@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_mobile/models/auth.dart';
@@ -271,6 +272,25 @@ class AuthProvider {
     return result;
   }
 
+  /// Called whenever any API returns 401 Unauthorized.
+  /// Clears the session and redirects to the login screen with a toast message.
+  static Future<void> handleSessionExpired(BuildContext context) async {
+    print(
+      '[AuthProvider] 🔒 Session expired — logging out and redirecting to login',
+    );
+    await logout();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your session has expired. Please log in again.'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+    }
+  }
+
   // Get authorization header for API calls
   static Map<String, String> getAuthHeaders() {
     if (_token != null) {
@@ -288,6 +308,12 @@ class AuthProvider {
       _token = await _storage.read(key: 'auth_token');
 
       if (_token != null && _token!.isNotEmpty) {
+        // Check if stored token is already expired — clear session if so
+        if (JwtDecoder.isExpired(_token!)) {
+          print('[AuthProvider] ⚠️ Stored token is expired — clearing session');
+          await logout();
+          return;
+        }
         // Try to load user data from storage first
         final userIdStr = await _storage.read(key: 'user_id');
         final username = await _storage.read(key: 'username');

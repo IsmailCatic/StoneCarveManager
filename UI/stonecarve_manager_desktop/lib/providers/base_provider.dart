@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:http/http.dart';
+import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
   static String? _baseUrl;
@@ -24,6 +25,10 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
       if (filter != null) {
         var queryString = getQueryString(filter);
+        // Remove leading & if present
+        if (queryString.startsWith('&')) {
+          queryString = queryString.substring(1);
+        }
         url = "$url?$queryString";
       }
 
@@ -52,7 +57,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
         return result;
       } else {
-        throw Exception("HTTP ${response.statusCode}: ${response.body}");
+        throw HttpErrorHandler.createException(response, 'fetch $_endpoint');
       }
     } catch (e) {
       print("Error in BaseProvider.get(): $e"); // Debug log
@@ -169,6 +174,36 @@ abstract class BaseProvider<T> with ChangeNotifier {
       throw new Exception("Unauthorized");
     } else {
       print(response.body);
+
+      // Try to parse validation errors from response
+      try {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody is Map && responseBody.containsKey('errors')) {
+          final errors = responseBody['errors'] as Map;
+          final errorMessages = <String>[];
+
+          errors.forEach((key, value) {
+            if (value is List && value.isNotEmpty) {
+              errorMessages.add(value.first.toString());
+            }
+          });
+
+          if (errorMessages.isNotEmpty) {
+            throw new Exception(errorMessages.join('\n'));
+          }
+        }
+
+        // Check for title or detail fields
+        if (responseBody is Map && responseBody.containsKey('title')) {
+          throw new Exception(responseBody['title']);
+        }
+      } catch (e) {
+        // If it's already an Exception, rethrow it
+        if (e is Exception) {
+          rethrow;
+        }
+      }
+
       throw new Exception("Something bad happened please try again");
     }
   }

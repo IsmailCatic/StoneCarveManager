@@ -41,10 +41,10 @@ class _ReviewsScreenState extends State<ReviewsScreen>
   Future<void> _loadCompletedOrders() async {
     setState(() => _isLoadingOrders = true);
     try {
-      final orders = await OrderProvider.getMyOrderHistory();
+      // Send status=3 (Delivered) directly to backend — no client-side filter needed
+      final orders = await OrderProvider.getMyOrders(status: 3);
       setState(() {
-        // Filter only delivered orders (status 3)
-        _completedOrders = orders.where((order) => order.status == 3).toList();
+        _completedOrders = orders;
         _isLoadingOrders = false;
       });
     } catch (e) {

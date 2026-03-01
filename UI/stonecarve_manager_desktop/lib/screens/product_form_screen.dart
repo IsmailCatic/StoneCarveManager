@@ -147,15 +147,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Image uploaded successfully!'),
+              content: Text('Product image uploaded successfully'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error adding image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload product image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -230,7 +233,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       } catch (e) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text('Failed to save product: $e')));
       }
     }
   }
@@ -653,7 +656,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                           context,
                                         ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Image deleted!'),
+                                            content: Text(
+                                              'Product image removed successfully',
+                                            ),
+                                            backgroundColor: Colors.green,
                                           ),
                                         );
                                       }

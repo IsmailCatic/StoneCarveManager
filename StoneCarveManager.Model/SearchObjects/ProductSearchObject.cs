@@ -10,6 +10,11 @@ namespace StoneCarveManager.Model.SearchObjects
         public string? ProductState { get; set; }
         
         /// <summary>
+        /// Exclude products with this ProductState value (e.g., "custom_order")
+        /// </summary>
+        public string? ProductStateExclude { get; set; }
+        
+        /// <summary>
         /// Sort order: "price_asc", "price_desc", "name_asc", "name_desc", "newest", "oldest", "popular"
         /// </summary>
         public string? SortBy { get; set; }

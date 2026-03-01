@@ -22,6 +22,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
   final _unitController = TextEditingController();
 
   bool _isAvailable = true;
+  bool _isActive = true;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
           widget.material!.quantityInStock?.toString() ?? '';
       _unitController.text = widget.material!.unit ?? '';
       _isAvailable = widget.material!.isAvailable ?? true;
+      _isActive = widget.material!.isActive ?? true;
     }
   }
 
@@ -48,6 +50,7 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
       quantityInStock: int.tryParse(_quantityController.text.trim()),
       unit: _unitController.text.trim(),
       isAvailable: _isAvailable,
+      isActive: _isActive,
       // Preserve existing imageUrl when editing to prevent deletion
       imageUrl: widget.material?.imageUrl,
     );
@@ -72,9 +75,13 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
       }
     }
   }
@@ -192,8 +199,18 @@ class _AddMaterialScreenState extends State<AddMaterialScreen> {
                     const SizedBox(height: 24),
                     SwitchListTile(
                       title: Text("Available"),
+                      subtitle: Text(
+                        "Material is currently available in stock",
+                      ),
                       value: _isAvailable,
                       onChanged: (v) => setState(() => _isAvailable = v),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: Text("Active"),
+                      subtitle: Text("Material is active in the system"),
+                      value: _isActive,
+                      onChanged: (v) => setState(() => _isActive = v),
                     ),
                     const SizedBox(height: 24),
                     Row(

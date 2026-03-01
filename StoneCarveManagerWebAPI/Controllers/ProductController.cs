@@ -1,14 +1,16 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
-using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
+using static StoneCarveManager.Services.Constants;
 
 namespace StoneCarveManagerWebAPI.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class ProductController
         : BaseCRUDController<ProductResponse, ProductSearchObject, ProductInsertRequest, ProductUpdateRequest>
     {
@@ -35,19 +37,32 @@ namespace StoneCarveManagerWebAPI.Controllers
             _reviewValidator = reviewValidator;
         }
 
-        // Override Create to add validation
+        // Override Create - Admin/Employee only
+        [HttpPost]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public override async Task<ProductResponse> Create([FromBody] ProductInsertRequest request)
         {
             return await base.Create(request);
         }
 
-        // Override Update to add validation
+        // Override Update - Admin/Employee only
+        [HttpPut("{id}")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public override async Task<ProductResponse?> Update(int id, [FromBody] ProductUpdateRequest request)
         {
             return await base.Update(id, request);
         }
 
+        // Override Delete - Admin/Employee only
+        [HttpDelete("{id}")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
+        public override async Task<bool> Delete(int id)
+        {
+            return await base.Delete(id);
+        }
+
         [HttpPatch("{id}/increment-view-count")]
+        [AllowAnonymous]
         public async Task<IActionResult> IncrementViewCount(int id)
         {
             var result = await _productService.IncrementViewCountAsync(id);
@@ -58,6 +73,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpPost("{productId}/images")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> UploadImage(int productId, [FromForm] ProductImageUploadRequest request, CancellationToken cancellationToken)
         {
             var validationResult = await _imageUploadValidator.ValidateAsync(request, cancellationToken);
@@ -69,6 +85,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpDelete("{productId}/images/{imageId}")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> DeleteProductImage(int productId, int imageId, CancellationToken cancellationToken)
         {
             await _productService.DeleteProductImageAsync(productId, imageId, cancellationToken);
@@ -76,6 +93,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("{productId}/reviews")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetProductReviews(int productId)
         {
             var list = await _reviewService.GetByProductIdAsync(productId);
@@ -83,6 +101,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpPost("{productId}/reviews")]
+        [Authorize]
         public async Task<IActionResult> AddProductReview(int productId, [FromBody] ProductReviewInsertRequest request, CancellationToken cancellationToken)
         {
             // Automatically set userId from JWT token
@@ -99,8 +118,9 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(review);
         }
 
-        // State Machine Endpoints
+        // State Machine Endpoints - Admin/Employee only
         [HttpPatch("{id}/activate")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public IActionResult Activate(int id)
         {
             var result = _productService.Activate(id);
@@ -108,6 +128,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpPatch("{id}/hide")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public IActionResult Hide(int id)
         {
             var result = _productService.Hide(id);
@@ -115,6 +136,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpPatch("{id}/make-service")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public IActionResult MakeService(int id)
         {
             var result = _productService.MakeService(id);
@@ -122,6 +144,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpPatch("{id}/add-to-portfolio")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public IActionResult AddToPortfolio(int id)
         {
             var result = _productService.AddToPortfolio(id);
@@ -129,6 +152,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("{id}/allowed-actions")]
+        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public IActionResult GetAllowedActions(int id)
         {
             var actions = _productService.AllowedActions(id);
@@ -136,6 +160,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("services")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetServices([FromQuery] ProductSearchObject search)
         {
             search.ProductState = "service";
@@ -145,6 +170,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         [HttpGet("portfolio")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPortfolio([FromQuery] ProductSearchObject search)
         {
             search.ProductState = "portfolio";

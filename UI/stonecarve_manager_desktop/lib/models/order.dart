@@ -11,6 +11,7 @@ class Order {
   final DateTime? completedAt;
   final int userId;
   final int? assignedEmployeeId;
+  final String? assignedEmployeeName;
   final List<OrderItem> orderItems;
   final String? deliveryAddress;
   final String? deliveryCity;
@@ -56,6 +57,7 @@ class Order {
     this.completedAt,
     required this.userId,
     this.assignedEmployeeId,
+    this.assignedEmployeeName,
     required this.orderItems,
     this.deliveryAddress,
     this.deliveryCity,
@@ -85,6 +87,7 @@ class Order {
         : null,
     userId: json['userId'],
     assignedEmployeeId: json['assignedEmployeeId'],
+    assignedEmployeeName: json['assignedEmployeeName'],
     orderItems:
         (json['orderItems'] as List?)
             ?.map((e) => OrderItem.fromJson(e))
@@ -126,6 +129,7 @@ class Order {
     'completedAt': completedAt?.toIso8601String(),
     'userId': userId,
     'assignedEmployeeId': assignedEmployeeId,
+    'assignedEmployeeName': assignedEmployeeName,
     'orderItems': orderItems.map((e) => e.toJson()).toList(),
     'deliveryAddress': deliveryAddress,
     'statusHistory': statusHistory.map((e) => e.toJson()).toList(),

@@ -406,6 +406,62 @@ namespace StoneCarveManager.Services.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("StoneCarveManager.Services.Database.Entities.Faq", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ViewCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("Faqs", (string)null);
+                });
+
             modelBuilder.Entity("StoneCarveManager.Services.Database.Entities.FavoriteProduct", b =>
                 {
                     b.Property<int>("Id")
@@ -633,6 +689,13 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("OrderType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ServiceProductId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -652,6 +715,8 @@ namespace StoneCarveManager.Services.Database.Migrations
 
                     b.HasIndex("OrderNumber")
                         .IsUnique();
+
+                    b.HasIndex("ServiceProductId");
 
                     b.HasIndex("Status");
 
@@ -887,9 +952,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(7);
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsInPortfolio")
                         .HasColumnType("bit");
 
@@ -956,8 +1018,6 @@ namespace StoneCarveManager.Services.Database.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("MaterialId");
 
                     b.HasIndex("Name");
@@ -975,7 +1035,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Beautiful hand-carved small crest in white marble, perfect for garden decoration",
                             Dimensions = "30cm x 40cm x 2cm",
                             EstimatedDays = 14,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 1,
                             Name = "Small Crest",
@@ -993,7 +1052,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Majestic high relief carved from limestone",
                             Dimensions = "90cm x 70cm x 50cm",
                             EstimatedDays = 21,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 3,
                             Name = "High relief",
@@ -1011,7 +1069,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Elegant curved stone bench for gardens and parks",
                             Dimensions = "180cm x 60cm x 45cm",
                             EstimatedDays = 10,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 2,
                             Name = "Garden Bench",
@@ -1029,7 +1086,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Classic stone bird bath with detailed carvings",
                             Dimensions = "80cm x 80cm x 70cm",
                             EstimatedDays = 7,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 4,
                             Name = "Bird Bath",
@@ -1047,7 +1103,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Three-tier decorative water fountain in travertine",
                             Dimensions = "150cm diameter x 200cm height",
                             EstimatedDays = 30,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 5,
                             Name = "Tiered Fountain",
@@ -1065,7 +1120,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Elegant wall-mounted fountain with lion head design",
                             Dimensions = "60cm x 40cm x 30cm",
                             EstimatedDays = 12,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 1,
                             Name = "Wall Fountain",
@@ -1083,7 +1137,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Classical Corinthian column in white marble",
                             Dimensions = "250cm height x 40cm diameter",
                             EstimatedDays = 25,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 1,
                             Name = "Stone Column",
@@ -1101,7 +1154,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Decorative balustrade section (per meter)",
                             Dimensions = "100cm x 15cm x 80cm",
                             EstimatedDays = 8,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 3,
                             Name = "Stone Balustrade",
@@ -1119,7 +1171,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Personalized family crest carved in stone",
                             Dimensions = "Custom size",
                             EstimatedDays = 21,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 2,
                             Name = "Custom Family Crest",
@@ -1136,7 +1187,6 @@ namespace StoneCarveManager.Services.Database.Migrations
                             Description = "Custom text or quote engraved on stone plaque",
                             Dimensions = "50cm x 30cm x 5cm",
                             EstimatedDays = 5,
-                            IsActive = true,
                             IsInPortfolio = true,
                             MaterialId = 4,
                             Name = "Custom Text Engraving",
@@ -1302,7 +1352,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         new
                         {
                             Id = -1,
-                            CreatedAt = new DateTime(2026, 2, 28, 1, 3, 38, 952, DateTimeKind.Utc).AddTicks(2766),
+                            CreatedAt = new DateTime(2026, 3, 1, 2, 46, 43, 411, DateTimeKind.Utc).AddTicks(2163),
                             Description = "",
                             IsActive = true,
                             Name = "Admin",
@@ -1311,7 +1361,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         new
                         {
                             Id = -2,
-                            CreatedAt = new DateTime(2026, 2, 28, 1, 3, 38, 952, DateTimeKind.Utc).AddTicks(2773),
+                            CreatedAt = new DateTime(2026, 3, 1, 2, 46, 43, 411, DateTimeKind.Utc).AddTicks(2167),
                             Description = "",
                             IsActive = true,
                             Name = "Employee",
@@ -1320,7 +1370,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         new
                         {
                             Id = -3,
-                            CreatedAt = new DateTime(2026, 2, 28, 1, 3, 38, 952, DateTimeKind.Utc).AddTicks(2774),
+                            CreatedAt = new DateTime(2026, 3, 1, 2, 46, 43, 411, DateTimeKind.Utc).AddTicks(2168),
                             Description = "",
                             IsActive = true,
                             Name = "User",
@@ -1439,8 +1489,8 @@ namespace StoneCarveManager.Services.Database.Migrations
                         {
                             Id = -999,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "2ea08669-6101-4c8d-969d-0d9847ec0755",
-                            CreatedAt = new DateTime(2026, 2, 28, 1, 3, 38, 892, DateTimeKind.Utc).AddTicks(4389),
+                            ConcurrencyStamp = "3bad3de0-8c5b-48e5-b1dc-bfc8a538e9ec",
+                            CreatedAt = new DateTime(2026, 3, 1, 2, 46, 43, 352, DateTimeKind.Utc).AddTicks(1273),
                             Email = "ismail.catic@edu.fit.ba",
                             EmailConfirmed = true,
                             FirstName = "Ismail",
@@ -1450,9 +1500,9 @@ namespace StoneCarveManager.Services.Database.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "ISMAIL.CATIC@EDU.FIT.BA",
                             NormalizedUserName = "ISMAIL.CATIC@EDU.FIT.BA",
-                            PasswordHash = "AQAAAAIAAYagAAAAEJmuBm/yAGCVyNLtSC/JmFBMfNo64dS1SVqGu0uwaPquyzDmV0mtuE4kB6b1KH+oSA==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEPbftLn6cqf4qA4ej16GjeiiEr7WRXLzbMgTCOZ79u5HnX7Y9PjHdrBlNCSzNDT+9Q==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "641ff6f9-a858-4cfe-957b-7f1c794ec6d4",
+                            SecurityStamp = "b6907108-8ca5-44ae-88f6-f042f084d913",
                             TwoFactorEnabled = false,
                             UserName = "ismail.catic@edu.fit.ba"
                         });
@@ -1486,7 +1536,7 @@ namespace StoneCarveManager.Services.Database.Migrations
                         {
                             UserId = -999,
                             RoleId = -1,
-                            DateAssigned = new DateTime(2026, 2, 28, 1, 3, 38, 952, DateTimeKind.Utc).AddTicks(2809)
+                            DateAssigned = new DateTime(2026, 3, 1, 2, 46, 43, 411, DateTimeKind.Utc).AddTicks(2198)
                         });
                 });
 
@@ -1621,6 +1671,10 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .HasForeignKey("AssignedEmployeeId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("StoneCarveManager.Services.Database.Entities.Product", "ServiceProduct")
+                        .WithMany()
+                        .HasForeignKey("ServiceProductId");
+
                     b.HasOne("StoneCarveManager.Services.Database.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -1628,6 +1682,8 @@ namespace StoneCarveManager.Services.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("AssignedEmployee");
+
+                    b.Navigation("ServiceProduct");
 
                     b.Navigation("User");
                 });

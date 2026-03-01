@@ -114,6 +114,14 @@ class AppDrawerMobile extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.build_circle),
+            title: const Text('Services'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/services');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.photo_library),
             title: const Text('Portfolio'),
             onTap: () {

@@ -68,16 +68,19 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Image uploaded successfully!'),
+              content: Text('Material image uploaded successfully'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload material image: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }
@@ -96,7 +99,7 @@ class _MaterialsScreenState extends State<MaterialsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Image deleted successfully!'),
+            content: Text('Material image removed successfully'),
             backgroundColor: Colors.green,
           ),
         );

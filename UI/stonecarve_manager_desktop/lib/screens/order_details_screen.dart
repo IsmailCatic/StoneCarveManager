@@ -53,10 +53,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     // Load employees list if user is admin
     if (AuthProvider.isAdmin) {
       _loadEmployees();
+      // Load payment information (only admins have access to payments)
+      _loadPayment();
     }
-
-    // Load payment information
-    _loadPayment();
   }
 
   Future<void> _loadPayment() async {
@@ -174,16 +173,22 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image uploaded successfully!')),
+          const SnackBar(
+            content: Text('Order progress image uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       print('ERROR uploading image: $e');
       print('Stack trace: ${StackTrace.current}');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload progress image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -223,15 +228,21 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         order = updatedOrder;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Changes saved!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order details updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update order details: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       setState(() {
@@ -301,8 +312,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Status changed successfully'),
+          SnackBar(
+            content: Text(
+              'Order status updated to: ${Order.statusToString(newStatus)}',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -312,7 +325,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to update order status: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -853,7 +869,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   const SizedBox(width: 8),
                   Text(
                     order.assignedEmployeeId != null
-                        ? 'Assigned to Employee ID: ${order.assignedEmployeeId}'
+                        ? 'Assigned to: ${order.assignedEmployeeName ?? "Unknown Employee"}'
                         : 'Not assigned to any employee',
                     style: TextStyle(color: Colors.grey[700], fontSize: 14),
                   ),
@@ -1386,15 +1402,129 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         Icons.person,
                         Colors.blue,
                       ),
+                    if (order.clientEmail != null)
+                      _buildInfoRow(
+                        'Email',
+                        order.clientEmail!,
+                        Icons.email_outlined,
+                        Colors.indigo,
+                      ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // Payment Information Section
-            if (orderPayment != null) _buildPaymentSection(),
-            if (orderPayment != null) const SizedBox(height: 16),
+            // Service & Delivery Details Card
+            if (order.customerNotes != null &&
+                    order.customerNotes!.isNotEmpty ||
+                order.deliveryAddress != null ||
+                order.deliveryDate != null)
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.handyman, color: Colors.teal),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Service & Delivery Details',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Customer requirements
+                      if (order.customerNotes != null &&
+                          order.customerNotes!.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.teal[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.teal[200]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.format_quote,
+                                    size: 16,
+                                    color: Colors.teal[700],
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Customer Requirements',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal[900],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                order.customerNotes!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.teal[900],
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      // Delivery fields
+                      if (order.deliveryAddress != null ||
+                          order.deliveryCity != null ||
+                          order.deliveryZipCode != null) ...[
+                        _buildInfoRow(
+                          'Delivery Address',
+                          [
+                            order.deliveryAddress,
+                            order.deliveryCity,
+                            order.deliveryZipCode,
+                          ].where((s) => s != null && s.isNotEmpty).join(', '),
+                          Icons.location_on,
+                          Colors.red,
+                        ),
+                      ],
+                      if (order.deliveryDate != null)
+                        _buildInfoRow(
+                          'Preferred Date',
+                          _formatDate(order.deliveryDate!),
+                          Icons.calendar_today,
+                          Colors.orange,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            if (order.customerNotes != null &&
+                    order.customerNotes!.isNotEmpty ||
+                order.deliveryAddress != null ||
+                order.deliveryDate != null)
+              const SizedBox(height: 16),
+
+            // Payment Information Section (Admin only)
+            if (AuthProvider.isAdmin && orderPayment != null)
+              _buildPaymentSection(),
+            if (AuthProvider.isAdmin && orderPayment != null)
+              const SizedBox(height: 16),
 
             // Order Items Section
             _buildOrderItemsSection(),
@@ -1453,15 +1583,19 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     TextFormField(
                       controller: customerNotesController,
                       decoration: InputDecoration(
-                        labelText: 'Client Notes',
-                        helperText: 'Notes from the client about this order',
-                        helperMaxLines: 1,
+                        labelText: 'Customer Requirements / Notes',
+                        helperText:
+                            'Text submitted by the customer (e.g. service requirements, special requests)',
+                        helperMaxLines: 2,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
-                        prefixIcon: Icon(Icons.person, color: Colors.blue),
+                        fillColor: Colors.teal[50],
+                        prefixIcon: Icon(
+                          Icons.format_quote,
+                          color: Colors.teal,
+                        ),
                       ),
                       maxLines: 3,
                     ),
@@ -1613,8 +1747,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                               ).showSnackBar(
                                                 const SnackBar(
                                                   content: Text(
-                                                    'Image deleted!',
+                                                    'Order progress image deleted successfully',
                                                   ),
+                                                  backgroundColor: Colors.green,
                                                 ),
                                               );
                                             }
@@ -1625,8 +1760,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                               ).showSnackBar(
                                                 const SnackBar(
                                                   content: Text(
-                                                    'Error deleting image!',
+                                                    'Failed to delete progress image',
                                                   ),
+                                                  backgroundColor: Colors.red,
                                                 ),
                                               );
                                             }

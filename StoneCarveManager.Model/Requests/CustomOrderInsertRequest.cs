@@ -10,6 +10,13 @@ namespace StoneCarveManager.Model.Requests
     /// </summary>
     public class CustomOrderInsertRequest
     {
+        /// <summary>
+        /// Optional: ID of a catalog service product this request is based on.
+        /// When provided, CategoryId and MaterialId are inferred from the service product
+        /// and the order is tagged as OrderType = "service_request".
+        /// </summary>
+        public int? ServiceProductId { get; set; }
+
         [Required]
         public int CategoryId { get; set; }
 

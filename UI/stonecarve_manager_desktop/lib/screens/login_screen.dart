@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/analytics_dashboard_screen_comprehensive.dart';
+import 'package:stonecarve_manager_flutter/screens/orders_monthly_view_screen.dart';
 import 'package:stonecarve_manager_flutter/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,42 +40,157 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
+      // Block regular users from desktop app
+      if (AuthProvider.isUser &&
+          !AuthProvider.isAdmin &&
+          !AuthProvider.isEmployee) {
+        await AuthProvider.logout();
+        throw Exception(
+          'ACCESS_DENIED: This application is for staff only. Please use the customer mobile app to place orders and track your purchases.',
+        );
+      }
+
       if (mounted) {
+        // Role-based redirect
+        Widget destinationScreen;
+
+        if (AuthProvider.isAdmin) {
+          // Admins see analytics dashboard with all business metrics
+          destinationScreen = const AnalyticsDashboardScreen();
+          print('[Login] Redirecting Admin to Analytics Dashboard');
+        } else {
+          // Employees see orders monthly view screen (their main work area)
+          destinationScreen = const OrdersMonthlyViewScreen();
+          print(
+            '[Login] Redirecting ${AuthProvider.userRole} to Orders Monthly View',
+          );
+        }
+
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const AnalyticsDashboardScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => destinationScreen),
         );
       }
     } catch (e) {
       if (mounted) {
         String errorMessage = 'Login failed: $e';
         Duration duration = const Duration(seconds: 4);
+        Color backgroundColor = Colors.red;
 
+        // Handle access denied (regular users)
+        if (e.toString().contains('ACCESS_DENIED')) {
+          errorMessage = e.toString().replaceFirst(
+            'Exception: ACCESS_DENIED: ',
+            '',
+          );
+          duration = const Duration(seconds: 15);
+          backgroundColor = Colors.orange.shade900;
+
+          // Show dialog for access denied
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                icon: const Icon(
+                  Icons.mobile_off,
+                  color: Colors.orange,
+                  size: 48,
+                ),
+                title: const Text('Access Denied'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      errorMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Download the customer mobile app:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.phone_android, size: 20),
+                        SizedBox(width: 8),
+                        Text('iOS & Android'),
+                      ],
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        // Handle blocked account
+        else if (e.toString().contains('ACCOUNT_BLOCKED')) {
+          errorMessage = e.toString().replaceFirst(
+            'Exception: ACCOUNT_BLOCKED: ',
+            '',
+          );
+          duration = const Duration(seconds: 10);
+          backgroundColor = Colors.orange.shade900;
+
+          // Show dialog for blocked accounts
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                icon: const Icon(Icons.block, color: Colors.red, size: 48),
+                title: const Text('Account Blocked'),
+                content: Text(errorMessage, textAlign: TextAlign.center),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
         // Show specific guidance for connection issues
-        if (e.toString().contains('connect to server') ||
+        else if (e.toString().contains('connect to server') ||
             e.toString().contains('Connection refused')) {
           errorMessage =
               '🚨 Backend not running!\n\nStart backend in Visual Studio (F5), then try again.\n\nClick "Test Backend Connection" below for help.';
           duration = const Duration(seconds: 8);
-        }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: duration,
-            action:
-                e.toString().contains('connect to server') ||
-                    e.toString().contains('Connection refused')
-                ? SnackBarAction(
-                    label: 'Test Connection',
-                    textColor: Colors.white,
-                    onPressed: () => Navigator.pushNamed(context, '/test'),
-                  )
-                : null,
-          ),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: backgroundColor,
+              duration: duration,
+              action: SnackBarAction(
+                label: 'Test Connection',
+                textColor: Colors.white,
+                onPressed: () => Navigator.pushNamed(context, '/test'),
+              ),
+            ),
+          );
+        } else {
+          // Show generic error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: backgroundColor,
+              duration: duration,
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) {

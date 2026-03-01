@@ -109,9 +109,12 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
       _hasChanges = true;
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Image uploaded!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Blog post image uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e, stackTrace) {
       print('❌ [BlogDetailScreen] Error uploading image: $e');
@@ -156,15 +159,21 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
         _hasChanges = true;
 
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Image deleted!')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Blog post image removed successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error deleting image: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload image: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }

@@ -20,6 +20,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         private readonly IValidator<OrderUpdateRequest> _updateValidator;
         private readonly IValidator<CustomOrderInsertRequest> _customOrderValidator;
         private readonly IValidator<UpdateOrderStatusRequest> _statusUpdateValidator;
+        private readonly IValidator<ServiceOrderInsertRequest> _serviceOrderValidator;
 
         public OrderController(
             IOrderService orderService, 
@@ -27,7 +28,8 @@ namespace StoneCarveManagerWebAPI.Controllers
             IValidator<OrderInsertRequest> insertValidator,
             IValidator<OrderUpdateRequest> updateValidator,
             IValidator<CustomOrderInsertRequest> customOrderValidator,
-            IValidator<UpdateOrderStatusRequest> statusUpdateValidator)
+            IValidator<UpdateOrderStatusRequest> statusUpdateValidator,
+            IValidator<ServiceOrderInsertRequest> serviceOrderValidator)
         {
             _orderService = orderService;
             _currentUserService = currentUserService;
@@ -35,6 +37,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             _updateValidator = updateValidator;
             _customOrderValidator = customOrderValidator;
             _statusUpdateValidator = statusUpdateValidator;
+            _serviceOrderValidator = serviceOrderValidator;
         }
 
         [HttpGet]
@@ -111,6 +114,21 @@ namespace StoneCarveManagerWebAPI.Controllers
                 return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
 
             var order = await _orderService.CreateCustomOrderAsync(request, cancellationToken);
+            return Ok(order);
+        }
+
+        /// <summary>
+        /// Create a service request order from a catalog service product.
+        /// Category and material are resolved automatically from the service product.
+        /// </summary>
+        [HttpPost("service-request")]
+        public async Task<IActionResult> CreateServiceRequest([FromBody] ServiceOrderInsertRequest request, CancellationToken cancellationToken)
+        {
+            var validationResult = await _serviceOrderValidator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+                return BadRequest(new { errors = validationResult.Errors.Select(e => new { field = e.PropertyName, message = e.ErrorMessage }) });
+
+            var order = await _orderService.CreateServiceRequestAsync(request, cancellationToken);
             return Ok(order);
         }
 
@@ -216,18 +234,35 @@ namespace StoneCarveManagerWebAPI.Controllers
         }
 
         /// <summary>
-        /// Get orders assigned to currently logged-in employee
+        /// Get orders assigned to currently logged-in employee, or own orders for regular users
         /// </summary>
         [HttpGet("my-orders")]
-        [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> GetMyOrders(
             [FromQuery] int? status = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             CancellationToken cancellationToken = default)
         {
-            var result = await _orderService.GetMyOrdersAsync(status, page, pageSize, cancellationToken);
-            return Ok(result);
+            var isAdmin = User.IsInRole(Roles.Admin);
+            var isEmployee = User.IsInRole(Roles.Employee);
+
+            if (isAdmin || isEmployee)
+            {
+                var result = await _orderService.GetMyOrdersAsync(status, page, pageSize, cancellationToken);
+                return Ok(result);
+            }
+            else
+            {
+                var search = new OrderSearchObject
+                {
+                    UserId = _currentUserService.GetUserId(),
+                    Status = status.HasValue ? (StoneCarveManager.Model.Requests.OrderStatus?)status.Value : null,
+                    Page = page - 1,
+                    PageSize = pageSize
+                };
+                var result = await _orderService.GetAsync(search);
+                return Ok(result);
+            }
         }
     }
 }

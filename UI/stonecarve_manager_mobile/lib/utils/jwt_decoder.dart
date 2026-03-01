@@ -71,6 +71,27 @@ class JwtDecoder {
     return null;
   }
 
+  /// Check whether the JWT token is expired based on the 'exp' claim.
+  /// Returns true if expired or if the token cannot be decoded.
+  static bool isExpired(String token) {
+    try {
+      final payload = decode(token);
+      if (payload == null) return true;
+
+      final exp = payload['exp'];
+      if (exp == null) return false; // No expiry claim — treat as valid
+
+      final expiry = DateTime.fromMillisecondsSinceEpoch(
+        (exp as int) * 1000,
+        isUtc: true,
+      );
+      return DateTime.now().toUtc().isAfter(expiry);
+    } catch (e) {
+      print('[JwtDecoder] Error checking token expiry: $e');
+      return true; // Treat decode failures as expired
+    }
+  }
+
   /// Extract roles from JWT token
   static List<String> extractRoles(String token) {
     final payload = decode(token);

@@ -237,16 +237,16 @@ namespace StoneCarveManager.Services.Services
                 query = query.Where(p => p.MaterialId == search.MaterialId.Value);
             }
 
-            // Filter by IsActive
-            if (search.IsActive.HasValue)
-            {
-                query = query.Where(p => p.IsActive == search.IsActive.Value);
-            }
-
-            // Filter by ProductState
+            // Filter by ProductState (equals)
             if (!string.IsNullOrWhiteSpace(search.ProductState))
             {
                 query = query.Where(p => p.ProductState == search.ProductState);
+            }
+
+            // Filter by ProductState (not equals - exclude)
+            if (!string.IsNullOrWhiteSpace(search.ProductStateExclude))
+            {
+                query = query.Where(p => p.ProductState != search.ProductStateExclude);
             }
 
             // Filter by CompletionYear (for portfolio filtering)

@@ -107,12 +107,20 @@ class BlogPost {
   }
 
   factory BlogPost.fromJson(Map<String, dynamic> json) {
+    // Sanitize featuredImageUrl - treat "string" or empty values as null
+    String? featuredImageUrl = json['featuredImageUrl'];
+    if (featuredImageUrl == 'string' ||
+        featuredImageUrl?.isEmpty == true ||
+        featuredImageUrl?.length == 0) {
+      featuredImageUrl = null;
+    }
+
     return BlogPost(
       id: json['id'],
       title: json['title'],
       content: json['content'],
       summary: json['summary'],
-      featuredImageUrl: json['featuredImageUrl'],
+      featuredImageUrl: featuredImageUrl,
       isPublished: json['isPublished'],
       isTutorial: json['isTutorial'],
       viewCount: json['viewCount'],

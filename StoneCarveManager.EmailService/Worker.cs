@@ -24,12 +24,21 @@ namespace StoneCarveManager.EmailService
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
+            //var factory = new ConnectionFactory()
+            //{
+            //    HostName = "localhost",
+            //    Port = 5672,
+            //    UserName = "guest",
+            //    Password = "guest",
+            //    RequestedHeartbeat = TimeSpan.FromSeconds(60),
+            //    AutomaticRecoveryEnabled = true
+            //};
+
             var factory = new ConnectionFactory()
             {
-                HostName = "localhost",
-                Port = 5672,
-                UserName = "guest",
-                Password = "guest",
+                HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq",
+                UserName = Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                Password = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest",
                 RequestedHeartbeat = TimeSpan.FromSeconds(60),
                 AutomaticRecoveryEnabled = true
             };

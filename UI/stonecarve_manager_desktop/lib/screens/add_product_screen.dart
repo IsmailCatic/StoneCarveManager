@@ -52,7 +52,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _nameController.text = widget.product!.name ?? '';
         _descriptionController.text = widget.product!.description ?? '';
         _dimensionsController.text = widget.product!.dimensions ?? '';
-        _priceController.text = widget.product!.price?.toString() ?? '';
+        // Clear price when it is 0 or unset (e.g., former custom orders)
+        final rawPrice = widget.product!.price;
+        _priceController.text = (rawPrice == null || rawPrice <= 0)
+            ? ''
+            : rawPrice.toString();
         _stockController.text = widget.product!.stockQuantity?.toString() ?? '';
         _estimatedDaysController.text =
             widget.product!.estimatedDays?.toString() ?? '';

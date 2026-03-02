@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:stonecarve_manager_flutter/models/category.dart';
 import 'package:stonecarve_manager_flutter/models/material.dart';
 import 'package:stonecarve_manager_flutter/providers/category_provider.dart';
@@ -55,9 +56,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _dimensionsController = TextEditingController(
       text: widget.product?.dimensions ?? '',
     );
-    _priceController = TextEditingController(
-      text: widget.product?.price?.toString() ?? '',
-    );
+    // If price is 0 (e.g., former custom order), clear it so the validator
+    // prompts the user to enter a real price rather than silently submitting 0.
+    final rawPrice = widget.product?.price;
+    final priceText = (rawPrice == null || rawPrice <= 0)
+        ? ''
+        : rawPrice.toString();
+    _priceController = TextEditingController(text: priceText);
     _stockController = TextEditingController(
       text: widget.product?.stockQuantity?.toString() ?? '',
     );
@@ -252,8 +257,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Product Name *',
+                  hintText: 'e.g., Stone Vase',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -262,6 +268,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   }
                   if (value.trim().length < 2) {
                     return 'Name must be at least 2 characters';
+                  }
+                  if (RegExp(r'^[0-9]+$').hasMatch(value.trim())) {
+                    return 'Name cannot contain only numbers';
                   }
                   return null;
                 },
@@ -287,8 +296,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _dimensionsController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Dimensions *',
+                  hintText: 'e.g., 100x50x20 cm',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -301,21 +311,27 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _priceController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Price (BAM) *',
+                  hintText: 'e.g., 250.00',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'This field is required';
                   }
-                  final price = double.tryParse(value.trim());
+                  final price = double.tryParse(
+                    value.trim().replaceAll(',', '.'),
+                  );
                   if (price == null) {
-                    return 'Enter a valid number';
+                    return 'Enter a valid decimal number (e.g., 250.00)';
                   }
-                  if (price < 0) {
-                    return 'Price cannot be negative';
+                  if (price <= 0) {
+                    return 'Price must be greater than 0';
                   }
                   return null;
                 },
@@ -323,18 +339,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _stockController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Stock Quantity *',
+                  hintText: 'e.g., 5',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'This field is required';
                   }
                   final stock = int.tryParse(value.trim());
                   if (stock == null) {
-                    return 'Enter a valid number';
+                    return 'Enter a valid whole number (no decimals)';
                   }
                   if (stock < 0) {
                     return 'Stock cannot be negative';
@@ -345,18 +363,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _estimatedDaysController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Estimated Production Days *',
+                  hintText: 'e.g., 14',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'This field is required';
                   }
                   final days = int.tryParse(value.trim());
                   if (days == null) {
-                    return 'Enter a valid number';
+                    return 'Enter a valid whole number (no decimals)';
                   }
                   if (days <= 0) {
                     return 'Days must be greater than 0';
@@ -367,18 +387,24 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _weightController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Weight (g) *',
+                  hintText: 'e.g., 2500.50',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'This field is required';
                   }
-                  final weight = double.tryParse(value.trim());
+                  final weight = double.tryParse(
+                    value.trim().replaceAll(',', '.'),
+                  );
                   if (weight == null) {
-                    return 'Enter a valid number';
+                    return 'Enter a valid decimal number (e.g., 2500.50)';
                   }
                   if (weight <= 0) {
                     return 'Weight must be greater than 0';

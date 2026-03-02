@@ -212,7 +212,7 @@ namespace StoneCarveManager.Services.Services
             if (search == null)
                 return query;
 
-            // FTS search — reads Search (?search=), SearchQuery (?searchQuery=), or FTS (?fts=)
+            // FTS search ï¿½ reads Search (?search=), SearchQuery (?searchQuery=), or FTS (?fts=)
             var fts = search.ResolvedSearch;
             if (!string.IsNullOrWhiteSpace(fts))
             {
@@ -347,11 +347,36 @@ namespace StoneCarveManager.Services.Services
 
         protected override async Task BeforeDelete(Product entity)
         {
-            var hasOrders = await _context.OrderItems.AnyAsync(oi => oi.ProductId == entity.Id);
+            var linkedOrderItems = await _context.OrderItems
+                .Include(oi => oi.Order)
+                .Where(oi => oi.ProductId == entity.Id)
+                .ToListAsync();
 
-            if (hasOrders)
+            if (linkedOrderItems.Any())
             {
-                throw new InvalidOperationException($"Cannot delete product '{entity.Name}' because it has associated orders.");
+                var hasRegularOrders = linkedOrderItems.Any(oi =>
+                    oi.Order.OrderType != "custom_order" && oi.Order.OrderType != "service_request");
+
+                if (hasRegularOrders)
+                {
+                    throw new InvalidOperationException($"Cannot delete product '{entity.Name}' because it has associated orders.");
+                }
+
+                // For custom/service orders the product was auto-created for the order.
+                // Remove the order items (and the orders themselves if they have no remaining items) first,
+                // because OrderItems.ProductId is RESTRICT.
+                var orderIds = linkedOrderItems.Select(oi => oi.OrderId).Distinct().ToList();
+
+                _context.OrderItems.RemoveRange(linkedOrderItems);
+                await _context.SaveChangesAsync();
+
+                // Delete parent orders that now have no items
+                var emptyOrders = await _context.Orders
+                    .Where(o => orderIds.Contains(o.Id) && !o.OrderItems.Any())
+                    .ToListAsync();
+
+                if (emptyOrders.Any())
+                    _context.Orders.RemoveRange(emptyOrders);
             }
 
             await base.BeforeDelete(entity);

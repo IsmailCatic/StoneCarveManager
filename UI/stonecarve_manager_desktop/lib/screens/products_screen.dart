@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/product.dart';
 import 'package:stonecarve_manager_flutter/models/category.dart';
@@ -630,12 +631,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   void _showProductDialog(Product? product) {
+    final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: product?.name ?? '');
     final descriptionController = TextEditingController(
       text: product?.description ?? '',
     );
+    // Clear price when 0 or unset (e.g. former custom orders) so the user
+    // is forced to consciously enter a valid price — backend requires > 0.
+    final rawPrice = product?.price;
     final priceController = TextEditingController(
-      text: product?.price?.toString() ?? '',
+      text: (rawPrice == null || rawPrice <= 0) ? '' : rawPrice.toString(),
     );
     final stockController = TextEditingController(
       text: product?.stockQuantity?.toString() ?? '',
@@ -679,117 +684,209 @@ class _ProductsScreenState extends State<ProductsScreen> {
             return AlertDialog(
               title: Text(product == null ? 'Add New Product' : 'Edit Product'),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Product Name *',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: priceController,
-                      decoration: const InputDecoration(labelText: 'Price *'),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: stockController,
-                      decoration: const InputDecoration(
-                        labelText: 'Stock Quantity',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: dimensionsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Dimensions',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: weightController,
-                      decoration: const InputDecoration(labelText: 'Weight'),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: estimatedDaysController,
-                      decoration: const InputDecoration(
-                        labelText: 'Estimated Days',
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<int?>(
-                      value: selectedCategoryId,
-                      decoration: const InputDecoration(
-                        labelText: 'Category (Optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem<int?>(
-                          value: null,
-                          child: Text('Not assigned'),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ── Name (required, non-nullable in DB) ──────────────
+                      TextFormField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Product Name *',
+                          border: OutlineInputBorder(),
                         ),
-                        ...{
-                          for (var cat in _categories)
-                            if (cat.id != null && cat.id! > 0) cat.id: cat,
-                        }.values.map(
-                          (cat) => DropdownMenuItem<int?>(
-                            value: cat.id,
-                            child: Text(cat.name ?? ''),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty)
+                            return 'This field is required';
+                          if (v.trim().length < 2)
+                            return 'Name must be at least 2 characters';
+                          if (RegExp(r'^[0-9]+$').hasMatch(v.trim()))
+                            return 'Name cannot contain only numbers';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      // ── Description (non-nullable, defaults to empty) ─────
+                      TextFormField(
+                        controller: descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 12),
+                      // ── Price (required, must be > 0) ─────────────────────
+                      TextFormField(
+                        controller: priceController,
+                        decoration: const InputDecoration(
+                          labelText: 'Price (BAM) *',
+                          hintText: 'e.g., 250.00',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d{0,2}'),
                           ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          selectedCategoryId = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<int?>(
-                      value: selectedMaterialId,
-                      decoration: const InputDecoration(
-                        labelText: 'Material (Optional)',
-                        border: OutlineInputBorder(),
+                        ],
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty)
+                            return 'This field is required';
+                          final price = double.tryParse(
+                            v.trim().replaceAll(',', '.'),
+                          );
+                          if (price == null)
+                            return 'Enter a valid decimal number (e.g., 250.00)';
+                          if (price <= 0) return 'Price must be greater than 0';
+                          return null;
+                        },
                       ),
-                      items: [
-                        const DropdownMenuItem<int?>(
-                          value: null,
-                          child: Text('Not assigned'),
+                      const SizedBox(height: 12),
+                      // ── Stock (non-nullable int, default 0, can be 0) ─────
+                      TextFormField(
+                        controller: stockController,
+                        decoration: const InputDecoration(
+                          labelText: 'Stock Quantity',
+                          hintText: 'e.g., 5',
+                          border: OutlineInputBorder(),
                         ),
-                        ...{
-                          for (var mat in _materials)
-                            if (mat.id != null && mat.id! > 0) mat.id: mat,
-                        }.values.map(
-                          (mat) => DropdownMenuItem<int?>(
-                            value: mat.id,
-                            child: Text(mat.name ?? ''),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          final stock = int.tryParse(v.trim());
+                          if (stock == null)
+                            return 'Enter a valid whole number (no decimals)';
+                          if (stock < 0) return 'Stock cannot be negative';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      // ── Dimensions (nullable, optional) ───────────────────
+                      TextFormField(
+                        controller: dimensionsController,
+                        decoration: const InputDecoration(
+                          labelText: 'Dimensions',
+                          hintText: 'e.g., 100x50x20 cm',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // ── Weight (nullable decimal, optional) ───────────────
+                      TextFormField(
+                        controller: weightController,
+                        decoration: const InputDecoration(
+                          labelText: 'Weight (g)',
+                          hintText: 'e.g., 2500.50',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d{0,2}'),
                           ),
+                        ],
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          final weight = double.tryParse(
+                            v.trim().replaceAll(',', '.'),
+                          );
+                          if (weight == null)
+                            return 'Enter a valid decimal number (e.g., 2500.50)';
+                          if (weight <= 0)
+                            return 'Weight must be greater than 0';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      // ── Estimated Days (non-nullable int, default 7) ──────
+                      TextFormField(
+                        controller: estimatedDaysController,
+                        decoration: const InputDecoration(
+                          labelText: 'Estimated Production Days',
+                          hintText: 'e.g., 14',
+                          border: OutlineInputBorder(),
                         ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          selectedMaterialId = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    // ...removed isActive checkbox...
-                  ],
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          final days = int.tryParse(v.trim());
+                          if (days == null)
+                            return 'Enter a valid whole number (no decimals)';
+                          if (days <= 0) return 'Days must be greater than 0';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int?>(
+                        value: selectedCategoryId,
+                        decoration: const InputDecoration(
+                          labelText: 'Category (Optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('Not assigned'),
+                          ),
+                          ...{
+                            for (var cat in _categories)
+                              if (cat.id != null && cat.id! > 0) cat.id: cat,
+                          }.values.map(
+                            (cat) => DropdownMenuItem<int?>(
+                              value: cat.id,
+                              child: Text(cat.name ?? ''),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            selectedCategoryId = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int?>(
+                        value: selectedMaterialId,
+                        decoration: const InputDecoration(
+                          labelText: 'Material (Optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('Not assigned'),
+                          ),
+                          ...{
+                            for (var mat in _materials)
+                              if (mat.id != null && mat.id! > 0) mat.id: mat,
+                          }.values.map(
+                            (mat) => DropdownMenuItem<int?>(
+                              value: mat.id,
+                              child: Text(mat.name ?? ''),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            selectedMaterialId = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -799,16 +896,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    // Basic field validation
-                    if (nameController.text.isEmpty ||
-                        priceController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please fill in required fields'),
-                        ),
-                      );
-                      return;
-                    }
+                    if (!formKey.currentState!.validate()) return;
 
                     final newProduct = Product(
                       id: product?.id,

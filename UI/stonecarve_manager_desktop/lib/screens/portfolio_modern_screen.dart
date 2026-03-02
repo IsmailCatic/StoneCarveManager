@@ -391,6 +391,7 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
                   _selectedMaterialId = null;
                   _selectedYear = null;
                 });
+                _loadPortfolioItems();
               },
               icon: const Icon(Icons.clear),
               label: const Text('Clear Filters'),
@@ -532,6 +533,16 @@ class _PortfolioModernScreenState extends State<PortfolioModernScreen> {
                           );
                           if (result == true) {
                             _loadData();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Portfolio item updated successfully',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
                           }
                         } else if (value == 'delete') {
                           _deleteProduct(item);

@@ -91,8 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (e.toString().contains('connect to server') ||
             e.toString().contains('Connection refused')) {
           errorMessage =
-              '🚨 Backend not running!\n\nStart backend in Visual Studio (F5), then try again.\n\nClick "Test Backend Connection" below for help.';
-          duration = const Duration(seconds: 8);
+              'Could not connect to the server. Please check your internet connection and try again.';
+          duration = const Duration(seconds: 6);
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,15 +100,6 @@ class _LoginScreenState extends State<LoginScreen> {
             content: Text(errorMessage),
             backgroundColor: Colors.red,
             duration: duration,
-            action:
-                e.toString().contains('connect to server') ||
-                    e.toString().contains('Connection refused')
-                ? SnackBarAction(
-                    label: 'Test Connection',
-                    textColor: Colors.white,
-                    onPressed: () => Navigator.pushNamed(context, '/test'),
-                  )
-                : null,
           ),
         );
       }
@@ -163,10 +154,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
+                            return 'Enter your email address (e.g. john@example.com)';
                           }
                           if (!value.contains('@')) {
-                            return 'Please enter a valid email address';
+                            return 'Enter a valid email address containing \'@\' and a domain (e.g. john@example.com)';
                           }
                           return null;
                         },
@@ -194,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
+                            return 'Enter your password (minimum 6 characters)';
                           }
                           return null;
                         },

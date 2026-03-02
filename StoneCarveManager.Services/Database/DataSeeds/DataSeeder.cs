@@ -19,6 +19,8 @@ namespace StoneCarveManager.Services.Database.DataSeeds
             ProductSeed.Seed(builder);
             MaterialSeed.Seed(builder);
 
+
+
         }
 
 

@@ -61,10 +61,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      return 'Enter your new password';
     }
     if (value.length < 6) {
-      return 'Password must be at least 6 characters';
+      return 'Password must be at least 6 characters long';
     }
     // Password strength validation
     bool hasUppercase = value.contains(RegExp(r'[A-Z]'));
@@ -72,7 +72,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     bool hasDigit = value.contains(RegExp(r'[0-9]'));
 
     if (!hasUppercase || !hasLowercase || !hasDigit) {
-      return 'Password must contain uppercase, lowercase, and number';
+      return 'Password must contain at least one uppercase letter (A–Z), one lowercase letter (a–z), and one digit (0–9)';
     }
     return null;
   }
@@ -144,7 +144,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Current password is required';
+                        return 'Enter your current password to confirm your identity';
                       }
                       return null;
                     },
@@ -199,10 +199,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
+                        return 'Re-enter your new password to confirm it matches';
                       }
                       if (value != _newPasswordController.text) {
-                        return 'Passwords do not match';
+                        return 'Passwords do not match — ensure both fields are identical';
                       }
                       return null;
                     },

@@ -55,9 +55,6 @@ class Payment {
       refundAmount != null && refundAmount! > 0 && refundAmount! < amount;
 
   factory Payment.fromJson(Map<String, dynamic> json) {
-    print(
-      '[Payment.fromJson] Parsing payment: id=${json['id']}, status=${json['status']}, rawJson=$json',
-    );
     return Payment(
       id: json['id'] ?? 0,
       amount: (json['amount'] ?? 0).toDouble(),

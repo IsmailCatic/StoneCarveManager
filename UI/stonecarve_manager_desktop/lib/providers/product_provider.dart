@@ -27,11 +27,8 @@ class ProductProvider {
           '?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
     }
 
-    print('[ProductProvider] fetchPortfolioProducts: $url');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.get(Uri.parse(url));
-    print('[ProductProvider] Status: ${response.statusCode}');
-    print('[ProductProvider] Body: ${response.body}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final items = data['items'] as List;
@@ -50,11 +47,8 @@ class ProductProvider {
       url += '?searchQuery=${Uri.encodeComponent(searchQuery)}';
     }
 
-    print('[ProductProvider] fetchServiceProducts: $url');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.get(Uri.parse(url));
-    print('[ProductProvider] Status: ${response.statusCode}');
-    print('[ProductProvider] Body: ${response.body}');
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final items = data['items'] as List;
@@ -68,15 +62,10 @@ class ProductProvider {
 
   // Get allowed actions for a product
   Future<List<String>> getAllowedActions(int productId) async {
-    print(
-      '[ProductProvider] getAllowedActions: $baseUrl/$productId/allowed-actions',
-    );
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.get(
       Uri.parse('$baseUrl/$productId/allowed-actions'),
     );
-    print('[ProductProvider] Status: ${response.statusCode}');
-    print('[ProductProvider] Body: ${response.body}');
     if (response.statusCode == 200) {
       final List<dynamic> actions = json.decode(response.body);
       return actions.cast<String>();
@@ -87,12 +76,10 @@ class ProductProvider {
 
   // State transition: Activate product
   Future<void> activateProduct(int productId) async {
-    print('[ProductProvider] activateProduct: $baseUrl/$productId/activate');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.patch(
       Uri.parse('$baseUrl/$productId/activate'),
     );
-    print('[ProductProvider] Status: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw HttpErrorHandler.createException(response, 'activate product');
     }

@@ -153,7 +153,16 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
                             ),
                           ),
                         );
-                        if (result == true) _fetchPosts();
+                        if (result == 'deleted' || result == true)
+                          _fetchPosts();
+                        if (result == 'deleted' && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Blog post deleted successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
                       },
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,

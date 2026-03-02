@@ -93,10 +93,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     context.read<CartProvider>().addItem(product);
 
+    // Clear any existing snackbars to prevent stacking/blocking
+    ScaffoldMessenger.of(context).clearSnackBars();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${product.name} added to cart'),
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'VIEW CART',

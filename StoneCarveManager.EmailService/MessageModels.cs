@@ -19,4 +19,16 @@ namespace StoneCarveManager.EmailService
         public string ResetToken { get; set; } = string.Empty;        // Hidden token (for backend validation)
         public DateTime ExpiresAt { get; set; }
     }
+
+    // Model class for order status change notifications
+    public class OrderStatusChangedMessage
+    {
+        public string ClientName { get; set; } = string.Empty;
+        public string ClientEmail { get; set; } = string.Empty;
+        public string OrderNumber { get; set; } = string.Empty;
+        public string OldStatus { get; set; } = string.Empty;
+        public string NewStatus { get; set; } = string.Empty;
+        public string? Comment { get; set; }
+        public DateTime ChangedAt { get; set; }
+    }
 }

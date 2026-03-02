@@ -112,18 +112,8 @@ class AnalyticsProvider {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.get(Uri.parse(url), headers: headers);
 
-    print(
-      '[AnalyticsProvider.getRevenueTrend] Legacy response status: ${response.statusCode}',
-    );
-    print(
-      '[AnalyticsProvider.getRevenueTrend] Legacy response body: ${response.body}',
-    );
-
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body) as List;
-      print(
-        '[AnalyticsProvider.getRevenueTrend] ✅ Legacy response: ${decoded.length} entries',
-      );
 
       // Map legacy DailyIncomeEntry format to RevenueTrend
       final result = decoded.map((item) {

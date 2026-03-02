@@ -22,6 +22,7 @@ class Order {
   final List<OrderStatusHistory> statusHistory;
   final String? clientName;
   final String? clientEmail;
+  final String? orderType; // "standard" | "custom_order" | "service_request"
 
   static String statusToString(dynamic status) {
     // Adjust this logic based on your actual status type and values
@@ -68,6 +69,7 @@ class Order {
     this.statusHistory = const [],
     this.clientName,
     this.clientEmail,
+    this.orderType,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
@@ -112,6 +114,7 @@ class Order {
         [],
     clientName: json['clientName'],
     clientEmail: json['clientEmail'],
+    orderType: json['orderType'],
   );
 
   Map<String, dynamic> toJson() => {
@@ -130,6 +133,7 @@ class Order {
     'userId': userId,
     'assignedEmployeeId': assignedEmployeeId,
     'assignedEmployeeName': assignedEmployeeName,
+    'orderType': orderType,
     'orderItems': orderItems.map((e) => e.toJson()).toList(),
     'deliveryAddress': deliveryAddress,
     'statusHistory': statusHistory.map((e) => e.toJson()).toList(),
@@ -154,6 +158,8 @@ class OrderItem {
   final String? productState; // e.g., "custom_order", "standard"
   final String? customSketchUrl; // URL to the uploaded sketch
   final String? customSpecifications; // Custom order specifications
+  final List<String>
+  referenceImageUrls; // Customer-uploaded reference/sketch images
 
   OrderItem({
     required this.id,
@@ -168,6 +174,7 @@ class OrderItem {
     this.productState,
     this.customSketchUrl,
     this.customSpecifications,
+    this.referenceImageUrls = const [],
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
@@ -187,6 +194,11 @@ class OrderItem {
     productState: json['productState'],
     customSketchUrl: json['customSketchUrl'],
     customSpecifications: json['customSpecifications'],
+    referenceImageUrls:
+        (json['referenceImageUrls'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
   );
 
   Map<String, dynamic> toJson() => {
@@ -202,6 +214,7 @@ class OrderItem {
     'productState': productState,
     'customSketchUrl': customSketchUrl,
     'customSpecifications': customSpecifications,
+    'referenceImageUrls': referenceImageUrls,
   };
 }
 

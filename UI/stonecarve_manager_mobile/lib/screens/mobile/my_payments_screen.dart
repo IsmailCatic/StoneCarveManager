@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:stonecarve_manager_mobile/models/payment.dart';
 import 'package:stonecarve_manager_mobile/providers/payment_provider.dart';
+import 'package:stonecarve_manager_mobile/screens/mobile/order_details_screen.dart';
 import 'package:stonecarve_manager_mobile/widgets/mobile/app_drawer_mobile.dart';
 
 class MyPaymentsScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class _MyPaymentsScreenState extends State<MyPaymentsScreen> {
   List<Payment> _payments = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  String _filterStatus = 'all'; // all, succeeded, pending, failed
+  String _filterStatus = 'all'; // all, succeeded, pending, failed, refunded
 
   @override
   void initState() {
@@ -94,19 +95,16 @@ class _MyPaymentsScreenState extends State<MyPaymentsScreen> {
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('All', 'all'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Succeeded', 'succeeded'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Pending', 'pending'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Failed', 'failed'),
-                ],
-              ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFilterChip('All', 'all'),
+                _buildFilterChip('Succeeded', 'succeeded'),
+                _buildFilterChip('Pending', 'pending'),
+                _buildFilterChip('Failed', 'failed'),
+                _buildFilterChip('Refunded', 'refunded'),
+              ],
             ),
           ),
 
@@ -214,10 +212,12 @@ class _MyPaymentsScreenState extends State<MyPaymentsScreen> {
         onTap: () {
           // Navigate to order details if orderId exists
           if (payment.orderId != null) {
-            Navigator.pushNamed(
+            Navigator.push(
               context,
-              '/order-details',
-              arguments: payment.orderId,
+              MaterialPageRoute(
+                builder: (context) =>
+                    OrderDetailsScreen(orderId: payment.orderId!),
+              ),
             );
           }
         },
@@ -271,12 +271,6 @@ class _MyPaymentsScreenState extends State<MyPaymentsScreen> {
 
               // Payment Details
               _buildDetailRow(
-                Icons.receipt_outlined,
-                'Order',
-                payment.orderId?.toString() ?? 'N/A',
-              ),
-              const SizedBox(height: 8),
-              _buildDetailRow(
                 Icons.credit_card,
                 'Method',
                 payment.paymentMethod ?? 'Card',
@@ -291,6 +285,25 @@ class _MyPaymentsScreenState extends State<MyPaymentsScreen> {
                       ).format(payment.createdAt!)
                     : 'N/A',
               ),
+
+              // Tap hint for order details
+              if (payment.orderId != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.touch_app, size: 14, color: Colors.blue[600]),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Tap to view order details',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               // Transaction ID (if available)
               if (payment.paymentIntentId != null) ...[

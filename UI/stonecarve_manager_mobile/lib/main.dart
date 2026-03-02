@@ -10,7 +10,6 @@ import 'package:stonecarve_manager_mobile/providers/favorites_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/profile_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/login_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/mobile_home_screen.dart';
-import 'package:stonecarve_manager_mobile/screens/mobile/api_test_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/cart_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/checkout_shipping_screen.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/checkout_payment_screen.dart';
@@ -32,12 +31,6 @@ import 'package:stonecarve_manager_mobile/screens/mobile/faq_mobile_screen.dart'
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Stripe
-  Stripe.publishableKey = StripeConfig.publishableKey;
-  Stripe.merchantIdentifier = StripeConfig.merchantIdentifier;
-  Stripe.urlScheme = StripeConfig.urlScheme;
-  await Stripe.instance.applySettings();
-
   // Load token from storage before running app
   await AuthProvider.loadToken();
 
@@ -47,6 +40,14 @@ Future<void> main() async {
   // Backend sync will happen after successful login
 
   runApp(StoneCarveManagerApp(favoritesProvider: favoritesProvider));
+
+  // Defer Stripe initialization until after first frame to avoid startup jank
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    Stripe.publishableKey = StripeConfig.publishableKey;
+    Stripe.merchantIdentifier = StripeConfig.merchantIdentifier;
+    Stripe.urlScheme = StripeConfig.urlScheme;
+    await Stripe.instance.applySettings();
+  });
 }
 
 class StoneCarveManagerApp extends StatefulWidget {
@@ -177,8 +178,6 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
               return MaterialPageRoute(
                 builder: (_) => const CheckoutConfirmationScreen(),
               );
-            case '/api-test':
-              return MaterialPageRoute(builder: (_) => const ApiTestScreen());
             case '/blog':
               return MaterialPageRoute(
                 builder: (_) => const BlogMobileScreen(),

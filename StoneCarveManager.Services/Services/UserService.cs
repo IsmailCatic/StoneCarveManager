@@ -1,22 +1,22 @@
-﻿using MapsterMapper;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using RabbitMQ.Client;
+using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static StoneCarveManager.Model.Requests.UserRequests;
 using static StoneCarveManager.Services.Constants;
-using RabbitMQ.Client;
-using StoneCarveManager.Model.Requests;
-using System.IO;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -118,7 +118,7 @@ namespace StoneCarveManager.Services.Services
             // Filter by RoleName (case-insensitive)
             if (!string.IsNullOrWhiteSpace(search.RoleName))
             {
-                query = query.Where(u => u.UserRoles.Any(ur => 
+                query = query.Where(u => u.UserRoles.Any(ur =>
                     ur.Role != null && ur.Role.Name.ToLower() == search.RoleName.ToLower()));
             }
 
@@ -206,7 +206,8 @@ namespace StoneCarveManager.Services.Services
                 throw new KeyNotFoundException($"User with ID {id} not found.");
             }
 
-            _context.Users.Remove(user);
+            // Soft delete — mark as inactive instead of removing from the database
+            user.IsActive = false;
             await _context.SaveChangesAsync(cancellationToken);
 
             return true;
@@ -316,7 +317,7 @@ namespace StoneCarveManager.Services.Services
 
             if (updateRequest.IsBlocked.HasValue)
                 user.IsBlocked = updateRequest.IsBlocked.Value;
-            
+
             if (!string.IsNullOrWhiteSpace(updateRequest.PhoneNumber))
                 user.PhoneNumber = updateRequest.PhoneNumber;
 
@@ -547,17 +548,17 @@ namespace StoneCarveManager.Services.Services
         {
             try
             {
-                var factory = new ConnectionFactory() 
-                { 
+                var factory = new ConnectionFactory()
+                {
                     HostName = "localhost",
                     Port = 5672,
                     UserName = "guest",
                     Password = "guest"
                 };
-                
+
                 await using var connection = await factory.CreateConnectionAsync();
                 await using var channel = await connection.CreateChannelAsync();
-                
+
                 await channel.QueueDeclareAsync(queue: "user-registration",
                                      durable: false,
                                      exclusive: false,
@@ -570,7 +571,7 @@ namespace StoneCarveManager.Services.Services
                 await channel.BasicPublishAsync(exchange: "",
                                      routingKey: "user-registration",
                                      body: body);
-                
+
                 Console.WriteLine($"✅ Sent user creation message to RabbitMQ: {json}");
             }
             catch (Exception ex)

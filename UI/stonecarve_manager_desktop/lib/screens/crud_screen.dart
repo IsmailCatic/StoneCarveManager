@@ -479,7 +479,6 @@ class _BlogCategoriesTabState extends State<_BlogCategoriesTab> {
                   columns: const [
                     DataColumn(label: Text('ID')),
                     DataColumn(label: Text('Name')),
-                    DataColumn(label: Text('Posts')),
                     DataColumn(label: Text('Created')),
                     DataColumn(label: Text('Updated')),
                     DataColumn(label: Text('Actions')),
@@ -494,7 +493,6 @@ class _BlogCategoriesTabState extends State<_BlogCategoriesTab> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
-                        DataCell(Text(cat.postCount?.toString() ?? '0')),
                         DataCell(
                           Text(
                             cat.createdAt != null

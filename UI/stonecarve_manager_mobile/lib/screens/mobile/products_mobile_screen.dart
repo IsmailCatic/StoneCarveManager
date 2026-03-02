@@ -23,12 +23,22 @@ class ProductsMobileScreen extends StatefulWidget {
 class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     with AutomaticKeepAliveClientMixin {
   List<Product> _products = [];
+  List<Product> _productsOriginalOrder = []; // backend order — used by Default sort
+  List<Product> _allActiveProducts = []; // master cache of ALL active products (built by infinite scroll, used for client-side search filtering)
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 0;
+  static const int _pageSize = 10;
   String _errorMessage = '';
+
+  // Scroll controller for infinite scroll
+  final ScrollController _scrollController = ScrollController();
 
   // Search and filter state
   final TextEditingController _searchController = TextEditingController();
   String _selectedSort = 'default';
+  String _activeSearchQuery = ''; // always mirrors the last submitted search
   Timer? _searchDebounce;
 
   // Filter options
@@ -45,47 +55,78 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_onSearchChanged);
-    // Fetch products once on initialization
     _fetchProducts();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchProducts({String? search}) async {
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    // Never paginate while a search is active — search mode uses a single fetch
+    if (_activeSearchQuery.isNotEmpty) return;
+    if (_isLoadingMore || !_hasMore || _isLoading) return;
+    await _fetchProducts(page: _currentPage + 1, append: true);
+  }
+
+  Future<void> _fetchProducts({
+    String? search,
+    int page = 0,
+    bool append = false,
+  }) async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+    final isSearchMode = search != null && search.isNotEmpty;
+
+    if (append) {
+      setState(() => _isLoadingMore = true);
+    } else {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+    }
 
     try {
-      // Build query params — same pattern as desktop app
-      final queryParams = <String, String>{};
-      if (search != null && search.isNotEmpty) {
-        queryParams['search'] = search;
+      if (!append) {
+        _activeSearchQuery = search ?? '';
+      }
+
+      final queryParams = <String, String>{'productState': 'active'};
+
+      if (isSearchMode) {
+        // Search mode: fetch ALL matching products in one request, no pagination.
+        // retrieveAll=true tells the backend to skip Skip/Take.
+        queryParams['search'] = search!;
+        queryParams['retrieveAll'] = 'true';
+      } else {
+        // Normal mode: paginated infinite scroll
+        queryParams['page'] = page.toString();
+        queryParams['pageSize'] = _pageSize.toString();
       }
 
       final uri = Uri.parse(
         '${BaseProvider.baseUrl}/api/Product',
-      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      ).replace(queryParameters: queryParams);
 
-      print('[ProductsMobile] Fetching from: $uri');
+      print('[ProductsMobile] Fetching${isSearchMode ? " (search=\"$search\")" : " page $page"} from: $uri');
 
-      final response = await http.get(
-        uri,
-        headers: AuthProvider.getAuthHeaders(),
-      );
-
+      final response = await http.get(uri, headers: AuthProvider.getAuthHeaders());
       print('[ProductsMobile] Response status: ${response.statusCode}');
 
       if (response.statusCode == 401) {
-        // Token expired or invalid — clear session and redirect to login
         if (!mounted) return;
         await AuthProvider.handleSessionExpired(context);
         return;
@@ -94,24 +135,63 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         final List<dynamic> items = jsonResponse['items'] ?? [];
-        print('[ProductsMobile] Loaded ${items.length} products');
+        final int rawCount = items.length;
+
+        // Always enforce active-only client-side as a safety net
+        final fetched = items
+            .map((json) => Product.fromJson(json))
+            .where((p) => p.productState?.toLowerCase() == 'active')
+            .toList();
+        print('[ProductsMobile] ${fetched.length} active items fetched (raw: $rawCount)');
+
         if (!mounted) return;
         setState(() {
-          // Show only products with productState == 'active'
-          _products = items
-              .map((json) => Product.fromJson(json))
-              .where(
-                (product) => product.productState?.toLowerCase() == 'active',
-              )
-              .toList();
+          _currentPage = page;
+
+          if (isSearchMode) {
+            // Server fetch refreshes the active cache with latest data, then
+            // client-side filter is re-applied so typing still drives what's shown.
+            // This handles backends that don't honour the search param correctly.
+            _allActiveProducts = List.from(fetched);
+            _hasMore = false;
+            _applyFilters(search); // filters + sorts; sets _products/_productsOriginalOrder
+          } else if (append) {
+            // Paginated append — deduplicate by ID
+            final existingIds = _allActiveProducts.map((p) => p.id).toSet();
+            final newItems = fetched.where((p) => !existingIds.contains(p.id)).toList();
+            _allActiveProducts.addAll(newItems);
+            _productsOriginalOrder.addAll(newItems);
+            _products.addAll(newItems);
+            _hasMore = newItems.isEmpty ? false : rawCount >= _pageSize;
+          } else {
+            // First page, no search
+            _allActiveProducts = List.from(fetched);
+            _productsOriginalOrder = List.from(fetched);
+            _products = fetched;
+            _hasMore = rawCount >= _pageSize;
+          }
+
           _applySorting();
           _isLoading = false;
+          _isLoadingMore = false;
         });
+
+        // Auto-trigger next page if content doesn't fill the viewport
+        if (_hasMore && !isSearchMode) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_scrollController.hasClients &&
+                _scrollController.position.maxScrollExtent < 100) {
+              _loadMore();
+            }
+          });
+        }
       } else {
         if (!mounted) return;
         setState(() {
           _errorMessage = 'Failed to load products (${response.statusCode})';
           _isLoading = false;
+          _isLoadingMore = false;
         });
       }
     } catch (e) {
@@ -120,16 +200,67 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
       setState(() {
         _errorMessage = 'Error: $e';
         _isLoading = false;
+        _isLoadingMore = false;
       });
     }
   }
 
-  /// Debounced handler — matching desktop users_screen.dart pattern
-  void _onSearchChanged() {
+  /// Instantly filters the master active products cache client-side.
+  /// Called immediately on every keystroke for responsive feedback.
+  void _applyFilters(String? query) {
+    List<Product> filtered = List.from(_allActiveProducts);
+    if (query != null && query.isNotEmpty) {
+      final q = query.toLowerCase();
+      filtered = filtered.where((p) {
+        return (p.name?.toLowerCase().contains(q) ?? false) ||
+            (p.description?.toLowerCase().contains(q) ?? false) ||
+            (p.categoryName?.toLowerCase().contains(q) ?? false) ||
+            (p.materialName?.toLowerCase().contains(q) ?? false);
+      }).toList();
+    }
+    _productsOriginalOrder = List.from(filtered);
+    _products = filtered;
+    _applySorting();
+  }
+
+  /// Search handler:
+  /// 1. Instantly applies client-side filter on _allActiveProducts for immediate feedback.
+  /// 2. Debounces a server-side call — uses retrieveAll=true (no pagination) so
+  ///    the full result set is returned and there are no infinite-scroll issues.
+  /// 3. Clearing the search restores normal infinite scroll from the cache.
+  void _onSearchChanged(String value) {
+    final query = value.trim();
+
+    // Step 1: instant client-side filter
+    setState(() {
+      _activeSearchQuery = query;
+      if (query.isEmpty) {
+        // Restore the full cached list; resume infinite scroll
+        _productsOriginalOrder = List.from(_allActiveProducts);
+        _products = List.from(_allActiveProducts);
+        _hasMore = _allActiveProducts.length >= _pageSize;
+        _applySorting();
+      } else {
+        _applyFilters(query);
+        _hasMore = false; // no infinite scroll while searching
+      }
+    });
+
+    // Step 2: debounced server call for authoritative results
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      final query = _searchController.text.trim();
-      _fetchProducts(search: query.isEmpty ? null : query);
+      if (query.isEmpty) {
+        // Clearing search: only refetch from server if cache is empty
+        if (_allActiveProducts.isEmpty) {
+          setState(() {
+            _currentPage = 0;
+            _hasMore = true;
+          });
+          _fetchProducts();
+        }
+      } else {
+        _fetchProducts(search: query);
+      }
     });
   }
 
@@ -145,9 +276,22 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
         _products.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
         break;
       default:
-        // Keep order returned by backend
+        // Restore backend insertion order
+        _products = List.from(_productsOriginalOrder);
         break;
     }
+  }
+
+  /// Re-applies sort (and search filter if active) when sort option changes.
+  void _onSortChanged(String value) {
+    setState(() {
+      _selectedSort = value;
+      if (_activeSearchQuery.isNotEmpty) {
+        _applyFilters(_activeSearchQuery); // re-filter + sort
+      } else {
+        _applySorting();
+      }
+    });
   }
 
   Future<void> _toggleFavorite(int productId) async {
@@ -172,10 +316,13 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
 
     context.read<CartProvider>().addItem(product);
 
+    // Clear any existing snackbars to prevent stacking/blocking
+    ScaffoldMessenger.of(context).clearSnackBars();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${product.name} added to cart'),
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'VIEW CART',
@@ -284,9 +431,22 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: _searchController,
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search products...',
                 prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchController,
+                  builder: (_, value, __) => value.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                      : const SizedBox.shrink(),
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey[300]!),
@@ -320,10 +480,7 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                       label: Text(option['label']),
                       selected: isSelected,
                       onSelected: (selected) {
-                        setState(() {
-                          _selectedSort = option['value'];
-                          _applySorting();
-                        });
+                        _onSortChanged(option['value']);
                       },
                       backgroundColor: Colors.white,
                       selectedColor: Colors.blue,
@@ -368,9 +525,9 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () => _fetchProducts(
-                            search: _searchController.text.trim().isEmpty
+                            search: _activeSearchQuery.isEmpty
                                 ? null
-                                : _searchController.text.trim(),
+                                : _activeSearchQuery,
                           ),
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
@@ -405,17 +562,40 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                     ),
                   )
                 : RefreshIndicator(
-                    onRefresh: () => _fetchProducts(
-                      search: _searchController.text.trim().isEmpty
-                          ? null
-                          : _searchController.text.trim(),
-                    ),
+                    onRefresh: () {
+                      if (_activeSearchQuery.isNotEmpty) {
+                        // Refresh search results
+                        return _fetchProducts(search: _activeSearchQuery);
+                      }
+                      // Refresh normal paginated list from scratch
+                      setState(() {
+                        _currentPage = 0;
+                        _hasMore = true;
+                        _allActiveProducts = [];
+                        _products = [];
+                        _productsOriginalOrder = [];
+                      });
+                      return _fetchProducts();
+                    },
                     child: Consumer<FavoritesProvider>(
                       builder: (context, favoritesProvider, child) {
+                        final itemCount =
+                            _products.length + (_isLoadingMore ? 1 : 0);
                         return ListView.builder(
-                          itemCount: _products.length,
+                          controller: _scrollController,
+                          itemCount: itemCount,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemBuilder: (context, index) {
+                            // Loading indicator at the bottom
+                            if (index == _products.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+
                             final product = _products[index];
                             final isFavorite = favoritesProvider.isFavorite(
                               product.id,

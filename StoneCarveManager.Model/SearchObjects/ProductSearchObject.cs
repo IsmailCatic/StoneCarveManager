@@ -38,14 +38,20 @@ namespace StoneCarveManager.Model.SearchObjects
         /// Filter by completion year (for portfolio)
         /// </summary>
         public int? CompletionYear { get; set; }
-        
+
         /// <summary>
-        /// Search query - maps to FTS for full text search
+        /// Accepts ?searchQuery=... — desktop clients
         /// </summary>
-        public string? SearchQuery 
-        { 
-            get => FTS;
-            set => FTS = value;
-        }
+        public string? SearchQuery { get; set; }
+
+        /// <summary>
+        /// Accepts ?search=... — mobile clients
+        /// </summary>
+        public string? Search { get; set; }
+
+        /// <summary>
+        /// Resolved search term: Search ? SearchQuery ? FTS (in priority order).
+        /// </summary>
+        public string? ResolvedSearch => Search ?? SearchQuery ?? FTS;
     }
 }

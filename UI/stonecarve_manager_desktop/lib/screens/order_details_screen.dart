@@ -40,6 +40,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Payment? orderPayment;
   bool isLoadingPayment = false;
 
+  // Quote (admin price for custom/service orders)
+  late TextEditingController _quoteController;
+  bool _isSavingQuote = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,12 +53,39 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     customerNotesController = TextEditingController(text: order.customerNotes);
     adminNotesController = TextEditingController(text: order.adminNotes);
     progressImages = List<ProgressImage>.from(order.progressImages);
+    _quoteController = TextEditingController(
+      text: order.totalAmount > 0 ? order.totalAmount.toStringAsFixed(2) : '',
+    );
 
     // Load employees list if user is admin
     if (AuthProvider.isAdmin) {
-      _loadEmployees();
-      // Load payment information (only admins have access to payments)
-      _loadPayment();
+      // Run employees, payment, and fresh order data all in parallel
+      Future.wait([_loadEmployees(), _loadPayment(), _loadFreshOrderData()]);
+    } else {
+      // Non-admin still needs fresh order data for reference images
+      _loadFreshOrderData();
+    }
+  }
+
+  Future<void> _loadFreshOrderData() async {
+    try {
+      final freshOrder = await _orderProvider.getOrderById(order.id);
+      if (mounted) {
+        setState(() {
+          order = freshOrder;
+          selectedStatus = freshOrder.status;
+          selectedEmployeeId = freshOrder.assignedEmployeeId;
+          customerNotesController.text = freshOrder.customerNotes ?? '';
+          adminNotesController.text = freshOrder.adminNotes ?? '';
+          progressImages = List<ProgressImage>.from(freshOrder.progressImages);
+          _quoteController.text = freshOrder.totalAmount > 0
+              ? freshOrder.totalAmount.toStringAsFixed(2)
+              : '';
+        });
+      }
+    } catch (e) {
+      // Silently fail — we already have the order from the listing, just won't have reference images
+      debugPrint('[OrderDetails] Failed to reload fresh order data: \$e');
     }
   }
 
@@ -135,6 +166,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   void dispose() {
     customerNotesController.dispose();
     adminNotesController.dispose();
+    _quoteController.dispose();
     super.dispose();
   }
 
@@ -1271,6 +1303,354 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
   }
 
+  Future<void> _deleteOrder() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Order'),
+        content: Text(
+          'Are you sure you want to permanently delete Order #${order.orderNumber}?\n\nThis will remove all associated data and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _orderProvider.deleteOrder(order.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete order: \$e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _setQuote() async {
+    final input = _quoteController.text.trim();
+    final price = double.tryParse(input);
+    if (price == null || price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid price greater than 0'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSavingQuote = true);
+    try {
+      final updatedOrder = await _orderProvider.setQuote(order.id, price);
+      setState(() {
+        order = updatedOrder;
+        _quoteController.text = updatedOrder.totalAmount.toStringAsFixed(2);
+        _isSavingQuote = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Quote set to \$${updatedOrder.totalAmount.toStringAsFixed(2)}. '
+              'The customer can now pay from the mobile app.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSavingQuote = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to set quote: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildQuoteSection() {
+    final isQuoteSet = order.totalAmount > 0;
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.request_quote, color: Colors.teal),
+                const SizedBox(width: 8),
+                Text(
+                  isQuoteSet ? 'Price Quote' : 'Set Price Quote',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (isQuoteSet) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Quoted',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.green[800],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isQuoteSet
+                  ? 'Current quote: \$${order.totalAmount.toStringAsFixed(2)}. Update it below if needed.'
+                  : 'This order has no price yet. Enter a quote and the customer will be able to pay from the mobile app.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _quoteController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Price (USD)',
+                      prefixText: '\$ ',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      hintText: 'e.g. 250.00',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSavingQuote ? null : _setQuote,
+                    icon: _isSavingQuote
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(isQuoteSet ? 'Update Quote' : 'Set Quote'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReferenceImagesSection() {
+    final allUrls = order.orderItems
+        .expand((item) => item.referenceImageUrls)
+        .toList();
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.draw, color: Colors.deepPurple),
+                const SizedBox(width: 8),
+                Text(
+                  'Customer Reference Images',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${allUrls.length} image${allUrls.length == 1 ? "" : "s"}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.deepPurple[900],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Sketches and reference photos submitted by the customer',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 140,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: allUrls.length,
+                itemBuilder: (context, index) {
+                  final url = allUrls[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => Dialog(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AppBar(
+                                title: const Text('Reference Image'),
+                                automaticallyImplyLeading: false,
+                                backgroundColor: Colors.deepPurple,
+                                foregroundColor: Colors.white,
+                                actions: [
+                                  IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Image.network(
+                                  url,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.broken_image,
+                                    size: 80,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              url,
+                              width: 120,
+                              height: 140,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 120,
+                                height: 140,
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
+                                ),
+                              ),
+                              child: const Align(
+                                alignment: Alignment.centerRight,
+                                child: Icon(
+                                  Icons.zoom_in,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusHistory() {
     return Card(
       child: Padding(
@@ -1530,6 +1910,24 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             _buildOrderItemsSection(),
             const SizedBox(height: 16),
 
+            // Price Quote Section (admin or employee — for custom/service orders that need a quote)
+            if ((AuthProvider.isAdmin || AuthProvider.isEmployee) &&
+                (order.orderType == 'custom_order' ||
+                    order.orderType == 'service_request')) ...[
+              _buildQuoteSection(),
+              const SizedBox(height: 16),
+            ],
+
+            // Customer Reference Images Section (custom orders & service requests)
+            if ((order.orderType == 'custom_order' ||
+                    order.orderType == 'service_request') &&
+                order.orderItems.any(
+                  (item) => item.referenceImageUrls.isNotEmpty,
+                )) ...[
+              _buildReferenceImagesSection(),
+              const SizedBox(height: 16),
+            ],
+
             // Current Status Card
             _buildCurrentStatusCard(),
             const SizedBox(height: 16),
@@ -1603,9 +2001,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     TextFormField(
                       controller: adminNotesController,
                       decoration: InputDecoration(
-                        labelText: 'Administrator Notes (Internal)',
+                        labelText: 'Message to Customer',
                         helperText:
-                            'Your internal notes for managing this specific order',
+                            'This message will be visible to the customer in the mobile app',
                         helperMaxLines: 2,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -1613,13 +2011,42 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         filled: true,
                         fillColor: Colors.orange[50],
                         prefixIcon: Icon(
-                          Icons.admin_panel_settings,
+                          Icons.message_outlined,
                           color: Colors.orange,
                         ),
                       ),
                       maxLines: 3,
                     ),
                     const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.visibility_outlined,
+                            color: Colors.orange[800],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'The message above is visible to the customer on the mobile app. Use it to communicate updates, ask for clarifications, or provide instructions.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.orange[900],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -1869,6 +2296,25 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     ),
                   ),
                 ),
+                if (AuthProvider.isAdmin) ...[
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _deleteOrder,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete Order'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
+                      ),
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

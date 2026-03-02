@@ -64,17 +64,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return await base.Delete(id);
         }
 
-        [HttpPatch("{id}/increment-view-count")]
-        [AllowAnonymous]
-        public async Task<IActionResult> IncrementViewCount(int id)
-        {
-            var result = await _productService.IncrementViewCountAsync(id);
-            if (!result)
-                return NotFound(new { message = "Product not found" });
-
-            return Ok();
-        }
-
         [HttpPost("{productId}/images")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> UploadImage(int productId, [FromForm] ProductImageUploadRequest request, CancellationToken cancellationToken)

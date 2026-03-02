@@ -10,16 +10,20 @@ namespace StoneCarveManager.EmailService
     public class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
-        private readonly IConnection _connection;
-        private readonly IModel _channelRegistration;
-        private readonly IModel _channelPasswordReset;
         private readonly IConfiguration _configuration;
+        private IConnection? _connection;
+        private IChannel? _channelRegistration;
+        private IChannel? _channelPasswordReset;
+        private IChannel? _channelOrderStatusChanged;
 
         public Worker(ILogger<Worker> logger, IConfiguration configuration)
         {
             _logger = logger;
             _configuration = configuration;
+        }
 
+        public override async Task StartAsync(CancellationToken cancellationToken)
+        {
             var factory = new ConnectionFactory()
             {
                 HostName = "localhost",
@@ -36,23 +40,19 @@ namespace StoneCarveManager.EmailService
             {
                 try
                 {
-                    _connection = factory.CreateConnection();
+                    _connection = await factory.CreateConnectionAsync(cancellationToken);
 
-                    // Channel for user registration
-                    _channelRegistration = _connection.CreateModel();
-                    _channelRegistration.QueueDeclare(queue: "user-registration",
-                                        durable: false,
-                                        exclusive: false,
-                                        autoDelete: false,
-                                        arguments: null);
+                    _channelRegistration = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+                    await _channelRegistration.QueueDeclareAsync(queue: "user-registration",
+                        durable: false, exclusive: false, autoDelete: false, arguments: null, cancellationToken: cancellationToken);
 
-                    // Channel for password reset
-                    _channelPasswordReset = _connection.CreateModel();
-                    _channelPasswordReset.QueueDeclare(queue: "password-reset",
-                                        durable: false,
-                                        exclusive: false,
-                                        autoDelete: false,
-                                        arguments: null);
+                    _channelPasswordReset = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+                    await _channelPasswordReset.QueueDeclareAsync(queue: "password-reset",
+                        durable: false, exclusive: false, autoDelete: false, arguments: null, cancellationToken: cancellationToken);
+
+                    _channelOrderStatusChanged = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+                    await _channelOrderStatusChanged.QueueDeclareAsync(queue: "order-status-changed",
+                        durable: false, exclusive: false, autoDelete: false, arguments: null, cancellationToken: cancellationToken);
 
                     _logger.LogInformation("Connected to RabbitMQ successfully at localhost:5672!");
                     break;
@@ -63,47 +63,58 @@ namespace StoneCarveManager.EmailService
                     if (retryCount == maxRetries)
                         throw;
                     _logger.LogWarning(ex, "Failed to connect to RabbitMQ. Attempt {RetryCount} of {MaxRetries}. Retrying in 5 seconds...", retryCount, maxRetries);
-                    Thread.Sleep(5000);
+                    await Task.Delay(5000, cancellationToken);
                 }
             }
+
+            await base.StartAsync(cancellationToken);
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            stoppingToken.ThrowIfCancellationRequested();
-
-            // Consumer for user registration
-            var consumerRegistration = new EventingBasicConsumer(_channelRegistration);
-            consumerRegistration.Received += (model, ea) =>
+            var consumerRegistration = new AsyncEventingBasicConsumer(_channelRegistration!);
+            consumerRegistration.ReceivedAsync += async (model, ea) =>
             {
                 var body = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
                 _logger.LogInformation("Received message from RabbitMQ: {Message}", message);
-                SendEmailAsync(message).Wait();
+                try { await SendEmailAsync(message); }
+                catch (Exception ex) { _logger.LogError(ex, "Unhandled error processing user-registration message."); }
             };
+            await _channelRegistration!.BasicConsumeAsync(queue: "user-registration",
+                autoAck: true, consumer: consumerRegistration, cancellationToken: stoppingToken);
 
-            _channelRegistration.BasicConsume(queue: "user-registration",
-                                 autoAck: true,
-                                 consumer: consumerRegistration);
-
-            // Consumer for password reset
-            var consumerPasswordReset = new EventingBasicConsumer(_channelPasswordReset);
-            consumerPasswordReset.Received += (model, ea) =>
+            var consumerPasswordReset = new AsyncEventingBasicConsumer(_channelPasswordReset!);
+            consumerPasswordReset.ReceivedAsync += async (model, ea) =>
             {
                 var body = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
                 _logger.LogInformation("Received password reset request from RabbitMQ: {Message}", message);
-                SendPasswordResetEmailAsync(message).Wait();
+                try { await SendPasswordResetEmailAsync(message); }
+                catch (Exception ex) { _logger.LogError(ex, "Unhandled error processing password-reset message."); }
             };
+            await _channelPasswordReset!.BasicConsumeAsync(queue: "password-reset",
+                autoAck: true, consumer: consumerPasswordReset, cancellationToken: stoppingToken);
 
-            _channelPasswordReset.BasicConsume(queue: "password-reset",
-                                 autoAck: true,
-                                 consumer: consumerPasswordReset);
+            var consumerOrderStatusChanged = new AsyncEventingBasicConsumer(_channelOrderStatusChanged!);
+            consumerOrderStatusChanged.ReceivedAsync += async (model, ea) =>
+            {
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                _logger.LogInformation("Received order status change notification from RabbitMQ: {Message}", message);
+                try { await SendOrderStatusChangedEmailAsync(message); }
+                catch (Exception ex) { _logger.LogError(ex, "Unhandled error processing order-status-changed message."); }
+            };
+            await _channelOrderStatusChanged!.BasicConsumeAsync(queue: "order-status-changed",
+                autoAck: true, consumer: consumerOrderStatusChanged, cancellationToken: stoppingToken);
 
             _logger.LogInformation("StoneCarveManager EmailService Worker is running and listening to queues...");
             _logger.LogInformation("   - user-registration");
             _logger.LogInformation("   - password-reset");
-            return Task.CompletedTask;
+            _logger.LogInformation("   - order-status-changed");
+
+            // Keep alive until cancellation
+            await Task.Delay(Timeout.Infinite, stoppingToken);
         }
 
         private async Task SendEmailAsync(string message)
@@ -267,41 +278,117 @@ namespace StoneCarveManager.EmailService
             await SendEmailViaSmtpAsync(emailMessage, resetRequest.Email);
         }
 
+        private async Task SendOrderStatusChangedEmailAsync(string message)
+        {
+            var notification = JsonSerializer.Deserialize<OrderStatusChangedMessage>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (notification == null || string.IsNullOrEmpty(notification.ClientEmail))
+            {
+                _logger.LogError("Invalid order status changed message format.");
+                return;
+            }
+
+            var emailMessage = new MimeMessage();
+            emailMessage.From.Add(new MailboxAddress("StoneCarve Manager", "noreply@stonecarve.com"));
+            emailMessage.To.Add(new MailboxAddress(notification.ClientName, notification.ClientEmail));
+            emailMessage.Subject = $"Order Update – {notification.OrderNumber}";
+
+            var commentSection = string.IsNullOrWhiteSpace(notification.Comment)
+                ? string.Empty
+                : $@"
+                    <div style='background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; margin: 20px 0;'>
+                        <p style='margin: 0; color: #1b5e20;'><strong>Message from our team:</strong><br/>{notification.Comment}</p>
+                    </div>";
+
+            var body = $@"
+            <html>
+            <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                <div style='max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
+                    <h2 style='color: #2c3e50;'>Order Status Update</h2>
+                    <p>Hello <strong>{notification.ClientName}</strong>,</p>
+                    <p>Your order <strong>{notification.OrderNumber}</strong> has been updated.</p>
+
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <table style='width: 100%; border-collapse: collapse;'>
+                            <tr>
+                                <td style='text-align: center; padding: 15px; background-color: #f5f5f5; border-radius: 8px 0 0 8px;'>
+                                    <p style='margin: 0; font-size: 12px; color: #777;'>Previous Status</p>
+                                    <p style='margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #888;'>{notification.OldStatus}</p>
+                                </td>
+                                <td style='text-align: center; padding: 15px; font-size: 24px; color: #4caf50;'>?</td>
+                                <td style='text-align: center; padding: 15px; background-color: #e8f5e9; border-radius: 0 8px 8px 0;'>
+                                    <p style='margin: 0; font-size: 12px; color: #777;'>New Status</p>
+                                    <p style='margin: 5px 0 0 0; font-size: 18px; font-weight: bold; color: #2e7d32;'>{notification.NewStatus}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    {commentSection}
+
+                    <p style='color: #666; font-size: 14px;'>Updated on: {notification.ChangedAt:dd MMM yyyy, HH:mm} UTC</p>
+
+                    <hr style='border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;' />
+                    <p style='margin-top: 30px; text-align: center; color: #7f8c8d; font-size: 12px;'>
+                        <strong>Your StoneCarve Manager Team</strong><br/>
+                        © 2026 StoneCarve Manager. All rights reserved.
+                    </p>
+                </div>
+            </body>
+            </html>";
+
+            emailMessage.Body = new TextPart("html") { Text = body };
+
+            await SendEmailViaSmtpAsync(emailMessage, notification.ClientEmail);
+        }
+
         // Extracted method for SMTP sending (DRY principle)
         private async Task SendEmailViaSmtpAsync(MimeMessage emailMessage, string recipientEmail)
         {
-            using (var client = new SmtpClient())
-            {
-                var smtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? _configuration["Email:SmtpServer"];
-                var smtpPort = int.Parse(Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? _configuration["Email:SmtpPort"]);
-                var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME") ?? _configuration["Email:Username"];
-                var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
+            using var client = new SmtpClient();
 
-                try
-                {
-                    await client.ConnectAsync(smtpServer, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
-                    await client.AuthenticateAsync(emailUsername, emailPassword);
-                    await client.SendAsync(emailMessage);
-                    _logger.LogInformation("Email successfully sent to {Email}.", recipientEmail);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to send email to {Email}.", recipientEmail);
-                }
-                finally
-                {
-                    await client.DisconnectAsync(true);
-                }
+            var smtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? _configuration["Email:SmtpServer"];
+            var smtpPortStr = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? _configuration["Email:SmtpPort"];
+            var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME") ?? _configuration["Email:Username"];
+            var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") ?? _configuration["Email:Password"];
+
+            if (string.IsNullOrWhiteSpace(smtpServer) || string.IsNullOrWhiteSpace(smtpPortStr)
+                || string.IsNullOrWhiteSpace(emailUsername))
+            {
+                _logger.LogError("SMTP configuration is missing. Email to {Email} was not sent.", recipientEmail);
+                return;
+            }
+
+            if (!int.TryParse(smtpPortStr, out var smtpPort))
+            {
+                _logger.LogError("Invalid SMTP port value '{Port}'. Email to {Email} was not sent.", smtpPortStr, recipientEmail);
+                return;
+            }
+
+            try
+            {
+                await client.ConnectAsync(smtpServer, smtpPort, MailKit.Security.SecureSocketOptions.StartTls);
+                await client.AuthenticateAsync(emailUsername, emailPassword);
+                await client.SendAsync(emailMessage);
+                _logger.LogInformation("Email successfully sent to {Email}.", recipientEmail);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send email to {Email}.", recipientEmail);
+            }
+            finally
+            {
+                await client.DisconnectAsync(true);
             }
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
+        public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            _channelRegistration?.Close();
-            _channelPasswordReset?.Close();
-            _connection?.Close();
+            if (_channelRegistration != null) await _channelRegistration.CloseAsync();
+            if (_channelPasswordReset != null) await _channelPasswordReset.CloseAsync();
+            if (_channelOrderStatusChanged != null) await _channelOrderStatusChanged.CloseAsync();
+            if (_connection != null) await _connection.CloseAsync();
             _logger.LogInformation("StoneCarveManager EmailService Worker stopped.");
-            return base.StopAsync(cancellationToken);
+            await base.StopAsync(cancellationToken);
         }
     }
 }

@@ -25,18 +25,7 @@ namespace StoneCarveManager.Services.IServices
             DateTime? endDate, 
             CancellationToken cancellationToken = default);
 
-        Task<List<RevenueTrendResponse>> GetRevenueTrendAsync(
-            DateTime startDate, 
-            DateTime endDate, 
-            string groupBy, 
-            CancellationToken cancellationToken = default);
-
         Task<decimal> GetTotalIncomeAsync(
-            DateTime? from = null, 
-            DateTime? to = null, 
-            CancellationToken cancellationToken = default);
-
-        Task<decimal> GetDailyAverageIncomeAsync(
             DateTime? from = null, 
             DateTime? to = null, 
             CancellationToken cancellationToken = default);
@@ -71,8 +60,6 @@ namespace StoneCarveManager.Services.IServices
         Task<List<TopCustomerResponse>> GetTopCustomersAsync(
             int limit, 
             CancellationToken cancellationToken = default);
-
-        Task<int> GetUserCountAsync(CancellationToken cancellationToken = default);
 
         // ================================
         // Review Analytics

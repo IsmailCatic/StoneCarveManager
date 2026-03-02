@@ -34,8 +34,27 @@ namespace StoneCarveManager.Services.Database.DataSeeds
 
             user1.PasswordHash = passwordHasher.HashPassword(user1, "Ismail$ifr4");
 
+            var admin = new User
+            {
+                Id = 1000000,
+                FirstName = "Admin",
+                LastName = "Admin",
+                UserName = "admin@edu.fit.ba",
+                NormalizedUserName = "ADMIN@EDU.FIT.BA",
+                Email = "admin@edu.fit.ba",
+                NormalizedEmail = "ADMIN@EDU.FIT.BA",
+                EmailConfirmed = true,
+                SecurityStamp = Guid.NewGuid().ToString(),
+                //DateOfBirth = new DateOnly(2000, 5, 12),
+                //CityId = -999,
+                //CountryId = -999,
+                //GenderId = -999
+            };
+
+            admin.PasswordHash = passwordHasher.HashPassword(admin, "test");
 
             builder.Entity<User>().HasData(user1);
+            builder.Entity<User>().HasData(admin);
         }
 
     }

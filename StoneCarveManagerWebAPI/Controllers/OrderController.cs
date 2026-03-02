@@ -23,7 +23,7 @@ namespace StoneCarveManagerWebAPI.Controllers
         private readonly IValidator<ServiceOrderInsertRequest> _serviceOrderValidator;
 
         public OrderController(
-            IOrderService orderService, 
+            IOrderService orderService,
             ICurrentUserService currentUserService,
             IValidator<OrderInsertRequest> insertValidator,
             IValidator<OrderUpdateRequest> updateValidator,
@@ -106,6 +106,27 @@ namespace StoneCarveManagerWebAPI.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Upload a reference sketch/image before creating a custom order.
+        /// Returns the URL of the uploaded image to be included in the CreateCustomOrder request.
+        /// Accepts multipart/form-data with a "file" field (JPG, PNG, PDF – max 10 MB).
+        /// </summary>
+        [HttpPost("custom/upload-sketch")]
+        public async Task<IActionResult> UploadCustomSketch(
+            [FromForm] CustomOrderSketchUploadRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var url = await _orderService.UploadCustomOrderSketchAsync(request, cancellationToken);
+                return Ok(new { url });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("custom")]
         public async Task<IActionResult> CreateCustomOrder([FromBody] CustomOrderInsertRequest request, CancellationToken cancellationToken)
         {
@@ -170,8 +191,8 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPut("{orderId}/status")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> UpdateOrderStatus(
-            int orderId, 
-            [FromBody] UpdateOrderStatusRequest request, 
+            int orderId,
+            [FromBody] UpdateOrderStatusRequest request,
             CancellationToken cancellationToken)
         {
             var validationResult = await _statusUpdateValidator.ValidateAsync(request, cancellationToken);
@@ -185,8 +206,8 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPost("{orderId}/progress-images")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
         public async Task<IActionResult> UploadProgressImage(
-            int orderId, 
-            [FromForm] OrderProgressImageUploadRequest request, 
+            int orderId,
+            [FromForm] OrderProgressImageUploadRequest request,
             CancellationToken cancellationToken)
         {
             var userId = _currentUserService.GetUserId();
@@ -214,14 +235,14 @@ namespace StoneCarveManagerWebAPI.Controllers
         [HttpPatch("{id}/assign-employee")]
         [Authorize(Roles = Roles.Admin)]
         public async Task<IActionResult> AssignEmployee(
-            int id, 
-            [FromBody] AssignEmployeeRequest request, 
+            int id,
+            [FromBody] AssignEmployeeRequest request,
             CancellationToken cancellationToken)
         {
             try
             {
                 var order = await _orderService.AssignEmployeeToOrderAsync(id, request.EmployeeId, cancellationToken);
-                
+
                 if (order == null)
                     return NotFound(new { message = "Order not found" });
 

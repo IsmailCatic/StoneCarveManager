@@ -169,18 +169,12 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
         final request = ServiceOrderRequest(
           serviceProductId: service.id!,
           requirements: _descriptionController.text.trim(),
-          deliveryAddress: _locationAddressController.text.trim().isEmpty
-              ? null
-              : _locationAddressController.text.trim(),
+          deliveryAddress: _locationAddressController.text.trim(),
           deliveryCity: _selectedCity == 'Other'
-              ? (_cityOtherController.text.trim().isEmpty
-                    ? null
-                    : _cityOtherController.text.trim())
-              : _selectedCity,
+              ? _cityOtherController.text.trim()
+              : (_selectedCity ?? ''),
           deliveryCountry: _selectedCountry,
-          deliveryZipCode: _locationZipController.text.trim().isEmpty
-              ? null
-              : _locationZipController.text.trim(),
+          deliveryZipCode: _locationZipController.text.trim(),
           preferredDate: _preferredDate,
         );
 
@@ -548,10 +542,10 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                     ),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
-                        return 'Please describe what you need';
+                        return 'Describe the service you need (at least 20 characters)';
                       }
                       if (v.trim().length < 20) {
-                        return 'Please provide more detail (at least 20 characters)';
+                        return 'Provide more detail — at least 20 characters required (e.g. \'I need a carved granite countertop, 2m × 1m\')';
                       }
                       return null;
                     },
@@ -571,7 +565,7 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                     controller: _locationAddressController,
                     decoration: _inputDecoration(hint: 'Street and number'),
                     validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Address is required'
+                        ? 'Enter the street address where the work will take place (e.g. 123 Main Street)'
                         : null,
                   ),
                   const SizedBox(height: 8),
@@ -630,6 +624,9 @@ class _ServiceRequestScreenState extends State<ServiceRequestScreen> {
                       controller: _locationZipController,
                       decoration: _inputDecoration(hint: 'ZIP / Postal code'),
                       keyboardType: TextInputType.number,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Postal code is required'
+                          : null,
                     ),
                   ),
                   const SizedBox(height: 20),

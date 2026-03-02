@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/order_details_screen.dart';
 import 'package:intl/intl.dart';
@@ -66,6 +67,56 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
 
     return grouped;
+  }
+
+  Future<void> _deleteOrder(Order order) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Order'),
+        content: Text(
+          'Are you sure you want to permanently delete Order #${order.orderNumber}?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _orderProvider.deleteOrder(order.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order #${order.orderNumber} deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadMyOrders();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete order: \$e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _viewOrderDetails(Order order) async {
@@ -328,6 +379,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     ),
                   ),
                   _buildStatusBadge(order.status),
+                  if (AuthProvider.isAdmin) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      tooltip: 'Delete Order',
+                      onPressed: () => _deleteOrder(order),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),

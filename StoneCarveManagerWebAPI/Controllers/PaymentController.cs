@@ -1,3 +1,5 @@
+using System.Threading;
+using System.Threading.Tasks;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -5,8 +7,6 @@ using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.SearchObjects;
 using StoneCarveManager.Services.IServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace StoneCarveManagerWebAPI.Controllers
 {
@@ -123,7 +123,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             var signature = Request.Headers["Stripe-Signature"].ToString();
 
             var result = await _paymentService.HandleStripeWebhookAsync(json, signature, cancellationToken);
-            
+
             if (!result)
                 return BadRequest(new { message = "Webhook processing failed" });
 
@@ -137,6 +137,21 @@ namespace StoneCarveManagerWebAPI.Controllers
             var userId = _currentUserService.GetUserId();
             var result = await _paymentService.GetMyPaymentsAsync(userId, search, cancellationToken);
             return Ok(result);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeletePayment(int id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _paymentService.DeletePaymentAsync(id, cancellationToken);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { message = "Payment not found" });
+            }
         }
     }
 }

@@ -109,7 +109,8 @@ namespace StoneCarveManager.Services.Services
             var query = _context.Products
                 .Include(p => p.Images)
                 .Include(p => p.Reviews)
-                .Include(p => p.Category)  // Include Category for CategoryName filtering
+                .Include(p => p.Category)
+                .Include(p => p.Material)
                 .AsQueryable();
 
             // Apply filter & paginaciju kao u bazi
@@ -211,12 +212,16 @@ namespace StoneCarveManager.Services.Services
             if (search == null)
                 return query;
 
-            // FTS search
-            if (!string.IsNullOrWhiteSpace(search.FTS))
+            // FTS search — reads Search (?search=), SearchQuery (?searchQuery=), or FTS (?fts=)
+            var fts = search.ResolvedSearch;
+            if (!string.IsNullOrWhiteSpace(fts))
             {
+                _logger.LogInformation("Applying FTS filter: {FTS}", fts);
                 query = query.Where(p =>
-                    p.Name.Contains(search.FTS) ||
-                    p.Description.Contains(search.FTS));
+                    p.Name.Contains(fts) ||
+                    p.Description.Contains(fts) ||
+                    (p.Category != null && p.Category.Name.Contains(fts)) ||
+                    (p.Material != null && p.Material.Name.Contains(fts)));
             }
 
             // Filter by CategoryId
@@ -350,17 +355,6 @@ namespace StoneCarveManager.Services.Services
             }
 
             await base.BeforeDelete(entity);
-        }
-
-        public async Task<bool> IncrementViewCountAsync(int productId)
-        {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null)
-                return false;
-
-            product.ViewCount++;
-            await _context.SaveChangesAsync();
-            return true;
         }
     }
 }

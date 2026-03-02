@@ -264,7 +264,7 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
                     try {
                       await _provider.deleteBlogPost(context, _post!.id);
                       if (mounted) {
-                        Navigator.of(context).pop(true);
+                        Navigator.of(context).pop('deleted');
                       }
                     } catch (e) {
                       if (mounted) {

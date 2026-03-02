@@ -316,20 +316,42 @@ class CartScreen extends StatelessWidget {
           // Remove Button
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-            onPressed: () {
-              cart.removeItem(item.productId);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${item.productName} removed from cart'),
-                  duration: const Duration(seconds: 2),
-                  action: SnackBarAction(
-                    label: 'Undo',
-                    onPressed: () {
-                      // TODO: Implement undo functionality
-                    },
+            onPressed: () async {
+              // Show confirmation dialog
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Remove Item?'),
+                  content: Text(
+                    'Are you sure you want to remove ${item.productName} from your cart?',
                   ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'Remove',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
                 ),
               );
+
+              // Only remove if confirmed
+              if (confirm == true) {
+                cart.removeItem(item.productId);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${item.productName} removed from cart'),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
             },
           ),
         ],

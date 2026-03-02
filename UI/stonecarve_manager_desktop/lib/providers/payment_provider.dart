@@ -31,21 +31,8 @@ class PaymentProvider extends BaseProvider<Payment> {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.get(Uri.parse(url), headers: headers);
 
-    print('[PaymentProvider] Response status: ${response.statusCode}');
-    print('[PaymentProvider] Response body: ${response.body}');
-
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      print('[PaymentProvider] Parsed data: $data');
-
-      // Debug each payment item
-      if (data['items'] != null) {
-        for (var item in data['items']) {
-          print(
-            '[PaymentProvider] Payment #${item['id']}: status=${item['status']}, method=${item['method']}, amount=${item['amount']}',
-          );
-        }
-      }
 
       return SearchResult<Payment>(
         items:
@@ -114,7 +101,7 @@ class PaymentProvider extends BaseProvider<Payment> {
   Future<Payment> retryPayment(int orderId) async {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/Payment/retry/$orderId'),
+      Uri.parse('$baseUrl/Payment/$orderId/retry'),
       headers: headers,
     );
 
@@ -147,5 +134,18 @@ class PaymentProvider extends BaseProvider<Payment> {
     }
 
     throw Exception('Failed to load payment statistics');
+  }
+
+  /// Delete a payment permanently
+  Future<void> deletePayment(int paymentId) async {
+    final headers = AuthProvider.getAuthHeaders();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/Payment/$paymentId'),
+      headers: headers,
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete payment (${response.statusCode})');
+    }
   }
 }

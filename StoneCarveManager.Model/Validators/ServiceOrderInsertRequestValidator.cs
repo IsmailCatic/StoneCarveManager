@@ -20,14 +20,17 @@ namespace StoneCarveManager.Model.Validators
             When(x => x.CustomerNotes != null, () =>
                 RuleFor(x => x.CustomerNotes).MaximumLength(2000).WithMessage("Customer notes cannot exceed 2000 characters."));
 
-            When(x => x.DeliveryAddress != null, () =>
-                RuleFor(x => x.DeliveryAddress).MaximumLength(500));
+            RuleFor(x => x.DeliveryAddress)
+                .NotEmpty().WithMessage("Delivery address is required.")
+                .MaximumLength(500);
 
-            When(x => x.DeliveryCity != null, () =>
-                RuleFor(x => x.DeliveryCity).MaximumLength(100));
+            RuleFor(x => x.DeliveryCity)
+                .NotEmpty().WithMessage("City is required.")
+                .MaximumLength(100);
 
-            When(x => x.DeliveryZipCode != null, () =>
-                RuleFor(x => x.DeliveryZipCode).MaximumLength(20));
+            RuleFor(x => x.DeliveryZipCode)
+                .NotEmpty().WithMessage("Postal code is required.")
+                .MaximumLength(20);
         }
     }
 }

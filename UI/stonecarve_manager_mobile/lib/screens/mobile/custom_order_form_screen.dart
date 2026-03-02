@@ -447,7 +447,7 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
                   null,
           validator: (value) {
             if (value != null && value.trim().length > 200) {
-              return 'Dimensions must be less than 200 characters';
+              return 'Dimensions must not exceed 200 characters (e.g. 30cm × 20cm × 10cm)';
             }
             return null;
           },
@@ -489,13 +489,13 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
           maxLength: 4000,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter a description';
+              return 'Enter a project description (20 to 4000 characters)';
             }
             if (value.trim().length < 20) {
-              return 'Description must be at least 20 characters';
+              return 'Description is too short — provide at least 20 characters describing your project';
             }
             if (value.trim().length > 4000) {
-              return 'Description must be less than 4000 characters';
+              return 'Description must not exceed 4000 characters';
             }
             return null;
           },
@@ -536,7 +536,7 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
           maxLength: 2000,
           validator: (value) {
             if (value != null && value.trim().length > 2000) {
-              return 'Notes must be less than 2000 characters';
+              return 'Additional notes must not exceed 2000 characters';
             }
             return null;
           },

@@ -132,8 +132,9 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                       controller: _fullNameController,
                       decoration: _inputDecoration('e.g. John Smith'),
                       textCapitalization: TextCapitalization.words,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Required' : null,
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Enter your full name (e.g. John Smith)'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -145,12 +146,12 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty)
-                          return 'Email is required';
+                          return 'Enter your email address (e.g. john@example.com)';
                         final emailRegex = RegExp(
                           r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
                         );
                         if (!emailRegex.hasMatch(value.trim()))
-                          return 'Please enter a valid email address';
+                          return 'Enter a valid email address (e.g. john@example.com)';
                         return null;
                       },
                     ),
@@ -161,8 +162,9 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                     TextFormField(
                       controller: _addressController,
                       decoration: _inputDecoration('e.g. 123 Main Street'),
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Required' : null,
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Enter your street address (e.g. 123 Main Street)'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -234,8 +236,9 @@ class _CheckoutShippingScreenState extends State<CheckoutShippingScreen> {
                             required isFocused,
                             maxLength,
                           }) => null,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Required' : null,
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Enter a valid postal/zip code (e.g. 10000)'
+                          : null,
                     ),
                     const SizedBox(height: 32),
 

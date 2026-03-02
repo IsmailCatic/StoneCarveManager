@@ -7,7 +7,6 @@ using StoneCarveManager.Services.Base;
 using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
-using System.Threading;
 
 namespace StoneCarveManager.Services.Services
 {
@@ -111,30 +110,6 @@ namespace StoneCarveManager.Services.Services
                 entity.UpdatedAt = DateTime.UtcNow;
 
             await base.BeforeUpdate(entity, request);
-        }
-
-        // New helper to toggle active state
-        public async Task<bool> ToggleActiveAsync(int id)
-        {
-            var entity = await _context.BlogCategories.FindAsync(id);
-            if (entity == null) return false;
-
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        // Interface implementation with CancellationToken
-        async Task<bool> IBlogCategoryService.ToggleActiveAsync(int id, CancellationToken cancellationToken)
-        {
-            var entity = await _context.BlogCategories.FindAsync(new object[] { id }, cancellationToken);
-            if (entity == null) return false;
-
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
-            return true;
         }
     }
 }

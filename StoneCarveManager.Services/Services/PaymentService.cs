@@ -1,4 +1,9 @@
-﻿using MapsterMapper;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using StoneCarveManager.Model.Requests;
@@ -9,11 +14,6 @@ using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
 using Stripe;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using DatabaseOrderStatus = StoneCarveManager.Services.Database.Entities.OrderStatus;
 
 namespace StoneCarveManager.Services.Services
@@ -29,10 +29,10 @@ namespace StoneCarveManager.Services.Services
             _context = context;
             _mapper = mapper;
             _configuration = configuration;
-            
-            var stripeSecretKey = _configuration["Stripe:SecretKey"] 
+
+            var stripeSecretKey = _configuration["Stripe:SecretKey"]
                 ?? throw new InvalidOperationException("Stripe SecretKey not configured");
-            
+
             StripeConfiguration.ApiKey = stripeSecretKey;
         }
 
@@ -131,7 +131,7 @@ namespace StoneCarveManager.Services.Services
             // In production, customers will enter real card details through
             // a proper Stripe payment form (e.g., flutter_stripe package)
             // ============================================
-            if (paymentIntent.Status == "requires_payment_method" || 
+            if (paymentIntent.Status == "requires_payment_method" ||
                 paymentIntent.Status == "requires_confirmation")
             {
                 try
@@ -142,19 +142,19 @@ namespace StoneCarveManager.Services.Services
                         PaymentMethod = "pm_card_visa" // Stripe's official test card
                     };
                     paymentIntent = await service.UpdateAsync(paymentIntent.Id, updateOptions, cancellationToken: cancellationToken);
-                    
+
                     // Now confirm the payment
                     var confirmOptions = new PaymentIntentConfirmOptions
                     {
                         PaymentMethod = "pm_card_visa"
                     };
-                    
+
                     paymentIntent = await service.ConfirmAsync(
-                        request.PaymentIntentId, 
-                        confirmOptions, 
+                        request.PaymentIntentId,
+                        confirmOptions,
                         cancellationToken: cancellationToken
                     );
-                    
+
                     Console.WriteLine($"✅ [Payment] Auto-confirmed test payment: {paymentIntent.Id} -> {paymentIntent.Status}");
                 }
                 catch (StripeException ex)
@@ -385,12 +385,12 @@ namespace StoneCarveManager.Services.Services
 
                 // Determine payment status and order status based on refund type
                 var isFullRefund = totalRefundAmount >= payment.Amount;
-                
+
                 if (isFullRefund)
                 {
                     // Full refund - mark payment as refunded
                     payment.Status = "refunded";
-                    
+
                     // Update order status based on reason
                     // Only change to Cancelled if it's not already Delivered
                     if (payment.Order.Status != DatabaseOrderStatus.Delivered)
@@ -482,7 +482,7 @@ namespace StoneCarveManager.Services.Services
             var successfulPayments = payments
                 .Where(p => p.Status == "succeeded" || p.Status == "partially_refunded" || p.Status == "refunded")
                 .ToList();
-            
+
             // ✅ Calculate NET revenue (gross - refunds)
             var grossRevenue = successfulPayments.Sum(p => p.Amount);
             var totalRefunds = successfulPayments.Sum(p => p.RefundAmount ?? 0);
@@ -534,6 +534,18 @@ namespace StoneCarveManager.Services.Services
             // Ova metoda može ostati prazna ili vratiti true
             // Ne koristi se u lokalnom razvoju
             return await Task.FromResult(true);
+        }
+
+        public async Task DeletePaymentAsync(int paymentId, CancellationToken cancellationToken = default)
+        {
+            var payment = await _context.Payments
+                .FirstOrDefaultAsync(p => p.Id == paymentId, cancellationToken);
+
+            if (payment == null)
+                throw new KeyNotFoundException($"Payment with ID {paymentId} not found");
+
+            _context.Payments.Remove(payment);
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

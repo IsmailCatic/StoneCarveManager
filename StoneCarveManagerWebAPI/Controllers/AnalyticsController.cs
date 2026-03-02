@@ -25,19 +25,6 @@ namespace StoneCarveManagerWebAPI.Controllers
         // ================================
         // Legacy Endpoints (backward compatibility)
         // ================================
-        [HttpGet("top-products-legacy")]
-        public async Task<IActionResult> GetTopProductsLegacy([FromQuery] int topN = 5)
-        { 
-            // Call new method with no date filters and custom limit
-            var result = await _analyticsService.GetTopProductsAsync(null, null, topN);
-            return Ok(result);
-        }
-
-        [HttpGet("user-count")]
-        public async Task<IActionResult> GetUserCount()
-        { 
-            return Ok(await _analyticsService.GetUserCountAsync()); 
-        }
 
         [HttpGet("total-income")]
         public async Task<IActionResult> GetTotalIncome([FromQuery] DateTime? from, [FromQuery] DateTime? to)
@@ -49,12 +36,6 @@ namespace StoneCarveManagerWebAPI.Controllers
         public async Task<IActionResult> GetIncomePerDay([FromQuery] DateTime? from, [FromQuery] DateTime? to)
         {
             return Ok(await _analyticsService.GetIncomePerDayAsync(from, to));
-        }
-
-        [HttpGet("daily-average-income")]
-        public async Task<IActionResult> GetDailyAverageIncome([FromQuery] DateTime? from, [FromQuery] DateTime? to)
-        {
-            return Ok(await _analyticsService.GetDailyAverageIncomeAsync(from, to));
         }
 
         // ================================
@@ -85,19 +66,6 @@ namespace StoneCarveManagerWebAPI.Controllers
         {
             var data = await _analyticsService.GetRevenueByPaymentMethodAsync(
                 startDate, endDate, cancellationToken
-            );
-            return Ok(data);
-        }
-
-        [HttpGet("revenue-trend")]
-        public async Task<ActionResult<List<RevenueTrendResponse>>> GetRevenueTrend(
-            [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate,
-            [FromQuery] string groupBy = "day", // day, week, month
-            CancellationToken cancellationToken = default)
-        {
-            var data = await _analyticsService.GetRevenueTrendAsync(
-                startDate, endDate, groupBy, cancellationToken
             );
             return Ok(data);
         }

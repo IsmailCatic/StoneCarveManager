@@ -33,9 +33,15 @@ namespace StoneCarveManager.Model.Requests
         public DateTime? DeliveryDate { get; set; }
 
         public List<OrderItemUpdateRequest>? Items { get; set; }
+
+        /// <summary>
+        /// Admin-set price quote for custom/service orders that have no fixed price.
+        /// When provided, overrides TotalAmount and syncs the order item's UnitPrice.
+        /// </summary>
+        public decimal? QuotedPrice { get; set; }
     }
 
-     public enum OrderStatus
+    public enum OrderStatus
     {
         Pending,
         Processing,

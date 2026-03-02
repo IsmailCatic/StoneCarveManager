@@ -18,9 +18,9 @@ namespace StoneCarveManager.Services.Database.Entities
 
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public decimal TotalAmount { get; set; }
-        // : Customer notes (description of idea, special requests)
+        // Customer notes (description of idea, special requests)
         public string? CustomerNotes { get; set; }
-        // Internal notes for the employees
+        // Message from admin/employee to the customer — visible to the customer in the mobile app
         public string? AdminNotes { get; set; }
         // Client Sketch
         public string? AttachmentUrl { get; set; }

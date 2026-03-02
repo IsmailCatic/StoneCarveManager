@@ -6,6 +6,7 @@ class CartProvider with ChangeNotifier {
   final List<CartItem> _items = [];
   ShippingAddress? _shippingAddress;
   bool _paymentReady = false;
+  String? _customerNotes;
 
   List<CartItem> get items => _items;
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
@@ -16,6 +17,7 @@ class CartProvider with ChangeNotifier {
   ShippingAddress? get shippingAddress => _shippingAddress;
   bool get hasShippingAddress => _shippingAddress != null;
   bool get paymentReady => _paymentReady;
+  String? get customerNotes => _customerNotes;
 
   void addItem(Product product) {
     final existingIndex = _items.indexWhere(
@@ -59,10 +61,16 @@ class CartProvider with ChangeNotifier {
     }
   }
 
+  void setCustomerNotes(String? notes) {
+    _customerNotes = notes?.trim().isEmpty == true ? null : notes?.trim();
+    notifyListeners();
+  }
+
   void clear() {
     _items.clear();
     _shippingAddress = null;
     _paymentReady = false;
+    _customerNotes = null;
     notifyListeners();
   }
 

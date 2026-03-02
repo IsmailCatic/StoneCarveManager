@@ -19,6 +19,18 @@ class OrderProvider extends BaseProvider<Order> {
     return await insert(order.toJson());
   }
 
+  /// Delete an order by ID (Admin only)
+  Future<void> deleteOrder(int id) async {
+    final url = "http://localhost:5021/api/Order/$id";
+    final response = await http.delete(
+      Uri.parse(url),
+      headers: createHeaders(),
+    );
+    if (response.statusCode != 204) {
+      throw HttpErrorHandler.createException(response, 'delete order');
+    }
+  }
+
   Future<Order> updateOrder(int id, Order order) async {
     return await update(id, order.toJson());
   }
@@ -135,6 +147,23 @@ class OrderProvider extends BaseProvider<Order> {
         response,
         'mark order as completed',
       );
+    }
+  }
+
+  /// Set (or update) a price quote for a custom/service order.
+  /// Uses the standard PUT /api/Order/{id} endpoint with the quotedPrice field.
+  Future<Order> setQuote(int orderId, double price) async {
+    final url = "http://localhost:5021/api/Order/$orderId";
+    final body = jsonEncode({'quotedPrice': price});
+    final response = await http.put(
+      Uri.parse(url),
+      headers: createHeaders(),
+      body: body,
+    );
+    if (isValidResponse(response)) {
+      return fromJson(jsonDecode(response.body));
+    } else {
+      throw HttpErrorHandler.createException(response, 'set order quote');
     }
   }
 

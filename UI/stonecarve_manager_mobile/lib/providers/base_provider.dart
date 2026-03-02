@@ -43,7 +43,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
       var response = await http
           .get(uri, headers: headers)
           .timeout(
-            const Duration(seconds: 10),
+            const Duration(seconds: 30),
             onTimeout: () => throw Exception('Request timeout'),
           );
 

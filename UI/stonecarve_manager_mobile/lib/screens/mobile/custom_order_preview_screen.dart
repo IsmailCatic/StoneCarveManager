@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/models/custom_order_request.dart';
 import 'package:stonecarve_manager_mobile/providers/order_provider.dart';
-import 'package:stonecarve_manager_mobile/screens/mobile/order_payment_screen.dart';
 
 class CustomOrderPreviewScreen extends StatefulWidget {
   final CustomOrderRequest request;
@@ -59,14 +58,9 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
 
       if (!mounted) return;
 
-      // Navigate to payment screen — order is created, now collect payment
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              OrderPaymentScreen(order: order, orderTypeLabel: 'Custom Order'),
-        ),
-      );
+      // Custom orders have no fixed price — the admin reviews and quotes later.
+      // Navigate to a confirmation screen rather than the payment screen.
+      _showOrderConfirmation(order.orderNumber);
     } catch (e) {
       print('[CustomOrderPreview] Error: $e');
 
@@ -84,6 +78,73 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
         ),
       );
     }
+  }
+
+  void _showOrderConfirmation(String orderRef) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 12),
+            Expanded(child: Text('Order Submitted!')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your custom order #$orderRef has been received.',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Our team will review your request and provide a '
+                      'price quote within 24–48 hours. You can pay from '
+                      'the My Orders page once a quote is ready.',
+                      style: TextStyle(fontSize: 13, color: Colors.blue[900]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/orders',
+                (route) => route.settings.name == '/home',
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text(
+              'View My Orders',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

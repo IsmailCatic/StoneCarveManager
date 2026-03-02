@@ -232,13 +232,13 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your review';
+                    return 'Write your review (5 to 1000 characters)';
                   }
                   if (value.trim().length < 5) {
-                    return 'Review must be at least 5 characters';
+                    return 'Review is too short — minimum 5 characters required';
                   }
                   if (value.trim().length > 1000) {
-                    return 'Review must be less than 1000 characters';
+                    return 'Review must not exceed 1000 characters';
                   }
                   return null;
                 },

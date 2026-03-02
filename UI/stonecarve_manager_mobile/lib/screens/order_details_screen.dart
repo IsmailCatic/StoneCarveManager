@@ -18,7 +18,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   late Order order;
   late int? selectedStatus;
   late TextEditingController customerNotesController;
-  late TextEditingController adminNotesController;
   late List<ProgressImage> progressImages;
   bool isSaving = false;
   File? _imageFile;
@@ -30,14 +29,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     order = widget.order;
     selectedStatus = order.status;
     customerNotesController = TextEditingController(text: order.customerNotes);
-    adminNotesController = TextEditingController(text: order.adminNotes);
     progressImages = List<ProgressImage>.from(order.progressImages);
   }
 
   @override
   void dispose() {
     customerNotesController.dispose();
-    adminNotesController.dispose();
     super.dispose();
   }
 
@@ -91,7 +88,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           status: selectedStatus ?? order.status,
           totalAmount: order.totalAmount,
           customerNotes: customerNotesController.text,
-          adminNotes: adminNotesController.text,
+          adminNotes: order.adminNotes,
           attachmentUrl: order.attachmentUrl,
           estimatedCompletionDate: order.estimatedCompletionDate,
           completedAt: order.completedAt,
@@ -163,13 +160,47 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               maxLines: 2,
             ),
             const SizedBox(height: 8),
-            TextFormField(
-              controller: adminNotesController,
-              decoration: const InputDecoration(
-                labelText: 'Bilješke administratora',
+            // Message from admin — read-only, displayed to the customer
+            if (order.adminNotes != null && order.adminNotes!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.support_agent,
+                          size: 16,
+                          color: Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Message from Our Team',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      order.adminNotes!,
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    ),
+                  ],
+                ),
               ),
-              maxLines: 2,
-            ),
+            ],
             const SizedBox(height: 16),
             Text(
               'Slike napretka',

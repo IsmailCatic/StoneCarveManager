@@ -1,9 +1,9 @@
-using StoneCarveManager.Model.Requests;
-using StoneCarveManager.Model.Responses;
-using StoneCarveManager.Model.SearchObjects;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using StoneCarveManager.Model.Requests;
+using StoneCarveManager.Model.Responses;
+using StoneCarveManager.Model.SearchObjects;
 
 namespace StoneCarveManager.Services.IServices
 {
@@ -14,12 +14,13 @@ namespace StoneCarveManager.Services.IServices
         Task<PaymentResponse> GetPaymentByOrderIdAsync(int orderId, CancellationToken cancellationToken = default);
         Task<PaymentResponse> GetPaymentByIdAsync(int paymentId, CancellationToken cancellationToken = default);
         Task<bool> HandleStripeWebhookAsync(string json, string signature, CancellationToken cancellationToken = default);
-        
+
         // New methods for admin
         Task<PagedResult<PaymentResponse>> GetPaymentsAsync(PaymentSearchObject search, CancellationToken cancellationToken = default);
         Task<PagedResult<PaymentResponse>> GetMyPaymentsAsync(int userId, PaymentSearchObject search, CancellationToken cancellationToken = default);
         Task<PaymentResponse> IssueRefundAsync(RefundRequest request, CancellationToken cancellationToken = default);
         Task<PaymentResponse> RetryPaymentAsync(int orderId, CancellationToken cancellationToken = default);
         Task<PaymentStatisticsResponse> GetPaymentStatisticsAsync(DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default);
+        Task DeletePaymentAsync(int paymentId, CancellationToken cancellationToken = default);
     }
 }

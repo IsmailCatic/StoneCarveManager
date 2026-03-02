@@ -47,7 +47,9 @@ namespace StoneCarveManagerWebAPI.Extensions
                 .IgnoreNullValues(true);
 
             TypeAdapterConfig<OrderItem, OrderItemResponse>.NewConfig()
-                 .Map(dest => dest.TotalPrice, src => src.TotalPrice);
+                .Map(dest => dest.TotalPrice, src => src.UnitPrice * src.Quantity - src.Discount)
+                .Map(dest => dest.ProductName, src => src.Product != null ? src.Product.Name : null)
+                .Map(dest => dest.ProductState, src => src.Product != null ? src.Product.ProductState : null);
 
             // OrderStatusHistory -> OrderStatusHistoryResponse
             TypeAdapterConfig<OrderStatusHistory, OrderStatusHistoryResponse>
@@ -56,11 +58,6 @@ namespace StoneCarveManagerWebAPI.Extensions
                      src => src.ChangedByUser != null
                          ? src.ChangedByUser.FirstName + " " + src.ChangedByUser.LastName
                          : null);
-
-
-            config.NewConfig<OrderItem, OrderItemResponse>()
-                .Map(dest => dest.ProductName, src => src.Product != null ? src.Product.Name : null)
-                .Map(dest => dest.ProductState, src => src.Product != null ? src.Product.ProductState : null); // ✅ NOVO
 
             // OrderProgressImage -> OrderProgressImageResponse
             //config.NewConfig<OrderProgressImage, OrderProgressImageResponse>()

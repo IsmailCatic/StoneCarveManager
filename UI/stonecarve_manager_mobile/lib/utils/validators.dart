@@ -12,7 +12,7 @@ class Validators {
     );
 
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email address';
+      return 'Enter a valid email address (e.g. john@example.com)';
     }
 
     return null;
@@ -25,7 +25,7 @@ class Validators {
     }
 
     if (value.length < minLength) {
-      return 'Password must be at least $minLength characters';
+      return 'Password must be at least $minLength characters long';
     }
 
     return null;
@@ -42,15 +42,15 @@ class Validators {
     }
 
     if (!value.contains(RegExp(r'[A-Z]'))) {
-      return 'Password must contain at least one uppercase letter';
+      return 'Password must contain at least one uppercase letter (A–Z)';
     }
 
     if (!value.contains(RegExp(r'[a-z]'))) {
-      return 'Password must contain at least one lowercase letter';
+      return 'Password must contain at least one lowercase letter (a–z)';
     }
 
     if (!value.contains(RegExp(r'[0-9]'))) {
-      return 'Password must contain at least one digit';
+      return 'Password must contain at least one digit (0–9)';
     }
 
     return null;
@@ -59,7 +59,9 @@ class Validators {
   // Required text field validation
   static String? validateRequired(String? value, {String? fieldName}) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null ? '$fieldName is required' : 'This field is required';
+      return fieldName != null
+          ? '$fieldName is required'
+          : 'This field is required';
     }
     return null;
   }
@@ -71,7 +73,9 @@ class Validators {
     String? fieldName,
   }) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null ? '$fieldName is required' : 'This field is required';
+      return fieldName != null
+          ? '$fieldName is required'
+          : 'This field is required';
     }
 
     if (value.trim().length < minLength) {
@@ -106,7 +110,9 @@ class Validators {
     String? fieldName,
   }) {
     if (value == null || value.trim().isEmpty) {
-      return fieldName != null ? '$fieldName is required' : 'This field is required';
+      return fieldName != null
+          ? '$fieldName is required'
+          : 'This field is required';
     }
 
     final length = value.trim().length;
@@ -131,7 +137,7 @@ class Validators {
 
     // Check if it contains only digits and optional + at start
     if (!RegExp(r'^\+?[0-9]{6,15}$').hasMatch(cleaned)) {
-      return 'Please enter a valid phone number';
+      return 'Enter a valid phone number (e.g. +387 61 123 456)';
     }
 
     return null;
@@ -145,18 +151,22 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
+          ? (fieldName != null
+                ? '$fieldName is required'
+                : 'This field is required')
           : null;
     }
 
     final number = double.tryParse(value.trim());
 
     if (number == null) {
-      return 'Please enter a valid number';
+      return 'Enter a valid number (e.g. 10.50)';
     }
 
     if (number <= 0) {
-      return fieldName != null ? '$fieldName must be greater than 0' : 'Must be greater than 0';
+      return fieldName != null
+          ? '$fieldName must be greater than 0'
+          : 'Must be greater than 0';
     }
 
     return null;
@@ -170,18 +180,22 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
+          ? (fieldName != null
+                ? '$fieldName is required'
+                : 'This field is required')
           : null;
     }
 
     final number = double.tryParse(value.trim());
 
     if (number == null) {
-      return 'Please enter a valid number';
+      return 'Enter a valid number (0 or greater, e.g. 5.00)';
     }
 
     if (number < 0) {
-      return fieldName != null ? '$fieldName cannot be negative' : 'Cannot be negative';
+      return fieldName != null
+          ? '$fieldName cannot be negative'
+          : 'Cannot be negative';
     }
 
     return null;
@@ -195,12 +209,14 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
+          ? (fieldName != null
+                ? '$fieldName is required'
+                : 'This field is required')
           : null;
     }
 
     if (int.tryParse(value.trim()) == null) {
-      return 'Please enter a valid whole number';
+      return 'Enter a valid whole number without decimals (e.g. 5)';
     }
 
     return null;
@@ -214,18 +230,22 @@ class Validators {
   }) {
     if (value == null || value.trim().isEmpty) {
       return required
-          ? (fieldName != null ? '$fieldName is required' : 'This field is required')
+          ? (fieldName != null
+                ? '$fieldName is required'
+                : 'This field is required')
           : null;
     }
 
     final number = int.tryParse(value.trim());
 
     if (number == null) {
-      return 'Please enter a valid whole number';
+      return 'Enter a valid whole number without decimals (e.g. 5)';
     }
 
     if (number <= 0) {
-      return fieldName != null ? '$fieldName must be greater than 0' : 'Must be greater than 0';
+      return fieldName != null
+          ? '$fieldName must be greater than 0'
+          : 'Must be greater than 0';
     }
 
     return null;
@@ -240,7 +260,7 @@ class Validators {
     final year = int.tryParse(value.trim());
 
     if (year == null) {
-      return 'Please enter a valid year';
+      return 'Enter a valid 4-digit year (e.g. 1990)';
     }
 
     final currentYear = DateTime.now().year;
@@ -278,7 +298,7 @@ class Validators {
     final price = double.tryParse(value.trim());
 
     if (price == null) {
-      return 'Please enter a valid price';
+      return 'Enter a valid price (e.g. 9.99)';
     }
 
     if (price < 0) {
@@ -334,7 +354,9 @@ class Validators {
   // Dropdown validation
   static String? validateDropdown<T>(T? value, {String? fieldName}) {
     if (value == null) {
-      return fieldName != null ? 'Please select $fieldName' : 'Please select an option';
+      return fieldName != null
+          ? 'Please select $fieldName'
+          : 'Please select an option';
     }
     return null;
   }

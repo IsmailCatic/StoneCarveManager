@@ -12,6 +12,7 @@ import 'package:stonecarve_manager_mobile/providers/stone_provider.dart';
 import 'package:stonecarve_manager_mobile/screens/mobile/portfolio_detail_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class PortfolioMobileScreen extends StatefulWidget {
   const PortfolioMobileScreen({super.key});
@@ -24,6 +25,8 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
     with AutomaticKeepAliveClientMixin {
   final CategoryProvider _categoryProvider = CategoryProvider();
   final MaterialProvider _materialProvider = MaterialProvider();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
 
   List<Product> _projects = [];
   List<Category> _categories = [];
@@ -34,7 +37,10 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
   // Filter state
   String? _selectedCategoryName;
   int? _selectedMaterialId;
-  String _selectedSort = 'date_desc';
+  String _selectedSort = 'newest';
+  String _searchQuery = '';
+  double? _minPrice;
+  double? _maxPrice;
 
   @override
   bool get wantKeepAlive => true; // Preserve state when switching tabs
@@ -42,13 +48,25 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
   @override
   void initState() {
     super.initState();
-    // Fetch portfolio and filter data on initialization
     _fetchPortfolio();
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      setState(() => _searchQuery = value.trim());
+      _fetchPortfolio(
+        categoryName: _selectedCategoryName,
+        materialId: _selectedMaterialId,
+      );
+    });
   }
 
   Future<void> _fetchPortfolio({String? categoryName, int? materialId}) async {
@@ -70,6 +88,18 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
       }
       if (materialId != null) {
         queryParams['materialId'] = materialId.toString();
+      }
+      if (_searchQuery.isNotEmpty) {
+        queryParams['searchQuery'] = _searchQuery;
+      }
+      if (_selectedSort.isNotEmpty) {
+        queryParams['sortBy'] = _selectedSort;
+      }
+      if (_minPrice != null) {
+        queryParams['minPrice'] = _minPrice!.toStringAsFixed(2);
+      }
+      if (_maxPrice != null) {
+        queryParams['maxPrice'] = _maxPrice!.toStringAsFixed(2);
       }
 
       final uri = Uri.parse(
@@ -113,7 +143,6 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
         if (!mounted) return;
         setState(() {
           _projects = projects;
-          _applySorting();
           _isLoading = false;
         });
       } else {
@@ -150,25 +179,107 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
     }
   }
 
-  void _applySorting() {
-    switch (_selectedSort) {
-      case 'date_desc':
-        _projects.sort(
-          (a, b) => (b.completionYear ?? 0).compareTo(a.completionYear ?? 0),
-        );
-        break;
-      case 'date_asc':
-        _projects.sort(
-          (a, b) => (a.completionYear ?? 0).compareTo(b.completionYear ?? 0),
-        );
-        break;
-      case 'price_asc':
-        _projects.sort((a, b) => (a.price ?? 0).compareTo(b.price ?? 0));
-        break;
-      case 'price_desc':
-        _projects.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
-        break;
-    }
+  void _showPriceFilterSheet() {
+    final minController = TextEditingController(
+      text: _minPrice != null ? _minPrice!.toStringAsFixed(0) : '',
+    );
+    final maxController = TextEditingController(
+      text: _maxPrice != null ? _maxPrice!.toStringAsFixed(0) : '',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Price Filter',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: minController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Min Price (\$)',
+                      border: OutlineInputBorder(),
+                      prefixText: '\$',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: maxController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Max Price (\$)',
+                      border: OutlineInputBorder(),
+                      prefixText: '\$',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _minPrice = null;
+                        _maxPrice = null;
+                      });
+                      Navigator.pop(ctx);
+                      _fetchPortfolio(
+                        categoryName: _selectedCategoryName,
+                        materialId: _selectedMaterialId,
+                      );
+                    },
+                    child: const Text('Clear'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final min = double.tryParse(minController.text.trim());
+                      final max = double.tryParse(maxController.text.trim());
+                      setState(() {
+                        _minPrice = min;
+                        _maxPrice = max;
+                      });
+                      Navigator.pop(ctx);
+                      _fetchPortfolio(
+                        categoryName: _selectedCategoryName,
+                        materialId: _selectedMaterialId,
+                      );
+                    },
+                    child: const Text('Apply'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
@@ -216,15 +327,154 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list, color: Colors.black87),
-            onPressed: () {},
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.filter_list, color: Colors.black87),
+                onPressed: _showPriceFilterSheet,
+                tooltip: 'Price Filter',
+              ),
+              if (_minPrice != null || _maxPrice != null)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Search bar
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Search portfolio...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                          _fetchPortfolio(
+                            categoryName: _selectedCategoryName,
+                            materialId: _selectedMaterialId,
+                          );
+                        },
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.blue),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+          ),
+
+          // Sort row
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                const Text(
+                  'Sort:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                DropdownButton<String>(
+                  value: _selectedSort,
+                  underline: const SizedBox(),
+                  isDense: true,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'newest', child: Text('Newest')),
+                    DropdownMenuItem(value: 'oldest', child: Text('Oldest')),
+                    DropdownMenuItem(
+                      value: 'price_asc',
+                      child: Text('Price: Low to High'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'price_desc',
+                      child: Text('Price: High to Low'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _selectedSort = value);
+                    _fetchPortfolio(
+                      categoryName: _selectedCategoryName,
+                      materialId: _selectedMaterialId,
+                    );
+                  },
+                ),
+                if (_minPrice != null || _maxPrice != null) ...[
+                  const Spacer(),
+                  Chip(
+                    label: Text(
+                      _minPrice != null && _maxPrice != null
+                          ? '\$${_minPrice!.toStringAsFixed(0)}–\$${_maxPrice!.toStringAsFixed(0)}'
+                          : _minPrice != null
+                          ? '≥\$${_minPrice!.toStringAsFixed(0)}'
+                          : '≤\$${_maxPrice!.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 14),
+                    onDeleted: () {
+                      setState(() {
+                        _minPrice = null;
+                        _maxPrice = null;
+                      });
+                      _fetchPortfolio(
+                        categoryName: _selectedCategoryName,
+                        materialId: _selectedMaterialId,
+                      );
+                    },
+                    backgroundColor: Colors.blue.shade50,
+                    side: BorderSide(color: Colors.blue.shade200),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
           // Category Filter
           Container(
             color: Colors.white,

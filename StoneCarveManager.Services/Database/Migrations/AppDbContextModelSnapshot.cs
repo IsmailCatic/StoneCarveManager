@@ -133,7 +133,7 @@ namespace StoneCarveManager.Services.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BlogCategories");
+                    b.ToTable("BlogCategories", (string)null);
                 });
 
             modelBuilder.Entity("StoneCarveManager.Services.Database.Entities.BlogImage", b =>
@@ -164,7 +164,7 @@ namespace StoneCarveManager.Services.Database.Migrations
 
                     b.HasIndex("BlogPostId");
 
-                    b.ToTable("BlogImages");
+                    b.ToTable("BlogImages", (string)null);
                 });
 
             modelBuilder.Entity("StoneCarveManager.Services.Database.Entities.BlogPost", b =>
@@ -799,7 +799,7 @@ namespace StoneCarveManager.Services.Database.Migrations
 
                     b.HasIndex("UploadedByUserId");
 
-                    b.ToTable("OrderProgressImages");
+                    b.ToTable("OrderProgressImages", (string)null);
                 });
 
             modelBuilder.Entity("StoneCarveManager.Services.Database.Entities.OrderStatusHistory", b =>

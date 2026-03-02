@@ -487,10 +487,10 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'First name is required';
+                return 'Enter your first name (letters only, at least 2 characters)';
               }
               if (value.trim().length < 2) {
-                return 'First name must be at least 2 characters';
+                return 'First name must be at least 2 characters long';
               }
               return null;
             },
@@ -505,10 +505,10 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Last name is required';
+                return 'Enter your last name (letters only, at least 2 characters)';
               }
               if (value.trim().length < 2) {
-                return 'Last name must be at least 2 characters';
+                return 'Last name must be at least 2 characters long';
               }
               return null;
             },

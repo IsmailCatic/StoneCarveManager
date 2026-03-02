@@ -32,6 +32,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
     try {
       final order = await OrderProvider.getMyOrderById(widget.orderId);
+
       setState(() {
         _order = order;
         _isLoading = false;
@@ -133,6 +134,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               _buildStatusCard(statusInfo),
               const SizedBox(height: 16),
 
+              // Message from Admin (visible to customer when admin has written a message)
+              if (_order!.adminNotes != null &&
+                  _order!.adminNotes!.isNotEmpty) ...[
+                _buildAdminMessageCard(),
+                const SizedBox(height: 16),
+              ],
+
               // Order Info Card
               _buildOrderInfoCard(),
               const SizedBox(height: 20),
@@ -162,6 +170,30 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 ),
                 const SizedBox(height: 12),
                 _buildProgressImages(),
+                const SizedBox(height: 20),
+              ],
+
+              // Customer Reference Images (custom orders & service requests)
+              if ((_order!.orderType == 'custom_order' ||
+                      _order!.orderType == 'service_request') &&
+                  _order!.orderItems.any(
+                    (item) => item.referenceImageUrls.isNotEmpty,
+                  )) ...[
+                const Text(
+                  'Your Reference Images',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Sketches you submitted with this order',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 12),
+                _buildReferenceImages(),
                 const SizedBox(height: 20),
               ],
 
@@ -409,6 +441,81 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
 
     return hasNoProductId || hasAttachment || hasCustomProductName;
+  }
+
+  Widget _buildAdminMessageCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade700, Colors.blue.shade500],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.support_agent,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Message from Our Team',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                _order!.adminNotes!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  height: 1.55,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildStatusCard(Map<String, dynamic> statusInfo) {
@@ -757,6 +864,74 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildReferenceImages() {
+    final allUrls = _order!.orderItems
+        .expand((item) => item.referenceImageUrls)
+        .toList();
+
+    return SizedBox(
+      height: 130,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: allUrls.length,
+        itemBuilder: (context, index) {
+          final url = allUrls[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppBar(
+                        title: const Text('Reference Image'),
+                        automaticallyImplyLeading: false,
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        actions: [
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.broken_image, size: 80),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  url,
+                  width: 120,
+                  height: 130,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 120,
+                    height: 130,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

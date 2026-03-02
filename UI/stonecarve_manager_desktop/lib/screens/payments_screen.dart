@@ -4,6 +4,7 @@ import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/payment.dart';
 import 'package:stonecarve_manager_flutter/providers/payment_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/order_provider.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/screens/order_details_screen.dart';
 
 class PaymentsScreen extends StatefulWidget {
@@ -21,7 +22,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   bool _isLoading = true;
 
   String? _selectedStatus;
-  String? _selectedMethod;
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -35,7 +35,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   void initState() {
     super.initState();
     _loadPayments();
-    _loadStatistics();
   }
 
   Future<void> _loadPayments() async {
@@ -44,7 +43,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
       final search = PaymentSearchObject(
         status: _selectedStatus,
-        method: _selectedMethod,
         startDate: _startDate,
         endDate: _endDate != null
             ? DateTime(
@@ -59,14 +57,24 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       );
 
       print(
-        '[PaymentsScreen] Loading payments with filters: status=$_selectedStatus, method=$_selectedMethod, dates=$_startDate to $_endDate',
+        '[PaymentsScreen] Loading payments with filters: status=$_selectedStatus, dates=$_startDate to $_endDate',
       );
 
       final result = await _paymentProvider.getPayments(search);
+      final items = result.items ?? [];
 
       setState(() {
-        _payments = result.items ?? [];
+        _payments = items;
         _isLoading = false;
+        // Compute stats locally — no extra API call needed
+        _totalRevenue = items
+            .where((p) => p.status == 'succeeded')
+            .fold(0.0, (sum, p) => sum + p.amount);
+        _successfulPayments = items
+            .where((p) => p.status == 'succeeded')
+            .length;
+        _failedPayments = items.where((p) => p.status == 'failed').length;
+        _pendingPayments = items.where((p) => p.status == 'pending').length;
       });
     } catch (e) {
       setState(() => _isLoading = false);
@@ -75,24 +83,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Error loading payments: $e')));
       }
-    }
-  }
-
-  Future<void> _loadStatistics() async {
-    try {
-      final stats = await _paymentProvider.getPaymentStats(
-        startDate: _startDate,
-        endDate: _endDate,
-      );
-
-      setState(() {
-        _totalRevenue = stats.totalRevenue;
-        _successfulPayments = stats.successfulCount;
-        _failedPayments = stats.failedCount;
-        _pendingPayments = stats.pendingCount;
-      });
-    } catch (e) {
-      print('Error loading statistics: $e');
     }
   }
 
@@ -170,7 +160,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             ),
           );
           _loadPayments();
-          _loadStatistics();
         }
       } catch (e) {
         if (mounted) {
@@ -185,11 +174,63 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     reasonController.dispose();
   }
 
+  Future<void> _deletePayment(Payment payment) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Payment'),
+        content: Text(
+          'Are you sure you want to permanently delete the payment for Order #${payment.orderNumber}?\n\nAmount: \$${payment.amount.toStringAsFixed(2)}\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _paymentProvider.deletePayment(payment.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Payment for Order #${payment.orderNumber} deleted successfully',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadPayments();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete payment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showPaymentDetails(Payment payment) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Payment #${payment.id}'),
+        title: Text('Payment Details — Order #${payment.orderNumber}'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -222,11 +263,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                   'Completed',
                   _formatDateTime(payment.completedAt!),
                 ),
-              const Divider(),
-              if (payment.transactionId != null)
-                _buildDetailRow('Transaction ID', payment.transactionId!),
-              if (payment.stripePaymentIntentId != null)
-                _buildDetailRow('Stripe ID', payment.stripePaymentIntentId!),
               if (payment.failureReason != null) ...[
                 const Divider(),
                 _buildDetailRow('Failure Reason', payment.failureReason!),
@@ -433,38 +469,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Method filter
-                    SizedBox(
-                      width: 160,
-                      child: DropdownButtonFormField<String?>(
-                        value: _selectedMethod,
-                        decoration: const InputDecoration(
-                          labelText: 'Method',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('All'),
-                          ),
-                          ...['stripe', 'cash', 'bank_transfer'].map(
-                            (method) => DropdownMenuItem(
-                              value: method,
-                              child: Text(_getMethodLabel(method)),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _selectedMethod = value);
-                          _loadPayments();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     // Date range
                     ElevatedButton.icon(
                       onPressed: () async {
@@ -479,7 +483,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                             _endDate = picked.end;
                           });
                           _loadPayments();
-                          _loadStatistics();
                         }
                       },
                       icon: const Icon(Icons.date_range, size: 18),
@@ -499,7 +502,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                             _endDate = null;
                           });
                           _loadPayments();
-                          _loadStatistics();
                         },
                         tooltip: 'Clear date filter',
                       ),
@@ -509,7 +511,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       icon: const Icon(Icons.refresh),
                       onPressed: () {
                         _loadPayments();
-                        _loadStatistics();
                       },
                       tooltip: 'Refresh',
                     ),
@@ -629,7 +630,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     Row(
                       children: [
                         Text(
-                          'Payment #${payment.id}',
+                          'Order #${payment.orderNumber}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -743,6 +744,24 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       child: Text(
                         payment.isPartiallyRefunded ? 'Refund More' : 'Refund',
                         style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                  if (AuthProvider.isAdmin) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () => _deletePayment(payment),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(fontSize: 12),
                       ),
                     ),
                   ],

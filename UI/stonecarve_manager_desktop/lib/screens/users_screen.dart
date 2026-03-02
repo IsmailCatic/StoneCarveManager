@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_flutter/layouts/master_screen.dart';
 import 'package:stonecarve_manager_flutter/models/user.dart';
+import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/user_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/user_profile_avatar.dart';
 import '../utils/validators.dart';
@@ -147,6 +148,15 @@ class _UsersScreenState extends State<UsersScreen> {
                   _users.where((u) => u.isBlocked == true).length.toString(),
                   Colors.red,
                 ),
+                const SizedBox(width: 16),
+                _buildStatCard(
+                  'Deactivated',
+                  _users
+                      .where((u) => u.isActive == false && u.isBlocked != true)
+                      .length
+                      .toString(),
+                  Colors.grey,
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -213,6 +223,22 @@ class _UsersScreenState extends State<UsersScreen> {
                                       ? 'Unblock User'
                                       : 'Block User',
                                 ),
+                                if (AuthProvider.isAdmin)
+                                  IconButton(
+                                    icon: Icon(
+                                      user.isActive == true
+                                          ? Icons.person_off_outlined
+                                          : Icons.person_outlined,
+                                      color: user.isActive == true
+                                          ? Colors.orange
+                                          : Colors.teal,
+                                    ),
+                                    onPressed: () =>
+                                        _confirmToggleUserActive(user),
+                                    tooltip: user.isActive == true
+                                        ? 'Soft Delete'
+                                        : 'Restore User',
+                                  ),
                               ],
                             ),
                           ),
@@ -566,6 +592,73 @@ class _UsersScreenState extends State<UsersScreen> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  void _confirmToggleUserActive(User user) {
+    final isDeactivating = user.isActive == true;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(isDeactivating ? 'Soft Delete User' : 'Restore User'),
+          content: Text(
+            isDeactivating
+                ? 'Are you sure you want to soft delete "${user.displayName}"?\n\nThe user will be marked as inactive and will not be able to log in, but their data will be preserved.'
+                : 'Are you sure you want to restore "${user.displayName}"? They will be able to log in and access the application again.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final userRole = user.roles.isNotEmpty
+                      ? user.roles.first
+                      : 'User';
+                  await _userProvider.update(user.id!, {
+                    'isActive': !isDeactivating,
+                    'Role': userRole,
+                  });
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'User ${isDeactivating ? 'soft deleted' : 'restored'} successfully',
+                      ),
+                      backgroundColor: isDeactivating
+                          ? Colors.orange
+                          : Colors.green,
+                    ),
+                  );
+                  _loadUsers();
+                } catch (e) {
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to ${isDeactivating ? "soft delete" : "restore"} user: \$e',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isDeactivating ? Colors.orange : Colors.teal,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(isDeactivating ? 'Soft Delete' : 'Restore'),
+            ),
+          ],
         );
       },
     );

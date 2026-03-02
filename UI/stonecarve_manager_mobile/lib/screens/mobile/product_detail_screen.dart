@@ -110,10 +110,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   void _addToCart() {
     context.read<CartProvider>().addItem(_product);
+
+    // Clear any existing snackbars to prevent stacking/blocking
+    ScaffoldMessenger.of(context).clearSnackBars();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${_product.name} added to cart'),
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -133,7 +137,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             expandedHeight: 300,
             pinned: true,
             backgroundColor: Colors.white,
-            iconTheme: const IconThemeData(color: Colors.black87),
+            iconTheme: const IconThemeData(color: Colors.blue),
             flexibleSpace: FlexibleSpaceBar(
               background: _buildImageCarousel(images, hasImages),
             ),

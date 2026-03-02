@@ -2,12 +2,14 @@
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using RabbitMQ.Client;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Model.Responses.StoneCarveManager.Model.Responses;
@@ -285,7 +287,10 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.Review)
                 .FirstOrDefaultAsync(o => o.Id == entity.Id);
 
-            var response = _mapper.Map<OrderResponse>(entityWithNavs!);
+            if (entityWithNavs == null)
+                throw new InvalidOperationException($"Order with ID {entity.Id} could not be reloaded after insert.");
+
+            var response = _mapper.Map<OrderResponse>(entityWithNavs);
 
             // Populate client and employee names
             response.ClientName = entityWithNavs.User != null
@@ -301,13 +306,26 @@ namespace StoneCarveManager.Services.Services
 
         public override async Task<OrderResponse?> UpdateAsync(int id, OrderUpdateRequest request)
         {
-            // Find entity, map changes from request, SaveChanges, etc.
             var entity = await _context.Orders.FindAsync(id);
             if (entity == null)
                 return null;
 
             // Map primitive properties from request into entity
             request.Adapt(entity);
+
+            // Apply admin price quote (overrides computed TotalAmount for custom/service orders)
+            if (request.QuotedPrice.HasValue)
+            {
+                entity.TotalAmount = request.QuotedPrice.Value;
+
+                var orderItem = await _context.OrderItems.FirstOrDefaultAsync(oi => oi.OrderId == id);
+                if (orderItem != null)
+                {
+                    var qty = orderItem.Quantity > 0 ? orderItem.Quantity : 1;
+                    orderItem.UnitPrice = request.QuotedPrice.Value / qty;
+                    orderItem.Discount = 0m;
+                }
+            }
 
             await _context.SaveChangesAsync();
 
@@ -353,6 +371,7 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.StatusHistory)
                     .ThenInclude(sh => sh.ChangedByUser)
                 .Include(o => o.Review)
+                .AsSplitQuery()
                 .AsQueryable();
 
             // Special handling for ProductState filtering
@@ -377,7 +396,8 @@ namespace StoneCarveManager.Services.Services
             if (!search.RetrieveAll)
             {
                 if (search.Page.HasValue && search.PageSize.HasValue)
-                    query = query.Skip(search.Page.Value * search.PageSize.Value)
+                    query = query.OrderByDescending(o => o.OrderDate)
+                                    .Skip(search.Page.Value * search.PageSize.Value)
                                     .Take(search.PageSize.Value);
             }
 
@@ -413,6 +433,7 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
+                        .ThenInclude(p => p.Images)  // Load reference images for custom/service orders
                 .Include(o => o.ProgressImages)
                     .ThenInclude(pi => pi.UploadedByUser)
                 .Include(o => o.StatusHistory)
@@ -433,6 +454,20 @@ namespace StoneCarveManager.Services.Services
             response.AssignedEmployeeName = order.AssignedEmployee != null
                 ? $"{order.AssignedEmployee.FirstName} {order.AssignedEmployee.LastName}"
                 : null;
+
+            // Populate reference image URLs (for custom orders and service requests)
+            foreach (var item in response.OrderItems)
+            {
+                var entityItem = order.OrderItems.FirstOrDefault(oi => oi.Id == item.Id);
+                if (entityItem?.Product?.Images != null && entityItem.Product.Images.Any()
+                    && (entityItem.Product.ProductState == "custom_order" || entityItem.Product.ProductState == "service_request"))
+                {
+                    item.ReferenceImageUrls = entityItem.Product.Images
+                        .Select(img => img.ImageUrl)
+                        .Where(url => !string.IsNullOrEmpty(url))
+                        .ToList()!;
+                }
+            }
 
             return response;
         }
@@ -645,6 +680,7 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.ProgressImages)
                     .ThenInclude(pi => pi.UploadedByUser)
                 .Include(o => o.Review)
+                .AsSplitQuery()
                 .Where(o => o.OrderDate >= startDate && o.OrderDate <= endDate)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync(cancellationToken);
@@ -678,6 +714,7 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.ProgressImages)
                     .ThenInclude(pi => pi.UploadedByUser)
                 .Include(o => o.Review)
+                .AsSplitQuery()
                 .Where(o => o.OrderDate.Year == year)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync(cancellationToken);
@@ -734,25 +771,22 @@ namespace StoneCarveManager.Services.Services
         {
             var order = await _context.Orders
                 .Include(o => o.StatusHistory)
+                .Include(o => o.User)
                 .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
 
             if (order == null)
                 return null;
 
-            // Get current user (admin/employee who is changing status)
             var currentUserId = _currentUserService.GetUserId();
             var oldStatus = order.Status;
 
-            // Don't create history if status hasn't changed
             if ((int)oldStatus == (int)newStatus)
             {
                 return await GetByIdAsync(orderId);
             }
 
-            // Update order status (cast to Database.Entities.OrderStatus)
             order.Status = (Database.Entities.OrderStatus)(int)newStatus;
 
-            // Create status history record
             var statusHistory = new OrderStatusHistory
             {
                 OrderId = orderId,
@@ -765,7 +799,6 @@ namespace StoneCarveManager.Services.Services
 
             _context.OrderStatusHistories.Add(statusHistory);
 
-            // If delivered, set completion date
             if (newStatus == Model.Requests.OrderStatus.Delivered && !order.CompletedAt.HasValue)
             {
                 order.CompletedAt = DateTime.UtcNow;
@@ -773,7 +806,21 @@ namespace StoneCarveManager.Services.Services
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Return updated order with all navigations including new status history
+            // Notify customer via email
+            if (order.User != null && !string.IsNullOrEmpty(order.User.Email))
+            {
+                _ = SendOrderStatusChangedToRabbitMQ(new
+                {
+                    ClientName = $"{order.User.FirstName} {order.User.LastName}",
+                    ClientEmail = order.User.Email,
+                    OrderNumber = order.OrderNumber,
+                    OldStatus = oldStatus.ToString(),
+                    NewStatus = newStatus.ToString(),
+                    Comment = comment,
+                    ChangedAt = DateTime.UtcNow
+                });
+            }
+
             return await GetByIdAsync(orderId);
         }
 
@@ -906,6 +953,7 @@ namespace StoneCarveManager.Services.Services
                 .Include(o => o.StatusHistory)
                     .ThenInclude(sh => sh.ChangedByUser)
                 .Include(o => o.Review)
+                .AsSplitQuery()
                 .Where(o => o.AssignedEmployeeId == currentUserId);
 
             // Apply status filter if provided
@@ -946,6 +994,42 @@ namespace StoneCarveManager.Services.Services
                 Items = items,
                 TotalCount = totalCount
             };
+        }
+
+        private async Task SendOrderStatusChangedToRabbitMQ(object message)
+        {
+            try
+            {
+                var factory = new ConnectionFactory()
+                {
+                    HostName = "localhost",
+                    Port = 5672,
+                    UserName = "guest",
+                    Password = "guest"
+                };
+
+                await using var connection = await factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+
+                await channel.QueueDeclareAsync(queue: "order-status-changed",
+                                     durable: false,
+                                     exclusive: false,
+                                     autoDelete: false,
+                                     arguments: null);
+
+                var json = System.Text.Json.JsonSerializer.Serialize(message);
+                var body = Encoding.UTF8.GetBytes(json);
+
+                await channel.BasicPublishAsync(exchange: "",
+                                     routingKey: "order-status-changed",
+                                     body: body);
+
+                Console.WriteLine($"✅ Sent order status changed message to RabbitMQ: {json}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Failed to send order status changed to RabbitMQ: {ex.Message}");
+            }
         }
     }
 }

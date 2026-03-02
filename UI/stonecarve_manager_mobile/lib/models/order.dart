@@ -157,6 +157,7 @@ class OrderItem {
   final double unitPrice;
   final double totalPrice;
   final String? specifications;
+  final List<String> referenceImageUrls;
 
   OrderItem({
     required this.id,
@@ -168,6 +169,7 @@ class OrderItem {
     required this.unitPrice,
     required this.totalPrice,
     this.specifications,
+    this.referenceImageUrls = const [],
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
@@ -184,6 +186,11 @@ class OrderItem {
         ? (json['totalPrice'] as num).toDouble()
         : 0.0,
     specifications: json['specifications'],
+    referenceImageUrls:
+        (json['referenceImageUrls'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
   );
 
   Map<String, dynamic> toJson() => {
@@ -196,6 +203,7 @@ class OrderItem {
     'unitPrice': unitPrice,
     'totalPrice': totalPrice,
     'specifications': specifications,
+    'referenceImageUrls': referenceImageUrls,
   };
 }
 
@@ -205,11 +213,11 @@ class Review {
   final String comment;
   final DateTime createdAt;
   final DateTime? updatedAt;
-  final int userId;
+  final int? userId;
   final String? userName;
-  final int productId;
+  final int? productId;
   final String? productName;
-  final int orderId;
+  final int? orderId;
   final bool isApproved;
 
   Review({
@@ -218,11 +226,11 @@ class Review {
     required this.comment,
     required this.createdAt,
     this.updatedAt,
-    required this.userId,
+    this.userId,
     this.userName,
-    required this.productId,
+    this.productId,
     this.productName,
-    required this.orderId,
+    this.orderId,
     required this.isApproved,
   });
 

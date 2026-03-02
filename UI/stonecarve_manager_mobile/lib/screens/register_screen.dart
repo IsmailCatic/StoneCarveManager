@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
+  DateTime? _selectedDateOfBirth;
   bool _isLoading = false;
 
   @override
@@ -30,11 +31,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _selectDateOfBirth() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      helpText: 'Select Date of Birth',
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDateOfBirth = picked;
+        _dateOfBirthController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      final date = DateFormat('yyyy-MM-dd').parse(_dateOfBirthController.text);
+      final date =
+          _selectedDateOfBirth ??
+          DateFormat('yyyy-MM-dd').parse(_dateOfBirthController.text);
       final req = RegisterRequest(
         firstName: _firstNameController.text,
         lastName: _lastNameController.text,
@@ -51,6 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailController.clear();
         _passwordController.clear();
         _dateOfBirthController.clear();
+        setState(() => _selectedDateOfBirth = null);
         _formKey.currentState?.reset();
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -96,41 +117,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               TextFormField(
                 controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                decoration: const InputDecoration(
+                  labelText: 'First Name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (v) => v == null || v.isEmpty
+                    ? 'Enter your first name (letters only)'
+                    : null,
               ),
               TextFormField(
                 controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Last Name',
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (v) => v == null || v.isEmpty
+                    ? 'Enter your last name (letters only)'
+                    : null,
               ),
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: Validators.validateEmail,
               ),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
                 obscureText: true,
                 validator: Validators.validatePassword,
               ),
-              TextFormField(
-                controller: _dateOfBirthController,
-                decoration: const InputDecoration(
-                  labelText: 'Date of Birth (yyyy-MM-dd)',
+              GestureDetector(
+                onTap: _selectDateOfBirth,
+                child: AbsorbPointer(
+                  child: TextFormField(
+                    controller: _dateOfBirthController,
+                    decoration: const InputDecoration(
+                      labelText: 'Date of Birth',
+                      prefixIcon: Icon(Icons.calendar_today),
+                      suffixIcon: Icon(Icons.arrow_drop_down),
+                      hintText: 'Select your date of birth',
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) {
+                        return 'Select your date of birth (you must be at least 13 years old)';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-                keyboardType: TextInputType.datetime,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Required';
-                  try {
-                    DateFormat('yyyy-MM-dd').parse(v);
-                  } catch (_) {
-                    return 'Invalid date format';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 24),
               ElevatedButton(

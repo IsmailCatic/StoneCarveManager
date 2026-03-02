@@ -11,6 +11,7 @@ class OrderUpdateRequest {
   String? deliveryZipCode;
   DateTime? deliveryDate;
   List<OrderItemUpdateRequest>? items;
+  double? quotedPrice;
 
   OrderUpdateRequest({
     this.assignedEmployeeId,
@@ -25,6 +26,7 @@ class OrderUpdateRequest {
     this.deliveryZipCode,
     this.deliveryDate,
     this.items,
+    this.quotedPrice,
   });
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +43,7 @@ class OrderUpdateRequest {
     if (deliveryZipCode != null) 'deliveryZipCode': deliveryZipCode,
     if (deliveryDate != null) 'deliveryDate': deliveryDate?.toIso8601String(),
     if (items != null) 'items': items?.map((e) => e.toJson()).toList(),
+    if (quotedPrice != null) 'quotedPrice': quotedPrice,
   };
 }
 

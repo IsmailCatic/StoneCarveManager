@@ -429,12 +429,50 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                   emptyMessage: 'No pending reviews',
                   emptyIcon: Icons.pending_actions,
                 ),
-                _buildReviewsList(
-                  reviews: _approvedReviews,
-                  isLoading: _isLoadingApproved,
-                  isPending: false,
-                  emptyMessage: 'No approved reviews yet',
-                  emptyIcon: Icons.rate_review,
+                Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: Colors.blue.shade700,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Reviews are auto-approved by default. Admins and employees can unapprove any review if needed.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildReviewsList(
+                        reviews: _approvedReviews,
+                        isLoading: _isLoadingApproved,
+                        isPending: false,
+                        emptyMessage: 'No approved reviews yet',
+                        emptyIcon: Icons.rate_review,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

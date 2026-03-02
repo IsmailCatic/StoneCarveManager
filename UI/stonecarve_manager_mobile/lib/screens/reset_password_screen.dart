@@ -40,22 +40,22 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      return 'Enter your new password';
     }
     if (value.length < 8) {
-      return 'Password must be at least 8 characters';
+      return 'Password must be at least 8 characters long';
     }
     if (!value.contains(RegExp(r'[A-Z]'))) {
-      return 'Password must contain an uppercase letter';
+      return 'Password must include at least one uppercase letter (A–Z)';
     }
     if (!value.contains(RegExp(r'[a-z]'))) {
-      return 'Password must contain a lowercase letter';
+      return 'Password must include at least one lowercase letter (a–z)';
     }
     if (!value.contains(RegExp(r'[0-9]'))) {
-      return 'Password must contain a number';
+      return 'Password must include at least one digit (0–9)';
     }
     if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-      return 'Password must contain a special character';
+      return 'Password must include at least one special character (e.g. !@#%)';
     }
     return null;
   }
@@ -165,10 +165,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Email is required';
+                    return 'Enter your email address (e.g. john@example.com)';
                   }
                   if (!value.contains('@') || !value.contains('.')) {
-                    return 'Enter a valid email address';
+                    return 'Enter a valid email address (e.g. john@example.com)';
                   }
                   return null;
                 },
@@ -192,13 +192,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Verification code is required';
+                    return 'Enter the 6-digit code sent to your email';
                   }
                   if (value.length != 6) {
-                    return 'Code must be exactly 6 digits';
+                    return 'Enter exactly 6 digits (e.g. 123456)';
                   }
                   if (!RegExp(r'^\d{6}$').hasMatch(value)) {
-                    return 'Code must contain only digits';
+                    return 'Code must contain digits only (0–9), no letters or spaces';
                   }
                   return null;
                 },
@@ -261,10 +261,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Confirm password';
+                    return 'Re-enter your new password to confirm it matches';
                   }
                   if (value != _passwordController.text) {
-                    return 'Passwords do not match';
+                    return 'Passwords do not match — ensure both fields are identical';
                   }
                   return null;
                 },

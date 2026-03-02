@@ -546,74 +546,111 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
 
               const SizedBox(height: 12),
 
-              // Pay Now banner (Pending + service/custom orders only)
+              // Pay Now banner (Pending status only for service/custom orders)
+              // Shows for status 0 (Pending) with a quote set
               if (order.status == 0 &&
                   (order.orderType == 'service_request' ||
                       order.orderType == 'custom_order')) ...[
                 const SizedBox(height: 4),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    border: Border.all(color: Colors.amber.shade400),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: Colors.amber.shade800,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Payment required to start your order.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.amber.shade900,
+                // Custom orders with no price yet are awaiting an admin quote
+                if (order.orderType == 'custom_order' &&
+                    order.totalAmount <= 0) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      border: Border.all(color: Colors.blue.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.hourglass_top,
+                          size: 16,
+                          color: Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Awaiting quote — our team will review your request and provide a price within 24–48 hours.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade900,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final orderTypeLabel =
-                          order.orderType == 'service_request'
-                          ? 'Service Request'
-                          : 'Custom Order';
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => OrderPaymentScreen(
-                            order: order,
-                            orderTypeLabel: orderTypeLabel,
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      border: Border.all(color: Colors.amber.shade400),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Colors.amber.shade800,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Payment required to start your order.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber.shade900,
+                            ),
                           ),
                         ),
-                      );
-                      _loadOrders();
-                    },
-                    icon: const Icon(Icons.payment, size: 18),
-                    label: const Text('Pay Now'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final orderTypeLabel =
+                            order.orderType == 'service_request'
+                            ? 'Service Request'
+                            : 'Custom Order';
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OrderPaymentScreen(
+                              order: order,
+                              orderTypeLabel: orderTypeLabel,
+                            ),
+                          ),
+                        );
+                        _loadOrders();
+                      },
+                      icon: const Icon(Icons.payment, size: 18),
+                      label: const Text('Pay Now'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 4),
               ],
 

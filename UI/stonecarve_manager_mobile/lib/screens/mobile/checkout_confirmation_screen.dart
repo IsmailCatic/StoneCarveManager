@@ -17,6 +17,13 @@ class CheckoutConfirmationScreen extends StatefulWidget {
 class _CheckoutConfirmationScreenState
     extends State<CheckoutConfirmationScreen> {
   bool _isProcessing = false;
+  final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
 
   Future<void> _confirmAndCompletePurchase() async {
     final confirmed = await showDialog<bool>(
@@ -70,6 +77,7 @@ class _CheckoutConfirmationScreenState
       // 1. Create Order first
       // Note: userId is NOT sent - backend extracts it from JWT token in Authorization header
       final shippingAddress = cartProvider.shippingAddress!;
+      final notes = _notesController.text.trim();
       final createOrderRequest = CreateOrderRequest(
         orderItems: cartProvider.items
             .map(
@@ -87,7 +95,7 @@ class _CheckoutConfirmationScreenState
         deliveryState: shippingAddress.state,
         clientName: shippingAddress.fullName,
         clientEmail: shippingAddress.email,
-        customerNotes: 'Order from mobile app',
+        customerNotes: notes.isEmpty ? null : notes,
       );
 
       print('[Checkout] Creating order...');
@@ -259,17 +267,47 @@ class _CheckoutConfirmationScreenState
 
                   const Divider(height: 40),
 
+                  // Customer Notes
+                  const Text(
+                    'Order Notes (optional)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 3,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      hintText: 'Any special instructions or requests...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
                   // Summary
                   _buildSummaryRow(
                     'Subtotal',
                     '\$${cart.subtotal.toStringAsFixed(2)}',
                   ),
+                  const SizedBox(height: 8),
+                  _buildSummaryRow(
+                    'VAT (17%)',
+                    '\$${(cart.subtotal * 0.17).toStringAsFixed(2)}',
+                    isVat: true,
+                  ),
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 12),
                   _buildSummaryRow(
-                    'Total',
-                    '\$${cart.total.toStringAsFixed(2)}',
+                    'Total (incl. VAT)',
+                    '\$${(cart.subtotal * 1.17).toStringAsFixed(2)}',
                     isTotal: true,
                   ),
                   const SizedBox(height: 40),
@@ -403,7 +441,12 @@ class _CheckoutConfirmationScreenState
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
+  Widget _buildSummaryRow(
+    String label,
+    String value, {
+    bool isTotal = false,
+    bool isVat = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -412,15 +455,17 @@ class _CheckoutConfirmationScreenState
           style: TextStyle(
             fontSize: isTotal ? 18 : 14,
             fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            color: Colors.black87,
+            color: isVat ? Colors.grey[600] : Colors.black87,
           ),
         ),
         Text(
           value,
           style: TextStyle(
             fontSize: isTotal ? 20 : 14,
-            fontWeight: FontWeight.bold,
-            color: isTotal ? Colors.blue : Colors.black87,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            color: isTotal
+                ? Colors.blue
+                : (isVat ? Colors.grey[600] : Colors.black87),
           ),
         ),
       ],

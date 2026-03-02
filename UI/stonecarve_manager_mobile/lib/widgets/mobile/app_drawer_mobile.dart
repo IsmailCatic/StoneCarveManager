@@ -206,15 +206,6 @@ class AppDrawerMobile extends StatelessWidget {
 
           const Divider(),
 
-          // Debug & logout
-          ListTile(
-            leading: const Icon(Icons.bug_report, color: Colors.orange),
-            title: const Text('API Test'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/api-test');
-            },
-          ),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Logout', style: TextStyle(color: Colors.red)),

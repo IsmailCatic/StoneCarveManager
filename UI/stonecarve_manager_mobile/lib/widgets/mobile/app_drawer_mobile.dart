@@ -211,6 +211,8 @@ class AppDrawerMobile extends StatelessWidget {
             title: const Text('Logout', style: TextStyle(color: Colors.red)),
             onTap: () async {
               Navigator.pop(context);
+              // Clear any lingering SnackBars so they don't persist on the login screen
+              ScaffoldMessenger.of(context).clearSnackBars();
               await AuthProvider.logout();
               if (context.mounted) {
                 Navigator.pushNamedAndRemoveUntil(

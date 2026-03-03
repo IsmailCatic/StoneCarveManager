@@ -72,6 +72,9 @@ class AppDrawer extends StatelessWidget {
   }
 
   void _logout(BuildContext context) async {
+    // Clear any lingering SnackBars so they don't persist on the login screen
+    ScaffoldMessenger.of(context).clearSnackBars();
+
     // Clear auth state
     await AuthProvider.logout();
 

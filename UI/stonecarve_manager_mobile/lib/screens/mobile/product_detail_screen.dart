@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -33,6 +34,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late Product _product;
   bool _loadingProduct = false;
 
+  // In-body banners (not SnackBars — avoids overlay bleeding into other routes)
+  bool _favBannerVisible = false;
+  String _favBannerText = '';
+  bool _favBannerIsAdded = false;
+  Timer? _favBannerTimer;
+
+  bool _cartBannerVisible = false;
+  String _cartBannerText = '';
+  Timer? _cartBannerTimer;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +55,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void dispose() {
     _imagePageController.dispose();
+    _favBannerTimer?.cancel();
+    _cartBannerTimer?.cancel();
     super.dispose();
   }
 
@@ -99,37 +112,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final favoritesProvider = context.read<FavoritesProvider>();
     final isNow = await favoritesProvider.toggleFavorite(_product.id!);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isNow ? 'Added to favorites' : 'Removed from favorites'),
-        duration: Duration(seconds: isNow ? 3 : 1),
-        behavior: SnackBarBehavior.floating,
-        action: isNow
-            ? SnackBarAction(
-                label: 'VIEW FAVORITES',
-                onPressed: () {
-                  Navigator.pushNamed(context, '/favorites');
-                },
-              )
-            : null,
-      ),
-    );
+    _showFavBanner(isNow);
+  }
+
+  void _showFavBanner(bool isAdded) {
+    _favBannerTimer?.cancel();
+    setState(() {
+      _favBannerText = isAdded
+          ? 'Added to favorites'
+          : 'Removed from favorites';
+      _favBannerIsAdded = isAdded;
+      _favBannerVisible = true;
+    });
+    _favBannerTimer = Timer(Duration(seconds: isAdded ? 3 : 1), () {
+      if (mounted) setState(() => _favBannerVisible = false);
+    });
   }
 
   void _addToCart() {
     context.read<CartProvider>().addItem(_product);
+    _showCartBanner(_product.name ?? 'Item');
+  }
 
-    // Clear any existing snackbars to prevent stacking/blocking
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${_product.name} added to cart'),
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showCartBanner(String productName) {
+    _cartBannerTimer?.cancel();
+    setState(() {
+      _cartBannerText = '$productName added to cart';
+      _cartBannerVisible = true;
+    });
+    _cartBannerTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _cartBannerVisible = false);
+    });
   }
 
   @override
@@ -139,163 +152,271 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: CustomScrollView(
-        slivers: [
-          // ─── Collapsing App Bar with image carousel ───────────────────
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            backgroundColor: Colors.white,
-            iconTheme: const IconThemeData(color: Colors.blue),
-            flexibleSpace: FlexibleSpaceBar(
-              background: _buildImageCarousel(images, hasImages),
-            ),
-          ),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              // ─── Collapsing App Bar with image carousel ───────────────────
+              SliverAppBar(
+                expandedHeight: 300,
+                pinned: true,
+                backgroundColor: Colors.white,
+                iconTheme: const IconThemeData(color: Colors.blue),
+                flexibleSpace: FlexibleSpaceBar(
+                  background: _buildImageCarousel(images, hasImages),
+                ),
+              ),
 
-          // ─── Product Details ───────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name + Favorite
-                  Row(
+              // ─── Product Details ───────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          _product.name ?? 'Unnamed Product',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                      // Name + Favorite
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _product.name ?? 'Unnamed Product',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          Consumer<FavoritesProvider>(
+                            builder: (context, fav, _) {
+                              final isFav = fav.isFavorite(_product.id);
+                              return IconButton(
+                                icon: Icon(
+                                  isFav
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: isFav ? Colors.red : Colors.grey[400],
+                                  size: 28,
+                                ),
+                                onPressed: _toggleFavorite,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Price
+                      Text(
+                        '\$${_product.price?.toStringAsFixed(2) ?? '0.00'}',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Category + Material chips
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          if (_product.categoryName != null)
+                            _chip(
+                              Icons.category_outlined,
+                              _product.categoryName!,
+                              Colors.blue.shade50,
+                              Colors.blue.shade700,
+                            ),
+                          if (_product.materialName != null)
+                            _chip(
+                              Icons.layers_outlined,
+                              _product.materialName!,
+                              Colors.grey.shade100,
+                              Colors.grey.shade700,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Rating
+                      if (_product.averageRating != null &&
+                          _product.averageRating! > 0) ...[
+                        _ratingRow(
+                          _product.averageRating!,
+                          _product.reviewCount,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Description
+                      if (_product.description != null &&
+                          _product.description!.isNotEmpty) ...[
+                        const Text(
+                          'Description',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
                         ),
-                      ),
-                      Consumer<FavoritesProvider>(
-                        builder: (context, fav, _) {
-                          final isFav = fav.isFavorite(_product.id);
-                          return IconButton(
-                            icon: Icon(
-                              isFav ? Icons.favorite : Icons.favorite_border,
-                              color: isFav ? Colors.red : Colors.grey[400],
-                              size: 28,
+                        const SizedBox(height: 6),
+                        Text(
+                          _product.description!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Specs grid
+                      _buildSpecsGrid(),
+                      const SizedBox(height: 24),
+
+                      // Add to Cart
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: _addToCart,
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: const Text(
+                            'Add to Cart',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
-                            onPressed: _toggleFavorite,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Price
-                  Text(
-                    '\$${_product.price?.toStringAsFixed(2) ?? '0.00'}',
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Category + Material chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      if (_product.categoryName != null)
-                        _chip(
-                          Icons.category_outlined,
-                          _product.categoryName!,
-                          Colors.blue.shade50,
-                          Colors.blue.shade700,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
-                      if (_product.materialName != null)
-                        _chip(
-                          Icons.layers_outlined,
-                          _product.materialName!,
-                          Colors.grey.shade100,
-                          Colors.grey.shade700,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Rating
-                  if (_product.averageRating != null &&
-                      _product.averageRating! > 0) ...[
-                    _ratingRow(_product.averageRating!, _product.reviewCount),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Description
-                  if (_product.description != null &&
-                      _product.description!.isNotEmpty) ...[
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _product.description!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 32),
 
-                  // Specs grid
-                  _buildSpecsGrid(),
-                  const SizedBox(height: 24),
-
-                  // Add to Cart
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _addToCart,
-                      icon: const Icon(Icons.add_shopping_cart),
-                      label: const Text(
-                        'Add to Cart',
+                      // ─── Recommendations ──────────────────────────────────
+                      const Text(
+                        'You May Also Like',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 12),
+                      _buildRecommendations(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // In-body cart banner
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            bottom: _cartBannerVisible ? 76 : -80,
+            left: 16,
+            right: 16,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.grey[850],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _cartBannerText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // ─── Recommendations ──────────────────────────────────
-                  const Text(
-                    'You May Also Like',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _cartBannerVisible = false);
+                        _cartBannerTimer?.cancel();
+                        Navigator.pushNamed(context, '/cart');
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.blue[300],
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'VIEW CART',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildRecommendations(),
-                  const SizedBox(height: 24),
-                ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // In-body favorites banner
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            bottom: _favBannerVisible ? 16 : -80,
+            left: 16,
+            right: 16,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.grey[850],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _favBannerText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    if (_favBannerIsAdded)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _favBannerVisible = false);
+                          _favBannerTimer?.cancel();
+                          Navigator.pushNamed(context, '/favorites');
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue[300],
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'VIEW FAVORITES',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -457,6 +578,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       height: 180,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        clipBehavior: Clip.none,
+        physics: const BouncingScrollPhysics(),
         itemCount: _recommendations.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {

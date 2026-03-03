@@ -61,6 +61,8 @@ class StoneCarveManagerApp extends StatefulWidget {
 
 class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
   late AppLinks _appLinks;
   StreamSubscription? _linkSubscription;
 
@@ -128,6 +130,8 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
       ],
       child: MaterialApp(
         navigatorKey: _navigatorKey,
+        scaffoldMessengerKey: _scaffoldMessengerKey,
+        navigatorObservers: [_SnackBarClearingObserver(_scaffoldMessengerKey)],
         title: 'StoneCarve Manager',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -156,6 +160,9 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
 
           // Extract route name (before query params)
           final routeName = uri?.path ?? settings.name ?? '/login';
+
+          // Clear any lingering SnackBars when navigating to a new route
+          // (belt-and-suspenders — the observer also does this)
 
           switch (routeName) {
             case '/login':
@@ -231,4 +238,31 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
       ),
     );
   }
+}
+
+/// Clears any visible SnackBars whenever the user navigates to a new route.
+/// This prevents notifications from one screen bleeding into another.
+class _SnackBarClearingObserver extends NavigatorObserver {
+  final GlobalKey<ScaffoldMessengerState> _messengerKey;
+
+  _SnackBarClearingObserver(this._messengerKey);
+
+  void _clear() {
+    // Use a post-frame callback so the clear happens after the route transition
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _messengerKey.currentState?.clearSnackBars();
+    });
+  }
+
+  @override
+  void didPush(Route route, Route? previousRoute) => _clear();
+
+  @override
+  void didPop(Route route, Route? previousRoute) => _clear();
+
+  @override
+  void didRemove(Route route, Route? previousRoute) => _clear();
+
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) => _clear();
 }

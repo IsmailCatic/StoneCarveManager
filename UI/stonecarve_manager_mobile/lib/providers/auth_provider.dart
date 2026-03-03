@@ -280,14 +280,20 @@ class AuthProvider {
     );
     await logout();
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Your session has expired. Please log in again.'),
-          backgroundColor: Colors.redAccent,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      // Clear any existing SnackBars first, then show session-expired message
+      ScaffoldMessenger.of(context).clearSnackBars();
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+
+      // Show AFTER navigation so it appears on the login screen
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your session has expired. Please log in again.'),
+            backgroundColor: Colors.redAccent,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 

@@ -221,6 +221,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                     if (isAuthError)
                       ElevatedButton.icon(
                         onPressed: () async {
+                          // Clear any lingering SnackBars so they don't persist on the login screen
+                          ScaffoldMessenger.of(context).clearSnackBars();
                           // Logout and redirect to login
                           await AuthProvider.logout();
                           if (!context.mounted) return;

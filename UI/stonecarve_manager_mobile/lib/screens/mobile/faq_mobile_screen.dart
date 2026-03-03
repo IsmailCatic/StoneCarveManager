@@ -26,8 +26,8 @@ class _FaqMobileScreenState extends State<FaqMobileScreen> {
   String? _errorMessage;
   Timer? _debounce;
 
-  // Track which item is expanded (to call trackView once)
-  final Set<int> _trackedIds = {};
+  // Optimistically incremented view counts for this session
+  final Map<int, int> _localViewCountBoost = {};
 
   @override
   void initState() {
@@ -104,10 +104,11 @@ class _FaqMobileScreenState extends State<FaqMobileScreen> {
   }
 
   void _onExpansionChanged(Faq faq, bool expanded) {
-    if (expanded && !_trackedIds.contains(faq.id)) {
-      _trackedIds.add(faq.id);
-      _provider.trackView(faq.id);
-    }
+    if (!expanded) return;
+    _provider.trackView(faq.id);
+    setState(() {
+      _localViewCountBoost[faq.id] = (_localViewCountBoost[faq.id] ?? 0) + 1;
+    });
   }
 
   /// Group FAQs by category so they render in sections.
@@ -294,7 +295,7 @@ class _FaqMobileScreenState extends State<FaqMobileScreen> {
               ),
               const SizedBox(width: 4),
               Text(
-                '${faq.viewCount} views',
+                '${faq.viewCount + (_localViewCountBoost[faq.id] ?? 0)} views',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
             ],

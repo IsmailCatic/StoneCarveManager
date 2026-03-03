@@ -368,6 +368,40 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       currentRoute: '/payments',
       child: Column(
         children: [
+          // ⚠️ Seed data warning banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: const Color(0xFFFFF3CD),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFF856404),
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(color: Color(0xFF856404), fontSize: 13),
+                      children: [
+                        TextSpan(
+                          text: 'Testing Notice: ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text:
+                              'These payments use seeded data with fake Stripe Payment Intent IDs. '
+                              'Refund operations will fail because the intent IDs do not exist in Stripe.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Header with statistics
           Container(
             padding: const EdgeInsets.all(16),

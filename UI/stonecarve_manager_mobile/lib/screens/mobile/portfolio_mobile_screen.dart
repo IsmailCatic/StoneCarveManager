@@ -363,7 +363,7 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Search portfolio...',
+                hintText: 'Search portfolio by: name, description...',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(

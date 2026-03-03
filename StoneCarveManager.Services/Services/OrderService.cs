@@ -9,6 +9,7 @@ using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
@@ -27,12 +28,14 @@ namespace StoneCarveManager.Services.Services
     {
         private readonly IFileService _fileService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IConfiguration _configuration;
 
-        public OrderService(AppDbContext context, IMapper mapper, IFileService fileService, ICurrentUserService currentUserService)
+        public OrderService(AppDbContext context, IMapper mapper, IFileService fileService, ICurrentUserService currentUserService, IConfiguration configuration)
             : base(context, mapper)
         {
             _fileService = fileService;
             _currentUserService = currentUserService;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -1002,10 +1005,10 @@ namespace StoneCarveManager.Services.Services
             {
                 var factory = new ConnectionFactory()
                 {
-                    HostName = "localhost",
-                    Port = 5672,
-                    UserName = "guest",
-                    Password = "guest"
+                    HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
+                    Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
+                    UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
+                    Password = _configuration["RabbitMQ:Password"] ?? "guest"
                 };
 
                 await using var connection = await factory.CreateConnectionAsync();

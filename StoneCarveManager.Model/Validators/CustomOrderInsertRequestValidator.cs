@@ -8,10 +8,10 @@ namespace StoneCarveManager.Model.Validators
         public CustomOrderInsertRequestValidator()
         {
             When(x => x.CategoryId.HasValue, () =>
-                RuleFor(x => x.CategoryId).GreaterThan(0).WithMessage("Category ID must be valid."));
+                RuleFor(x => x.CategoryId).NotEqual(0).WithMessage("Category ID must be valid."));
 
             When(x => x.MaterialId.HasValue, () =>
-                RuleFor(x => x.MaterialId).GreaterThan(0).WithMessage("Material ID must be valid."));
+                RuleFor(x => x.MaterialId).NotEqual(0).WithMessage("Material ID must be valid."));
 
             When(x => !string.IsNullOrEmpty(x.Dimensions), () =>
                 RuleFor(x => x.Dimensions).MaximumLength(200).WithMessage("Dimensions cannot exceed 200 characters."));

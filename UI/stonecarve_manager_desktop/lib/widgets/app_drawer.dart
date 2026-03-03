@@ -66,11 +66,14 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
                     const Spacer(),
                     if (!_isLoading && currentUser != null)
-                      UserProfileAvatar(
-                        imageUrl: currentUser.profileImageUrl,
-                        firstName: currentUser.firstName,
-                        lastName: currentUser.lastName,
-                        radius: 24,
+                      GestureDetector(
+                        onTap: () => _navigateTo(context, '/profile'),
+                        child: UserProfileAvatar(
+                          imageUrl: currentUser.profileImageUrl,
+                          firstName: currentUser.firstName,
+                          lastName: currentUser.lastName,
+                          radius: 24,
+                        ),
                       ),
                   ],
                 ),

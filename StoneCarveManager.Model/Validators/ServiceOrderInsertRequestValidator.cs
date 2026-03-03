@@ -8,7 +8,7 @@ namespace StoneCarveManager.Model.Validators
         public ServiceOrderInsertRequestValidator()
         {
             RuleFor(x => x.ServiceProductId)
-                .GreaterThan(0).WithMessage("A valid service product must be selected.");
+                .NotEqual(0).WithMessage("A valid service product must be selected.");
 
             RuleFor(x => x.Requirements)
                 .NotEmpty().WithMessage("Requirements are required.")

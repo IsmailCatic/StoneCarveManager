@@ -1,10 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:stonecarve_manager_flutter/screens/products_screen.dart';
-import 'package:stonecarve_manager_flutter/screens/materials_screen.dart';
-import 'package:stonecarve_manager_flutter/screens/categories_screen.dart';
-import 'package:stonecarve_manager_flutter/screens/users_screen.dart';
-import 'package:stonecarve_manager_flutter/screens/blog_post_list_screen.dart';
-import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/widgets/app_drawer.dart';
 
 class MasterScreen extends StatefulWidget {

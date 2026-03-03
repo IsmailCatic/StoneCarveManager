@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
 import 'package:stonecarve_manager_flutter/models/order.dart';
@@ -21,7 +22,7 @@ class OrderProvider extends BaseProvider<Order> {
 
   /// Delete an order by ID (Admin only)
   Future<void> deleteOrder(int id) async {
-    final url = "http://localhost:5021/api/Order/$id";
+    final url = "${ApiConfig.apiUrl}/Order/$id";
     final response = await http.delete(
       Uri.parse(url),
       headers: createHeaders(),
@@ -36,7 +37,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Order> getOrderById(int id) async {
-    var url = "http://localhost:5021/api/Order/$id";
+    var url = "${ApiConfig.apiUrl}/Order/$id";
     var response = await http.get(Uri.parse(url), headers: createHeaders());
 
     if (response.statusCode == 200) {
@@ -52,7 +53,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<bool> deleteProgressImage(int imageId) async {
-    var url = "http://localhost:5021/api/Order/progress-images/$imageId";
+    var url = "${ApiConfig.apiUrl}/Order/progress-images/$imageId";
     var response = await http.delete(Uri.parse(url), headers: createHeaders());
     if (response.statusCode == 204) {
       return true;
@@ -75,7 +76,7 @@ class OrderProvider extends BaseProvider<Order> {
     print('Description: $description');
     print('Uploaded by user ID: $uploadedByUserId');
 
-    var url = "http://localhost:5021/api/Order/$orderId/progress-images";
+    var url = "${ApiConfig.apiUrl}/Order/$orderId/progress-images";
     var request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers.addAll(createHeaders());
 
@@ -138,7 +139,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Order> markOrderCompleted(int id) async {
-    var url = "http://localhost:5021/api/Order/$id/mark-completed";
+    var url = "${ApiConfig.apiUrl}/Order/$id/mark-completed";
     var response = await http.patch(Uri.parse(url), headers: createHeaders());
     if (isValidResponse(response)) {
       return fromJson(jsonDecode(response.body));
@@ -153,7 +154,7 @@ class OrderProvider extends BaseProvider<Order> {
   /// Set (or update) a price quote for a custom/service order.
   /// Uses the standard PUT /api/Order/{id} endpoint with the quotedPrice field.
   Future<Order> setQuote(int orderId, double price) async {
-    final url = "http://localhost:5021/api/Order/$orderId";
+    final url = "${ApiConfig.apiUrl}/Order/$orderId";
     final body = jsonEncode({'quotedPrice': price});
     final response = await http.put(
       Uri.parse(url),
@@ -168,7 +169,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Review?> getOrderReview(int orderId) async {
-    var url = "http://localhost:5021/api/Order/$orderId/review";
+    var url = "${ApiConfig.apiUrl}/Order/$orderId/review";
     var response = await http.get(Uri.parse(url), headers: createHeaders());
     if (isValidResponse(response)) {
       if (response.body.isEmpty) return null;
@@ -179,7 +180,7 @@ class OrderProvider extends BaseProvider<Order> {
   }
 
   Future<Review> addOrderReview(int orderId, Review review) async {
-    var url = "http://localhost:5021/api/Order/$orderId/review";
+    var url = "${ApiConfig.apiUrl}/Order/$orderId/review";
     var response = await http.post(
       Uri.parse(url),
       headers: createHeaders(),
@@ -207,7 +208,7 @@ class OrderProvider extends BaseProvider<Order> {
     );
 
     final response = await http.put(
-      Uri.parse('http://localhost:5021/api/Order/$orderId/status'),
+      Uri.parse('${ApiConfig.apiUrl}/Order/$orderId/status'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -232,7 +233,7 @@ class OrderProvider extends BaseProvider<Order> {
     final token = AuthProvider.token;
     if (token == null) throw Exception('Not authenticated');
 
-    var url = 'http://localhost:5021/api/Order/custom-orders';
+    var url = '${ApiConfig.apiUrl}/Order/custom-orders';
     if (status != null) {
       url += '?status=$status';
     }
@@ -262,7 +263,7 @@ class OrderProvider extends BaseProvider<Order> {
     final token = AuthProvider.token;
     if (token == null) throw Exception('Not authenticated');
 
-    final url = 'http://localhost:5021/api/Order/custom/upload-sketch';
+    final url = '${ApiConfig.apiUrl}/Order/custom/upload-sketch';
     final request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers['Authorization'] = 'Bearer $token';
 
@@ -315,9 +316,7 @@ class OrderProvider extends BaseProvider<Order> {
     if (token == null) throw Exception('Not authenticated');
 
     final response = await http.delete(
-      Uri.parse(
-        'http://localhost:5021/api/Order/custom/delete-sketch?url=$url',
-      ),
+      Uri.parse('${ApiConfig.apiUrl}/Order/custom/delete-sketch?url=$url'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -342,7 +341,7 @@ class OrderProvider extends BaseProvider<Order> {
     if (token == null) throw Exception('Not authenticated');
 
     final response = await http.patch(
-      Uri.parse('http://localhost:5021/api/Order/$orderId/assign-employee'),
+      Uri.parse('${ApiConfig.apiUrl}/Order/$orderId/assign-employee'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -374,7 +373,7 @@ class OrderProvider extends BaseProvider<Order> {
     final token = AuthProvider.token;
     if (token == null) throw Exception('Not authenticated');
 
-    var url = 'http://localhost:5021/api/Order/my-orders?page=1&pageSize=100';
+    var url = '${ApiConfig.apiUrl}/Order/my-orders?page=1&pageSize=100';
     if (status != null) {
       url += '&status=$status';
     }
@@ -407,8 +406,7 @@ class OrderProvider extends BaseProvider<Order> {
     final token = AuthProvider.token;
     if (token == null) throw Exception('Not authenticated');
 
-    var url =
-        'http://localhost:5021/api/Order/custom-orders?page=0&pageSize=100';
+    var url = '${ApiConfig.apiUrl}/Order/custom-orders?page=0&pageSize=100';
     if (status != null) url += '&status=$status';
     if (assignedToMe == true) url += '&assignedToMe=true';
     if (unassignedOnly == true) url += '&unassignedOnly=true';

@@ -74,8 +74,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     if (!mounted) return;
 
-    // Re-fetch the list from backend to reflect the change
-    await _fetchFavorites();
+    if (!isNowFavorite) {
+      // Remove locally immediately — don't re-fetch: the backend DELETE is
+      // still in-flight and a GET right now would race and return the old data.
+      setState(() {
+        _favoriteProducts.removeWhere((p) => p.id == productId);
+      });
+    } else {
+      // Added from this screen (edge case) — re-fetch to get the full object.
+      await _fetchFavorites();
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

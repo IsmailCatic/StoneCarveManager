@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/faq.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 
 class FaqProvider {
-  static const String _baseUrl = 'http://localhost:5021/api/Faq';
+  static String get _baseUrl => '${ApiConfig.apiUrl}/Faq';
 
   Map<String, String> _headers({bool requiresAuth = false}) {
     final token = AuthProvider.token;

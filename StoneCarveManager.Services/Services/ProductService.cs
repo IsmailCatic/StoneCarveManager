@@ -88,7 +88,7 @@ namespace StoneCarveManager.Services.Services
         {
             _logger.LogInformation($"Allowed actions called for: {id}");
 
-            if (id <= 0)
+            if (id == 0)
             {
                 var state = BaseProductState.CreateState("initial");
                 return state.AllowedActions(null);

@@ -23,14 +23,26 @@ class ProductsMobileScreen extends StatefulWidget {
 class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     with AutomaticKeepAliveClientMixin {
   List<Product> _products = [];
-  List<Product> _productsOriginalOrder = []; // backend order — used by Default sort
-  List<Product> _allActiveProducts = []; // master cache of ALL active products (built by infinite scroll, used for client-side search filtering)
+  List<Product> _productsOriginalOrder =
+      []; // backend order — used by Default sort
+  List<Product> _allActiveProducts =
+      []; // master cache of ALL active products (built by infinite scroll, used for client-side search filtering)
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _currentPage = 0;
   static const int _pageSize = 10;
   String _errorMessage = '';
+
+  // In-body banners (not SnackBars — avoids overlay bleeding into other routes)
+  bool _cartBannerVisible = false;
+  String _cartBannerText = '';
+  Timer? _cartBannerTimer;
+
+  bool _favBannerVisible = false;
+  String _favBannerText = '';
+  bool _favBannerIsAdded = false; // true = added, false = removed
+  Timer? _favBannerTimer;
 
   // Scroll controller for infinite scroll
   final ScrollController _scrollController = ScrollController();
@@ -62,6 +74,8 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _cartBannerTimer?.cancel();
+    _favBannerTimer?.cancel();
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -121,9 +135,14 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
         '${BaseProvider.baseUrl}/api/Product',
       ).replace(queryParameters: queryParams);
 
-      print('[ProductsMobile] Fetching${isSearchMode ? " (search=\"$search\")" : " page $page"} from: $uri');
+      print(
+        '[ProductsMobile] Fetching${isSearchMode ? " (search=\"$search\")" : " page $page"} from: $uri',
+      );
 
-      final response = await http.get(uri, headers: AuthProvider.getAuthHeaders());
+      final response = await http.get(
+        uri,
+        headers: AuthProvider.getAuthHeaders(),
+      );
       print('[ProductsMobile] Response status: ${response.statusCode}');
 
       if (response.statusCode == 401) {
@@ -142,7 +161,9 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
             .map((json) => Product.fromJson(json))
             .where((p) => p.productState?.toLowerCase() == 'active')
             .toList();
-        print('[ProductsMobile] ${fetched.length} active items fetched (raw: $rawCount)');
+        print(
+          '[ProductsMobile] ${fetched.length} active items fetched (raw: $rawCount)',
+        );
 
         if (!mounted) return;
         setState(() {
@@ -154,11 +175,15 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
             // This handles backends that don't honour the search param correctly.
             _allActiveProducts = List.from(fetched);
             _hasMore = false;
-            _applyFilters(search); // filters + sorts; sets _products/_productsOriginalOrder
+            _applyFilters(
+              search,
+            ); // filters + sorts; sets _products/_productsOriginalOrder
           } else if (append) {
             // Paginated append — deduplicate by ID
             final existingIds = _allActiveProducts.map((p) => p.id).toSet();
-            final newItems = fetched.where((p) => !existingIds.contains(p.id)).toList();
+            final newItems = fetched
+                .where((p) => !existingIds.contains(p.id))
+                .toList();
             _allActiveProducts.addAll(newItems);
             _productsOriginalOrder.addAll(newItems);
             _products.addAll(newItems);
@@ -299,42 +324,38 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
     final isNowFavorite = await favoritesProvider.toggleFavorite(productId);
 
     if (!mounted) return;
+    _showFavBanner(isNowFavorite);
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isNowFavorite ? 'Added to favorites' : 'Removed from favorites',
-        ),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showFavBanner(bool isAdded) {
+    _favBannerTimer?.cancel();
+    setState(() {
+      _favBannerText = isAdded
+          ? 'Added to favorites'
+          : 'Removed from favorites';
+      _favBannerIsAdded = isAdded;
+      _favBannerVisible = true;
+    });
+    _favBannerTimer = Timer(Duration(seconds: isAdded ? 3 : 1), () {
+      if (mounted) setState(() => _favBannerVisible = false);
+    });
+  }
+
+  void _showCartBanner(String productName) {
+    _cartBannerTimer?.cancel();
+    setState(() {
+      _cartBannerText = '$productName added to cart';
+      _cartBannerVisible = true;
+    });
+    _cartBannerTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _cartBannerVisible = false);
+    });
   }
 
   void _addToCart(Product product) {
     if (product.id == null) return;
-
     context.read<CartProvider>().addItem(product);
-
-    // Clear any existing snackbars to prevent stacking/blocking
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.name} added to cart'),
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'VIEW CART',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CartScreen()),
-            );
-          },
-        ),
-      ),
-    );
+    _showCartBanner(product.name ?? 'Item');
   }
 
   @override
@@ -384,6 +405,8 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
                       color: Colors.black87,
                     ),
                     onPressed: () {
+                      _cartBannerTimer?.cancel();
+                      setState(() => _cartBannerVisible = false);
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -423,205 +446,313 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Search Bar
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search products...',
-                prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchController,
-                  builder: (_, value, __) => value.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.grey),
-                          onPressed: () {
-                            _searchController.clear();
-                            _onSearchChanged('');
+          Column(
+            children: [
+              // Search Bar
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Search products...',
+                    prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                    suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _searchController,
+                      builder: (_, value, __) => value.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.grey),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+              // Filter Chips
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _sortOptions.map((option) {
+                      final isSelected = _selectedSort == option['value'];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(option['label']),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            _onSortChanged(option['value']);
                           },
-                        )
-                      : const SizedBox.shrink(),
+                          backgroundColor: Colors.white,
+                          selectedColor: Colors.blue,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                          side: BorderSide(
+                            color: isSelected ? Colors.blue : Colors.grey[300]!,
+                          ),
+                          checkmarkColor: Colors.white,
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
+              ),
+              const Divider(height: 1),
+              // Products List
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _errorMessage.isNotEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _errorMessage,
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => _fetchProducts(
+                                search: _activeSearchQuery.isEmpty
+                                    ? null
+                                    : _activeSearchQuery,
+                              ),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _products.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No products found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Try adjusting your search or filters',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () {
+                          if (_activeSearchQuery.isNotEmpty) {
+                            return _fetchProducts(search: _activeSearchQuery);
+                          }
+                          setState(() {
+                            _currentPage = 0;
+                            _hasMore = true;
+                            _allActiveProducts = [];
+                            _products = [];
+                            _productsOriginalOrder = [];
+                          });
+                          return _fetchProducts();
+                        },
+                        child: Consumer<FavoritesProvider>(
+                          builder: (context, favoritesProvider, child) {
+                            final itemCount =
+                                _products.length + (_isLoadingMore ? 1 : 0);
+                            return ListView.builder(
+                              controller: _scrollController,
+                              itemCount: itemCount,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              itemBuilder: (context, index) {
+                                if (index == _products.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                }
+
+                                final product = _products[index];
+                                final isFavorite = favoritesProvider.isFavorite(
+                                  product.id,
+                                );
+
+                                return ProductCard(
+                                  product: product,
+                                  isFavorite: isFavorite,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProductDetailScreen(
+                                          product: product,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onToggleFavorite: () =>
+                                      _toggleFavorite(product.id!),
+                                  onAddToCart: () => _addToCart(product),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          ),
+          // In-body cart banner — lives inside the scaffold, so it is covered
+          // when another route (CartScreen) is pushed on top.
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            bottom: _cartBannerVisible ? 16 : -80,
+            left: 16,
+            right: 16,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.grey[850],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
                 ),
-              ),
-            ),
-          ),
-
-          // Filter Chips
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _sortOptions.map((option) {
-                  final isSelected = _selectedSort == option['value'];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(option['label']),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        _onSortChanged(option['value']);
-                      },
-                      backgroundColor: Colors.white,
-                      selectedColor: Colors.blue,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _cartBannerText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
-                      side: BorderSide(
-                        color: isSelected ? Colors.blue : Colors.grey[300]!,
-                      ),
-                      checkmarkColor: Colors.white,
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // Products List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage,
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () => _fetchProducts(
-                            search: _activeSearchQuery.isEmpty
-                                ? null
-                                : _activeSearchQuery,
-                          ),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
-                : _products.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No products found',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Try adjusting your search or filters',
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: () {
-                      if (_activeSearchQuery.isNotEmpty) {
-                        // Refresh search results
-                        return _fetchProducts(search: _activeSearchQuery);
-                      }
-                      // Refresh normal paginated list from scratch
-                      setState(() {
-                        _currentPage = 0;
-                        _hasMore = true;
-                        _allActiveProducts = [];
-                        _products = [];
-                        _productsOriginalOrder = [];
-                      });
-                      return _fetchProducts();
-                    },
-                    child: Consumer<FavoritesProvider>(
-                      builder: (context, favoritesProvider, child) {
-                        final itemCount =
-                            _products.length + (_isLoadingMore ? 1 : 0);
-                        return ListView.builder(
-                          controller: _scrollController,
-                          itemCount: itemCount,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemBuilder: (context, index) {
-                            // Loading indicator at the bottom
-                            if (index == _products.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-                            }
-
-                            final product = _products[index];
-                            final isFavorite = favoritesProvider.isFavorite(
-                              product.id,
-                            );
-
-                            return ProductCard(
-                              product: product,
-                              isFavorite: isFavorite,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ProductDetailScreen(product: product),
-                                  ),
-                                );
-                              },
-                              onToggleFavorite: () =>
-                                  _toggleFavorite(product.id!),
-                              onAddToCart: () => _addToCart(product),
-                            );
-                          },
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _cartBannerVisible = false);
+                        _cartBannerTimer?.cancel();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CartScreen()),
                         );
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.blue[300],
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'VIEW CART',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // In-body favorites banner
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            bottom: _favBannerVisible ? 16 : -80,
+            left: 16,
+            right: 16,
+            child: Material(
+              elevation: 6,
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.grey[850],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _favBannerText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    if (_favBannerIsAdded)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _favBannerVisible = false);
+                          _favBannerTimer?.cancel();
+                          Navigator.pushNamed(context, '/favorites');
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue[300],
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'VIEW FAVORITES',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),

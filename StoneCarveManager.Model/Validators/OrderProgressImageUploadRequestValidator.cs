@@ -17,7 +17,7 @@ namespace StoneCarveManager.Model.Validators
                 RuleFor(x => x.Description).MaximumLength(500).WithMessage("Description cannot exceed 500 characters."));
 
             When(x => x.UploadedByUserId.HasValue, () =>
-                RuleFor(x => x.UploadedByUserId).GreaterThan(0).WithMessage("Uploaded by user ID must be greater than 0."));
+                RuleFor(x => x.UploadedByUserId).NotEqual(0).WithMessage("Uploaded by user ID must be valid."));
         }
 
         private bool IsValidImageType(string contentType)

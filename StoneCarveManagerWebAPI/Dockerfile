@@ -13,6 +13,8 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["StoneCarveManagerWebAPI/StoneCarveManagerWebAPI.csproj", "StoneCarveManagerWebAPI/"]
+COPY ["StoneCarveManager.Services/StoneCarveManager.Services.csproj", "StoneCarveManager.Services/"]
+COPY ["StoneCarveManager.Model/StoneCarveManager.Model.csproj", "StoneCarveManager.Model/"]
 RUN dotnet restore "./StoneCarveManagerWebAPI/StoneCarveManagerWebAPI.csproj"
 COPY . .
 WORKDIR "/src/StoneCarveManagerWebAPI"

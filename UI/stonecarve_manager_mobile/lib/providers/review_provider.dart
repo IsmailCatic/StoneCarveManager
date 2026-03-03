@@ -3,13 +3,16 @@ import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_mobile/providers/base_provider.dart';
 import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
+import 'package:stonecarve_manager_mobile/utils/error_parser.dart';
 
 class ReviewProvider {
   /// Get review for a specific order
   static Future<Review?> getOrderReview(int orderId) async {
     final headers = await AuthProvider.getAuthHeaders();
 
-    final uri = Uri.parse('${BaseProvider.baseUrl}/api/Order/$orderId/review');
+    final uri = Uri.parse(
+      '${BaseProvider.baseUrl}/api/ProductReview/order/$orderId',
+    );
 
     print('[ReviewProvider] Fetching review for order $orderId');
 
@@ -23,7 +26,9 @@ class ReviewProvider {
     } else if (response.statusCode == 404) {
       return null;
     } else {
-      throw Exception('Failed to load review: ${response.body}');
+      throw Exception(
+        AppErrorParser.fromBody(response.body, statusCode: response.statusCode),
+      );
     }
   }
 
@@ -36,14 +41,12 @@ class ReviewProvider {
   }) async {
     final headers = await AuthProvider.getAuthHeaders();
 
-    final uri = Uri.parse('${BaseProvider.baseUrl}/api/Order/$orderId/review');
+    final uri = Uri.parse('${BaseProvider.baseUrl}/api/ProductReview');
 
-    // Note: Server expects userId but should extract it from JWT token
-    // We send -999 as placeholder (backend should override from token)
     final body = jsonEncode({
       'rating': rating,
       'comment': comment,
-      'userId': -999, // Backend will override from JWT
+      'userId': AuthProvider.userId ?? 0,
       'productId': productId,
       'orderId': orderId,
       'isApproved': true,
@@ -60,7 +63,9 @@ class ReviewProvider {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Review.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to add review: ${response.body}');
+      throw Exception(
+        AppErrorParser.fromBody(response.body, statusCode: response.statusCode),
+      );
     }
   }
 
@@ -69,7 +74,7 @@ class ReviewProvider {
     final headers = await AuthProvider.getAuthHeaders();
 
     final uri = Uri.parse(
-      '${BaseProvider.baseUrl}/api/Product/$productId/reviews',
+      '${BaseProvider.baseUrl}/api/ProductReview/product/$productId',
     );
 
     print('[ReviewProvider] Fetching reviews for product $productId');
@@ -87,7 +92,9 @@ class ReviewProvider {
       }
       return [];
     } else {
-      throw Exception('Failed to load product reviews: ${response.body}');
+      throw Exception(
+        AppErrorParser.fromBody(response.body, statusCode: response.statusCode),
+      );
     }
   }
 
@@ -104,7 +111,12 @@ class ReviewProvider {
       final response = await http.get(uri, headers: headers);
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to load reviews: ${response.statusCode}');
+        throw Exception(
+          AppErrorParser.fromBody(
+            response.body,
+            statusCode: response.statusCode,
+          ),
+        );
       }
 
       final data = jsonDecode(response.body);
@@ -123,7 +135,7 @@ class ReviewProvider {
       return allReviews;
     } catch (e) {
       print('[ReviewProvider] Error fetching all reviews: $e');
-      throw Exception('Failed to load customer reviews: $e');
+      throw Exception(AppErrorParser.fromException(e));
     }
   }
 }

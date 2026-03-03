@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:stonecarve_manager_mobile/providers/review_provider.dart';
 import 'package:stonecarve_manager_mobile/models/order.dart';
+import 'package:stonecarve_manager_mobile/utils/error_parser.dart';
 
 class AddReviewScreen extends StatefulWidget {
   final int orderId;
@@ -69,8 +70,9 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit review: $e'),
+            content: Text(AppErrorParser.fromException(e)),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

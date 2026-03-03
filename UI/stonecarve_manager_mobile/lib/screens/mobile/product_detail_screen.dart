@@ -99,11 +99,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final favoritesProvider = context.read<FavoritesProvider>();
     final isNow = await favoritesProvider.toggleFavorite(_product.id!);
     if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(isNow ? 'Added to favorites' : 'Removed from favorites'),
-        duration: const Duration(seconds: 1),
+        duration: Duration(seconds: isNow ? 3 : 1),
         behavior: SnackBarBehavior.floating,
+        action: isNow
+            ? SnackBarAction(
+                label: 'VIEW FAVORITES',
+                onPressed: () {
+                  Navigator.pushNamed(context, '/favorites');
+                },
+              )
+            : null,
       ),
     );
   }

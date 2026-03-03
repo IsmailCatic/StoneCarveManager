@@ -8,7 +8,7 @@ namespace StoneCarveManager.Model.Validators
         public OrderItemUpdateRequestValidator()
         {
             RuleFor(x => x.ProductId)
-                .GreaterThan(0).WithMessage("Product ID is required.");
+                .NotEqual(0).WithMessage("Product ID is required.");
 
             RuleFor(x => x.Quantity)
                 .GreaterThan(0).WithMessage("Quantity must be greater than 0.");

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using RabbitMQ.Client;
 using StoneCarveManager.Model.Requests;
@@ -27,15 +28,17 @@ namespace StoneCarveManager.Services.Services
         private readonly RoleManager<Role> _roleManager;
         protected readonly IMapper _mapper;
         private readonly IFileService _fileService;
+        private readonly IConfiguration _configuration;
 
         public UserService(AppDbContext context, UserManager<User> userManager,
-            RoleManager<Role> roleManager, IMapper mapper, IFileService fileService)
+            RoleManager<Role> roleManager, IMapper mapper, IFileService fileService, IConfiguration configuration)
         {
             _userManager = userManager;
             _context = context;
             _roleManager = roleManager;
             _mapper = mapper;
             _fileService = fileService;
+            _configuration = configuration;
         }
 
         public async Task<PagedResult<UserDTO>> GetAsync(UserSearchObject search, CancellationToken cancellationToken)
@@ -550,10 +553,10 @@ namespace StoneCarveManager.Services.Services
             {
                 var factory = new ConnectionFactory()
                 {
-                    HostName = "localhost",
-                    Port = 5672,
-                    UserName = "guest",
-                    Password = "guest"
+                    HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
+                    Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
+                    UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
+                    Password = _configuration["RabbitMQ:Password"] ?? "guest"
                 };
 
                 await using var connection = await factory.CreateConnectionAsync();

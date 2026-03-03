@@ -277,12 +277,12 @@ namespace StoneCarveManager.Services.Services
         {
             try
             {
-                var factory = new ConnectionFactory() 
-                { 
-                    HostName = "localhost",
-                    Port = 5672,
-                    UserName = "guest",
-                    Password = "guest"
+                var factory = new ConnectionFactory()
+                {
+                    HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
+                    Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
+                    UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
+                    Password = _configuration["RabbitMQ:Password"] ?? "guest"
                 };
                 
                 await using var connection = await factory.CreateConnectionAsync();
@@ -314,12 +314,12 @@ namespace StoneCarveManager.Services.Services
         {
             try
             {
-                var factory = new ConnectionFactory() 
-                { 
-                    HostName = "localhost",
-                    Port = 5672,
-                    UserName = "guest",
-                    Password = "guest"
+                var factory = new ConnectionFactory()
+                {
+                    HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
+                    Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
+                    UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
+                    Password = _configuration["RabbitMQ:Password"] ?? "guest"
                 };
                 
                 await using var connection = await factory.CreateConnectionAsync();

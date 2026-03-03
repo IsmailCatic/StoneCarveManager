@@ -7,28 +7,31 @@ import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:http/http.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
-  // 🎯 Centralized Base URL Configuration
-  // Change this for different environments:
-  // - Android Emulator: "http://10.0.2.2:5021"
-  // - iOS Simulator: "http://localhost:5021"
-  // - Physical Device: "http://YOUR_IP:5021"
-  static const String baseUrl = "http://10.0.2.2:5021";
-  static const String apiPath = "/api/";
+  static const _apiHost = String.fromEnvironment(
+    "API_HOST",
+    defaultValue: "10.0.2.2",
+  );
+  static const _apiPort = String.fromEnvironment(
+    "API_PORT",
+    defaultValue: "5021",
+  );
 
-  static String? _baseUrl;
+  /// Base URL without /api/ — used by other providers to build custom URLs
+  static String get baseUrl => "http://$_apiHost:$_apiPort";
+
+  static String? _fullBaseUrl;
   String _endpoint = "";
 
   BaseProvider(String endpoint) {
     _endpoint = endpoint;
-    _baseUrl = const String.fromEnvironment(
-      "baseUrl",
-      defaultValue: "$baseUrl$apiPath",
-    );
+    _fullBaseUrl = "$baseUrl/api/";
   }
+
+  String get endpoint => _endpoint;
 
   Future<SearchResult<T>> get({dynamic filter}) async {
     try {
-      var url = "$_baseUrl$_endpoint";
+      var url = "$_fullBaseUrl$_endpoint";
 
       if (filter != null) {
         var queryString = getQueryString(filter);
@@ -75,7 +78,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<T> insert(dynamic request) async {
-    var url = "$_baseUrl$_endpoint";
+    var url = "$_fullBaseUrl$_endpoint";
     var uri = Uri.parse(url);
     var headers = createHeaders();
 
@@ -91,7 +94,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<T> update(int id, [dynamic request]) async {
-    var url = "$_baseUrl$_endpoint/$id";
+    var url = "$_fullBaseUrl$_endpoint/$id";
     var uri = Uri.parse(url);
     var headers = createHeaders();
 
@@ -107,7 +110,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<bool> delete(int id) async {
-    var url = "$_baseUrl$_endpoint/$id";
+    var url = "$_fullBaseUrl$_endpoint/$id";
     var uri = Uri.parse(url);
     var headers = createHeaders();
 

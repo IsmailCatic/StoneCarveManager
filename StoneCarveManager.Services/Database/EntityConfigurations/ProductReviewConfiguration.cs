@@ -25,7 +25,8 @@ namespace StoneCarveManager.Services.Database.EntityConfigurations
 
             builder.Property(x => x.CreatedAt)
                 .IsRequired()
-                .HasDefaultValueSql("GETUTCDATE()");
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
 
             // Relationships
             builder.HasOne(x => x.User)

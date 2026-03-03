@@ -11,7 +11,7 @@ namespace StoneCarveManager.Model.Validators
                 .NotEmpty().WithMessage("Payment intent ID is required.");
 
             RuleFor(x => x.OrderId)
-                .GreaterThan(0).WithMessage("Order ID is required.");
+                .NotEqual(0).WithMessage("Order ID is required.");
 
             When(x => x.Amount.HasValue, () =>
                 RuleFor(x => x.Amount).GreaterThan(0).WithMessage("Refund amount must be greater than 0."));

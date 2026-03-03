@@ -11,7 +11,7 @@ namespace StoneCarveManager.Model.Validators
                 .NotEmpty().WithMessage("Payment intent ID is required.");
 
             RuleFor(x => x.OrderId)
-                .GreaterThan(0).WithMessage("Order ID is required.");
+                .NotEqual(0).WithMessage("Order ID is required.");
         }
     }
 }

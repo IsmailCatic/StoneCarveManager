@@ -22,7 +22,7 @@ namespace StoneCarveManager.Model.Validators
                 RuleFor(x => x.FeaturedImageUrl).MaximumLength(500));
 
             RuleFor(x => x.AuthorId)
-                .Must(id => id == -999 || id > 0).WithMessage("Author is required.");
+                .NotEqual(0).WithMessage("Author is required.");
 
             RuleFor(x => x.CategoryId)
                 .NotEqual(0).WithMessage("Category is required.");

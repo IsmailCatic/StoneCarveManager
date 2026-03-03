@@ -15,7 +15,7 @@ namespace StoneCarveManager.Model.Validators
                 .Length(5, 1000).WithMessage("Comment must be between 5 and 1000 characters.");
 
             RuleFor(x => x.UserId)
-                .GreaterThan(0).WithMessage("User ID is required.");
+                .NotEqual(0).WithMessage("User ID is required.");
 
             RuleFor(x => x)
                 .Must(x => x.ProductId.HasValue || x.OrderId.HasValue)

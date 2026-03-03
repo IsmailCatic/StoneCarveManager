@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/auth_client.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
@@ -21,7 +22,7 @@ class UserProvider extends BaseProvider<User> {
 
   Future<User> createUser(User user) async {
     // Use the special endpoint and correct payload for user creation
-    var url = "http://localhost:5021/api/User/add-user";
+    var url = "${ApiConfig.apiUrl}/User/add-user";
     var headers = createHeaders();
     var jsonRequest = jsonEncode(user.toInsertJson());
     var response = await http.post(
@@ -75,9 +76,7 @@ class UserProvider extends BaseProvider<User> {
   Future<List<String>> getRoles() async {
     print('Calling backend for roles...');
     final client = AuthClient(getToken: getToken);
-    final response = await client.get(
-      Uri.parse('http://localhost:5021/api/Role'),
-    );
+    final response = await client.get(Uri.parse('${ApiConfig.apiUrl}/Role'));
     print('Roles response status: ${response.statusCode}');
     print('Roles response body: ${response.body}');
     if (response.statusCode == 200) {
@@ -119,7 +118,7 @@ class UserProvider extends BaseProvider<User> {
   /// Upload user profile image
   /// Returns the image URL
   Future<String> uploadUserProfileImage(int userId, File imageFile) async {
-    final url = "http://localhost:5021/api/User/$userId/profile-image";
+    final url = "${ApiConfig.apiUrl}/User/$userId/profile-image";
     final request = http.MultipartRequest('POST', Uri.parse(url));
 
     final token = AuthProvider.token;
@@ -170,7 +169,7 @@ class UserProvider extends BaseProvider<User> {
   /// Delete user profile image
   /// Returns true if successful
   Future<bool> deleteUserProfileImage(int userId) async {
-    final url = "http://localhost:5021/api/User/$userId/profile-image";
+    final url = "${ApiConfig.apiUrl}/User/$userId/profile-image";
     final token = AuthProvider.token;
 
     final response = await http.delete(
@@ -190,7 +189,7 @@ class UserProvider extends BaseProvider<User> {
 
   /// Get list of employees (users with Employee or Admin role)
   Future<List<User>> getEmployees() async {
-    final url = "http://localhost:5021/api/User/employees";
+    final url = "${ApiConfig.apiUrl}/User/employees";
     final token = AuthProvider.token;
 
     if (token == null) {

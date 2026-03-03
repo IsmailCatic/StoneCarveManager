@@ -4,9 +4,10 @@ import 'package:stonecarve_manager_flutter/models/payment.dart';
 import 'package:stonecarve_manager_flutter/models/search_result.dart';
 import 'package:stonecarve_manager_flutter/providers/base_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 
 class PaymentProvider extends BaseProvider<Payment> {
-  static const String baseUrl = 'http://localhost:5021/api';
+  static String get _apiUrl => ApiConfig.apiUrl;
 
   PaymentProvider() : super('Payment');
 
@@ -21,7 +22,7 @@ class PaymentProvider extends BaseProvider<Payment> {
   ]) async {
     search ??= PaymentSearchObject(retrieveAll: true);
 
-    var url = '$baseUrl/Payment';
+    var url = '$_apiUrl/Payment';
     final queryParams = search.toQueryParameters();
     if (queryParams.isNotEmpty) {
       url +=
@@ -51,7 +52,7 @@ class PaymentProvider extends BaseProvider<Payment> {
   Future<Payment> getPaymentById(int paymentId) async {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.get(
-      Uri.parse('$baseUrl/Payment/$paymentId'),
+      Uri.parse('$_apiUrl/Payment/$paymentId'),
       headers: headers,
     );
 
@@ -67,7 +68,7 @@ class PaymentProvider extends BaseProvider<Payment> {
     try {
       final headers = AuthProvider.getAuthHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/Payment/order/$orderId'),
+        Uri.parse('$_apiUrl/Payment/order/$orderId'),
         headers: headers,
       );
 
@@ -85,7 +86,7 @@ class PaymentProvider extends BaseProvider<Payment> {
   Future<Payment> issueRefund(RefundRequest request) async {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/Payment/refund'),
+      Uri.parse('$_apiUrl/Payment/refund'),
       headers: headers,
       body: jsonEncode(request.toJson()),
     );
@@ -101,7 +102,7 @@ class PaymentProvider extends BaseProvider<Payment> {
   Future<Payment> retryPayment(int orderId) async {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/Payment/$orderId/retry'),
+      Uri.parse('$_apiUrl/Payment/$orderId/retry'),
       headers: headers,
     );
 
@@ -117,7 +118,7 @@ class PaymentProvider extends BaseProvider<Payment> {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    var url = '$baseUrl/Payment/statistics';
+    var url = '$_apiUrl/Payment/statistics';
     final params = <String, String>{};
     if (startDate != null) params['startDate'] = startDate.toIso8601String();
     if (endDate != null) params['endDate'] = endDate.toIso8601String();
@@ -140,7 +141,7 @@ class PaymentProvider extends BaseProvider<Payment> {
   Future<void> deletePayment(int paymentId) async {
     final headers = AuthProvider.getAuthHeaders();
     final response = await http.delete(
-      Uri.parse('$baseUrl/Payment/$paymentId'),
+      Uri.parse('$_apiUrl/Payment/$paymentId'),
       headers: headers,
     );
 

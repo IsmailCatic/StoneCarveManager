@@ -1,12 +1,13 @@
 import '../models/product.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/auth_client.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class ProductProvider {
-  final String baseUrl = 'http://localhost:5021/api/Product';
+  final String baseUrl = '${ApiConfig.apiUrl}/Product';
 
   // Fetch portfolio products using new endpoint with optional filters
   Future<List<Product>> fetchPortfolioProducts({
@@ -263,7 +264,7 @@ class ProductProvider {
     print('[ProductProvider] setPrimaryImage: $productId $imageId');
     final client = AuthClient(getToken: () async => AuthProvider.token);
     final response = await client.patch(
-      Uri.parse('http://localhost:5021/api/ProductImage/$imageId/set-primary'),
+      Uri.parse('${ApiConfig.apiUrl}/ProductImage/$imageId/set-primary'),
     );
     print('[ProductProvider] Status: ${response.statusCode}');
     print('[ProductProvider] Body: ${response.body}');

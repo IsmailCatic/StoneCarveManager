@@ -54,6 +54,11 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
       setState(() {
         _orders = orderResult.items ?? [];
         _organizeOrdersByMonth();
+        // Ensure _selectedYear is valid for the dropdown
+        final availableYears = _getAvailableYears();
+        if (!availableYears.contains(_selectedYear)) {
+          _selectedYear = availableYears.first;
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -136,9 +141,14 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
   }
 
   List<int> _getAvailableYears() {
-    if (_orders.isEmpty) return [DateTime.now().year];
+    final currentYear = DateTime.now().year;
+    if (_orders.isEmpty) return [currentYear];
 
-    final years = _orders.map((order) => order.orderDate.year).toSet().toList();
+    final yearsSet = _orders.map((order) => order.orderDate.year).toSet();
+    yearsSet.add(
+      currentYear,
+    ); // always include current year so _selectedYear has a match
+    final years = yearsSet.toList();
     years.sort((a, b) => b.compareTo(a)); // Sort descending
     return years;
   }
@@ -214,7 +224,7 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildStatCard(
-                            'Total Orders',
+                            'Total Orders ($_selectedYear)',
                             _ordersByMonth.values
                                 .fold(0, (sum, list) => sum + list.length)
                                 .toString(),
@@ -224,7 +234,7 @@ class _OrdersMonthlyViewScreenState extends State<OrdersMonthlyViewScreen> {
                           // Revenue stats only visible to admins
                           if (AuthProvider.isAdmin)
                             _buildStatCard(
-                              'Total Revenue',
+                              'Total Revenue ($_selectedYear)',
                               '\$${_monthlyRevenue.values.fold(0.0, (sum, value) => sum + value).toStringAsFixed(2)}',
                               Icons.attach_money,
                               Colors.green,

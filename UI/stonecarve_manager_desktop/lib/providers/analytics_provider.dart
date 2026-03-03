@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/analytics.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 
 class AnalyticsProvider {
-  static const String baseUrl = 'http://localhost:5021/api';
+  static String get baseUrl => ApiConfig.apiUrl;
 
   /// Get comprehensive dashboard statistics
   Future<DashboardStatistics> getDashboardStatistics({

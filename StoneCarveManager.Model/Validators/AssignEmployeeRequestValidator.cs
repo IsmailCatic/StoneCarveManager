@@ -13,11 +13,11 @@ namespace StoneCarveManager.Model.Validators
         public AssignEmployeeRequestValidator()
         {
             // EmployeeId is optional (null = unassign)
-            // But if provided, must be valid (allow -999 for seeded admin)
+            // But if provided, must be valid (not zero)
             When(x => x.EmployeeId.HasValue, () =>
             {
                 RuleFor(x => x.EmployeeId.Value)
-                    .Must(id => id == -999 || id > 0)
+                    .NotEqual(0)
                     .WithMessage("Employee ID must be valid");
             });
         }

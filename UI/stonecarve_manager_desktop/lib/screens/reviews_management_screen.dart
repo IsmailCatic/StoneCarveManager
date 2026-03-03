@@ -422,13 +422,6 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildReviewsList(
-                  reviews: _pendingReviews,
-                  isLoading: _isLoadingPending,
-                  isPending: true,
-                  emptyMessage: 'No pending reviews',
-                  emptyIcon: Icons.pending_actions,
-                ),
                 Column(
                   children: [
                     Container(
@@ -465,14 +458,21 @@ class _ReviewsManagementScreenState extends State<ReviewsManagementScreen>
                     ),
                     Expanded(
                       child: _buildReviewsList(
-                        reviews: _approvedReviews,
-                        isLoading: _isLoadingApproved,
-                        isPending: false,
-                        emptyMessage: 'No approved reviews yet',
-                        emptyIcon: Icons.rate_review,
+                        reviews: _pendingReviews,
+                        isLoading: _isLoadingPending,
+                        isPending: true,
+                        emptyMessage: 'No pending reviews',
+                        emptyIcon: Icons.pending_actions,
                       ),
                     ),
                   ],
+                ),
+                _buildReviewsList(
+                  reviews: _approvedReviews,
+                  isLoading: _isLoadingApproved,
+                  isPending: false,
+                  emptyMessage: 'No approved reviews yet',
+                  emptyIcon: Icons.rate_review,
                 ),
               ],
             ),

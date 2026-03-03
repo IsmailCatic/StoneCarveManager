@@ -24,21 +24,11 @@ namespace StoneCarveManager.EmailService
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
-            //var factory = new ConnectionFactory()
-            //{
-            //    HostName = "localhost",
-            //    Port = 5672,
-            //    UserName = "guest",
-            //    Password = "guest",
-            //    RequestedHeartbeat = TimeSpan.FromSeconds(60),
-            //    AutomaticRecoveryEnabled = true
-            //};
-
             var factory = new ConnectionFactory()
             {
-                HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "rabbitmq",
-                UserName = Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
-                Password = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest",
+                HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
+                UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
+                Password = _configuration["RabbitMQ:Password"] ?? "guest",
                 RequestedHeartbeat = TimeSpan.FromSeconds(60),
                 AutomaticRecoveryEnabled = true
             };
@@ -355,10 +345,10 @@ namespace StoneCarveManager.EmailService
         {
             using var client = new SmtpClient();
 
-            var smtpServer = Environment.GetEnvironmentVariable("EMAIL_SMTP_SERVER") ?? _configuration["Email:SmtpServer"];
-            var smtpPortStr = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") ?? _configuration["Email:SmtpPort"];
-            var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME") ?? _configuration["Email:Username"];
-            var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") ?? _configuration["Email:Password"];
+            var smtpServer = _configuration["Email:SmtpServer"];
+            var smtpPortStr = _configuration["Email:SmtpPort"];
+            var emailUsername = _configuration["Email:Username"];
+            var emailPassword = _configuration["Email:Password"];
 
             if (string.IsNullOrWhiteSpace(smtpServer) || string.IsNullOrWhiteSpace(smtpPortStr)
                 || string.IsNullOrWhiteSpace(emailUsername))

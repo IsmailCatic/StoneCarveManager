@@ -3,10 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/review.dart';
 import 'package:stonecarve_manager_flutter/models/search_result.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class ReviewProvider {
-  static const String baseUrl = 'http://localhost:5021/api';
+  static String get baseUrl => ApiConfig.apiUrl;
 
   Map<String, String> _createHeaders() {
     final token = AuthProvider.token;

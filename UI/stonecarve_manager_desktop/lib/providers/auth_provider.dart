@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/auth.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class AuthProvider {
@@ -11,7 +12,7 @@ class AuthProvider {
   static List<String>? _roles;
   static bool _isLoggedIn = false;
 
-  static const String _baseUrl = "http://localhost:5021/";
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   // Getters
   static String? get username => _username;
@@ -99,7 +100,7 @@ class AuthProvider {
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('Connection refused')) {
         throw Exception(
-          "Cannot connect to server. Please make sure the backend is running on http://localhost:5021",
+          "Cannot connect to server. Please make sure the backend is running on ${ApiConfig.baseUrl}",
         );
       }
       rethrow;

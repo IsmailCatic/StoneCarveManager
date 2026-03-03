@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:http/http.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
@@ -13,11 +14,11 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
   BaseProvider(String endpoint) {
     _endpoint = endpoint;
-    _baseUrl = const String.fromEnvironment(
-      "baseUrl",
-      defaultValue: "http://localhost:5021/api/",
-    );
+    _baseUrl = ApiConfig.apiUrlWithSlash;
   }
+
+  String get baseUrl => _baseUrl ?? "";
+  String get endpoint => _endpoint;
 
   Future<SearchResult<T>> get({dynamic filter}) async {
     try {
@@ -59,7 +60,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('Connection refused')) {
         throw Exception(
-          "Cannot connect to server. Please make sure the backend is running on http://localhost:5021",
+          "Cannot connect to server. Please make sure the backend is running on ${ApiConfig.baseUrl}",
         );
       }
       rethrow;

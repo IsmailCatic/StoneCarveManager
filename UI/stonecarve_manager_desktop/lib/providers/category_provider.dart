@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class CategoryProvider extends BaseProvider<Category> {
@@ -86,7 +87,7 @@ class CategoryProvider extends BaseProvider<Category> {
   }
 
   Future<Category?> getCategoryById(int id) async {
-    final url = "http://localhost:5021/api/Category/$id";
+    final url = "${ApiConfig.apiUrl}/Category/$id";
     final token = AuthProvider.token;
 
     final response = await http.get(
@@ -106,7 +107,7 @@ class CategoryProvider extends BaseProvider<Category> {
   }
 
   Future<String> uploadCategoryImage(int categoryId, File imageFile) async {
-    final url = "http://localhost:5021/api/Category/$categoryId/image";
+    final url = "${ApiConfig.apiUrl}/Category/$categoryId/image";
     final request = http.MultipartRequest('POST', Uri.parse(url));
 
     final token = AuthProvider.token;
@@ -155,7 +156,7 @@ class CategoryProvider extends BaseProvider<Category> {
   }
 
   Future<bool> deleteCategoryImage(int categoryId) async {
-    final url = "http://localhost:5021/api/Category/$categoryId/image";
+    final url = "${ApiConfig.apiUrl}/Category/$categoryId/image";
     final token = AuthProvider.token;
 
     final response = await http.delete(

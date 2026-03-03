@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
@@ -57,7 +58,7 @@ class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
   }
 
   Future<stone_material.StoneMaterial?> getMaterialById(int id) async {
-    final url = "http://localhost:5021/api/Material/$id";
+    final url = "${ApiConfig.apiUrl}/Material/$id";
     final token = AuthProvider.token;
 
     final response = await http.get(
@@ -77,7 +78,7 @@ class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
   }
 
   Future<String> uploadMaterialImage(int materialId, File imageFile) async {
-    final url = "http://localhost:5021/api/Material/$materialId/image";
+    final url = "${ApiConfig.apiUrl}/Material/$materialId/image";
     final request = http.MultipartRequest('POST', Uri.parse(url));
 
     final token = AuthProvider.token;
@@ -126,7 +127,7 @@ class MaterialProvider extends BaseProvider<stone_material.StoneMaterial> {
   }
 
   Future<bool> deleteMaterialImage(int materialId) async {
-    final url = "http://localhost:5021/api/Material/$materialId/image";
+    final url = "${ApiConfig.apiUrl}/Material/$materialId/image";
     final token = AuthProvider.token;
 
     final response = await http.delete(

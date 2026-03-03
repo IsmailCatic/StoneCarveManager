@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:stonecarve_manager_flutter/models/profile.dart';
 import 'package:stonecarve_manager_flutter/providers/auth_provider.dart';
 import 'package:stonecarve_manager_flutter/providers/user_provider.dart';
+import 'package:stonecarve_manager_flutter/utils/api_config.dart';
 import 'package:stonecarve_manager_flutter/utils/http_error_handler.dart';
 
 class ProfileProvider extends ChangeNotifier {
@@ -16,7 +17,7 @@ class ProfileProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  static const String _baseUrl = "http://localhost:5021";
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   /// Fetch current user profile
   Future<void> fetchCurrentUserProfile() async {

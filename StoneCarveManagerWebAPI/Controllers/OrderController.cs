@@ -106,11 +106,7 @@ namespace StoneCarveManagerWebAPI.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Upload a reference sketch/image before creating a custom order.
-        /// Returns the URL of the uploaded image to be included in the CreateCustomOrder request.
-        /// Accepts multipart/form-data with a "file" field (JPG, PNG, PDF – max 10 MB).
-        /// </summary>
+
         [HttpPost("custom/upload-sketch")]
         public async Task<IActionResult> UploadCustomSketch(
             [FromForm] CustomOrderSketchUploadRequest request,
@@ -138,10 +134,6 @@ namespace StoneCarveManagerWebAPI.Controllers
             return Ok(order);
         }
 
-        /// <summary>
-        /// Create a service request order from a catalog service product.
-        /// Category and material are resolved automatically from the service product.
-        /// </summary>
         [HttpPost("service-request")]
         public async Task<IActionResult> CreateServiceRequest([FromBody] ServiceOrderInsertRequest request, CancellationToken cancellationToken)
         {

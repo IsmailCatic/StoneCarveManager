@@ -1,4 +1,4 @@
-/// Centralized API configuration.
+/// Centralized API configuration
 ///
 /// Reads `API_HOST` and `API_PORT` from compile-time environment variables
 /// (via `--dart-define`) with sensible defaults for local development.
@@ -12,7 +12,7 @@ class ApiConfig {
 
   static const String _port = String.fromEnvironment(
     'API_PORT',
-    defaultValue: '5199',
+    defaultValue: '8080',
   );
 
   /// Root URL of the backend, e.g. `http://localhost:5199/`

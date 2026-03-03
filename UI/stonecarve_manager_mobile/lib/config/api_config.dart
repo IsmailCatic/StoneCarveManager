@@ -16,7 +16,7 @@
 
 class ApiConfig {
   // 🔧 Change this for different environments
-  static const String baseUrl = "http://10.0.2.2:5021";
+  static const String baseUrl = "http://10.0.2.2:8080";
 
   // API endpoints
   static const String apiPath = "/api/";

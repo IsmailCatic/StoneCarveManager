@@ -13,7 +13,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   );
   static const _apiPort = String.fromEnvironment(
     "API_PORT",
-    defaultValue: "5021",
+    defaultValue: "8080",
   );
 
   /// Base URL without /api/ — used by other providers to build custom URLs

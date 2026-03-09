@@ -32,8 +32,6 @@ class AuthProvider {
     try {
       final loginRequest = LoginRequest(email: email, password: password);
 
-      print("Attempting login with email: $email"); // Debug log
-      print("Request URL: ${_baseUrl}auth/login"); // Debug log
 
       final response = await http
           .post(
@@ -51,7 +49,6 @@ class AuthProvider {
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
-        print('[AuthProvider] 📦 Backend response: $jsonResponse');
 
         final authResponse = AuthResponse.fromJson(jsonResponse);
 
@@ -66,11 +63,7 @@ class AuthProvider {
         // Fallback to backend roles if JWT decode fails
         if (_roles == null || _roles!.isEmpty) {
           _roles = authResponse.roles ?? [];
-          print(
-            '[AuthProvider] ⚠️ Could not extract roles from JWT, using backend: $_roles',
-          );
         } else {
-          print('[AuthProvider] ✅ Roles from JWT: $_roles');
         }
 
         _isLoggedIn = true;
@@ -81,11 +74,6 @@ class AuthProvider {
         await _storage.write(key: 'username', value: _username);
         await _storage.write(key: 'roles', value: jsonEncode(_roles));
 
-        print('[AuthProvider] ✅ Login successful:');
-        print('  - Token: ${_token!.substring(0, 30)}...');
-        print('  - UserId: $_userId');
-        print('  - Username: $_username');
-        print('  - Roles: $_roles');
 
         return authResponse;
       } else if (response.statusCode == 401) {
@@ -98,7 +86,6 @@ class AuthProvider {
         );
       }
     } catch (e) {
-      print("Login error: $e"); // Debug log
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('Connection refused')) {
         throw Exception(
@@ -158,9 +145,6 @@ class AuthProvider {
         body: jsonEncode({'email': email}),
       );
 
-      print(
-        '[AuthProvider] Password reset request: ${response.statusCode} - ${response.body}',
-      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -172,7 +156,6 @@ class AuthProvider {
         throw Exception('Error sending request: ${response.body}');
       }
     } catch (e) {
-      print('[AuthProvider] Password reset request error: $e');
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('Connection refused')) {
         throw Exception('Unable to connect to server');
@@ -194,10 +177,6 @@ class AuthProvider {
         'newPassword': newPassword,
       };
 
-      print('[AuthProvider] 📤 Sending password reset request:');
-      print('   Email: $email');
-      print('   VerificationCode: $verificationCode');
-      print('   Request body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
         Uri.parse('${_baseUrl}auth/reset-password'),
@@ -205,9 +184,6 @@ class AuthProvider {
         body: jsonEncode(requestBody),
       );
 
-      print(
-        '[AuthProvider] Password reset: ${response.statusCode} - ${response.body}',
-      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -222,7 +198,6 @@ class AuthProvider {
         throw Exception('Error resetting password: ${response.body}');
       }
     } catch (e) {
-      print('[AuthProvider] Password reset error: $e');
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('Connection refused')) {
         throw Exception('Unable to connect to server');
@@ -245,7 +220,6 @@ class AuthProvider {
       }
     } catch (e) {
       // Continue with logout even if API call fails
-      print('Logout API error: $e');
     } finally {
       // Clear all auth data from memory
       _token = null;
@@ -275,9 +249,6 @@ class AuthProvider {
   /// Called whenever any API returns 401 Unauthorized.
   /// Clears the session and redirects to the login screen with a toast message.
   static Future<void> handleSessionExpired(BuildContext context) async {
-    print(
-      '[AuthProvider] 🔒 Session expired — logging out and redirecting to login',
-    );
     await logout();
     if (context.mounted) {
       // Clear any existing SnackBars first, then show session-expired message
@@ -316,7 +287,6 @@ class AuthProvider {
       if (_token != null && _token!.isNotEmpty) {
         // Check if stored token is already expired — clear session if so
         if (JwtDecoder.isExpired(_token!)) {
-          print('[AuthProvider] ⚠️ Stored token is expired — clearing session');
           await logout();
           return;
         }
@@ -335,16 +305,12 @@ class AuthProvider {
           try {
             _roles = List<String>.from(jsonDecode(rolesJson));
           } catch (e) {
-            print('[AuthProvider] Error parsing roles: $e');
             _roles = [];
           }
         }
 
         // 🔧 FALLBACK: Decode roles from JWT if missing in storage
         if (_roles == null || _roles!.isEmpty) {
-          print(
-            '[AuthProvider] 🔧 roles missing in storage, decoding from JWT...',
-          );
           _roles = JwtDecoder.extractRoles(_token!);
         }
 
@@ -352,12 +318,7 @@ class AuthProvider {
         if (_userId != null && _username != null) {
           _isLoggedIn = true;
           // Only log in debug mode - don't spam console
-          print('[AuthProvider] ✅ Session restored (userId: $_userId)');
         } else {
-          print('[AuthProvider] ⚠️ Incomplete auth data - clearing session');
-          print('  - Token exists: ${_token != null}');
-          print('  - UserId: $_userId');
-          print('  - Username: $_username');
           // Clear incomplete session
           await logout();
         }
@@ -365,7 +326,6 @@ class AuthProvider {
         // Silent - no need to log missing token on fresh install
       }
     } catch (e) {
-      print('[AuthProvider] Error loading token: $e');
       // Clear potentially corrupted data
       await logout();
     }

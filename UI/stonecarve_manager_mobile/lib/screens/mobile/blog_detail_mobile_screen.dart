@@ -46,9 +46,6 @@ class _BlogDetailMobileScreenState extends State<BlogDetailMobileScreen> {
       // Runs asynchronously without blocking UI
       _provider.incrementViewCount(widget.postId).then((success) {
         if (success) {
-          print(
-            '✅ [BlogDetailMobile] View count incremented for post ${widget.postId}',
-          );
           // Update local UI count immediately so user sees their view counted
           if (mounted) {
             setState(() {

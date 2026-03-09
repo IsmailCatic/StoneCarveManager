@@ -98,22 +98,14 @@ class _CheckoutConfirmationScreenState
         customerNotes: notes.isEmpty ? null : notes,
       );
 
-      print('[Checkout] Creating order...');
       final order = await OrderProvider.createNewOrder(createOrderRequest);
-      print('[Checkout] Order created with ID: ${order.id}');
 
       // 2. Create Payment Intent
-      print('[Checkout] Creating payment intent...');
       final paymentIntent = await PaymentProvider.createPaymentIntent(
         orderId: order.id,
         paymentMethod: 'stripe',
         customerEmail: shippingAddress.email,
         customerName: shippingAddress.fullName,
-      );
-
-      print('[Checkout] Payment intent created: ${paymentIntent.id}');
-      print(
-        '[Checkout] Client secret received: ${paymentIntent.clientSecret?.substring(0, 20)}...',
       );
 
       if (paymentIntent.clientSecret == null) {
@@ -122,7 +114,6 @@ class _CheckoutConfirmationScreenState
 
       // 3. Confirm Payment with Stripe SDK
       // This is where the actual payment happens client-side
-      print('[Checkout] Confirming payment with Stripe...');
 
       try {
         // Stripe SDK will use the card details entered in the CardField
@@ -133,30 +124,16 @@ class _CheckoutConfirmationScreenState
             paymentMethodData: PaymentMethodData(),
           ),
         );
-
-        print(
-          '[Checkout] Stripe confirmation successful: ${confirmedIntent.status}',
-        );
       } on StripeException catch (e) {
-        print('[Checkout] Stripe error: ${e.error.message}');
-
         // Even if Stripe SDK fails, the backend might auto-confirm in test mode
         // Let's still try to confirm with backend
-        print(
-          '[Checkout] Attempting backend confirmation despite Stripe error...',
-        );
       }
 
       // 4. Confirm with backend to update database
       // The backend will check Stripe's payment intent status and update accordingly
-      print('[Checkout] Confirming with backend...');
       final payment = await PaymentProvider.confirmPayment(
         paymentIntentId: paymentIntent.id!,
         orderId: order.id,
-      );
-
-      print(
-        '[Checkout] Backend confirmation complete. Payment status: ${payment.status}',
       );
 
       if (payment.status == 'succeeded') {
@@ -182,11 +159,19 @@ class _CheckoutConfirmationScreenState
         );
       }
     } catch (e) {
-      print('[Checkout] Error: $e');
       if (mounted) {
+        final message = e.toString();
+        final isStockError =
+            message.toLowerCase().contains('stock') ||
+            message.toLowerCase().contains('insufficient') ||
+            message.toLowerCase().contains('not enough');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Payment failed: $e'),
+            content: Text(
+              isStockError
+                  ? '❌ One or more items are out of stock. Please update your cart.'
+                  : '❌ Payment failed: $message',
+            ),
             backgroundColor: Colors.red,
           ),
         );

@@ -58,7 +58,6 @@ class ProfileProvider extends ChangeNotifier {
         final data = jsonDecode(response.body);
         _currentUser = UserProfileResponse.fromJson(data);
         _errorMessage = null;
-        print('[ProfileProvider] ✅ Profile loaded');
       } else if (response.statusCode == 401) {
         throw Exception('Session expired. Please login again.');
       } else if (response.statusCode == 404) {
@@ -70,7 +69,6 @@ class ProfileProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString();
-      print('[ProfileProvider] ❌ Error fetching profile: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -109,7 +107,6 @@ class ProfileProvider extends ChangeNotifier {
           );
 
       if (response.statusCode == 200) {
-        print('[ProfileProvider] ✅ Profile updated');
         // Refresh profile after successful update
         await fetchCurrentUserProfile();
         return true;
@@ -138,7 +135,6 @@ class ProfileProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString();
-      print('[ProfileProvider] ❌ Update failed: $e');
       notifyListeners();
       return false; // ← DODATO: Mora vratiti false kada se desi error
     } finally {
@@ -182,7 +178,6 @@ class ProfileProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString();
-      print('Error changing password: $e');
       notifyListeners();
       return false;
     } finally {
@@ -216,7 +211,6 @@ class ProfileProvider extends ChangeNotifier {
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        print('[ProfileProvider] ✅ Profile image uploaded');
         // Refresh profile to get updated image URL
         await fetchCurrentUserProfile();
         return true;
@@ -232,7 +226,6 @@ class ProfileProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString();
-      print('[ProfileProvider] ❌ Upload failed: $e');
       notifyListeners();
       return false;
     } finally {
@@ -263,7 +256,6 @@ class ProfileProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 204 || response.statusCode == 200) {
-        print('[ProfileProvider] ✅ Profile image deleted');
         // Refresh profile to update state
         await fetchCurrentUserProfile();
         return true;
@@ -278,7 +270,6 @@ class ProfileProvider extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = e.toString();
-      print('[ProfileProvider] ❌ Delete failed: $e');
       notifyListeners();
       return false;
     } finally {

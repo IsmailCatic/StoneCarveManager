@@ -31,7 +31,6 @@ class FaqProvider {
       _baseUrl,
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-    print('[FaqProvider] GET $uri');
     final response = await http.get(uri, headers: _headers());
 
     if (response.statusCode == 200) {

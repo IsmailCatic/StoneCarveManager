@@ -13,14 +13,14 @@ namespace StoneCarveManager.Services.ProductStateMachine
         {
         }
 
-        public override ProductResponse Insert(ProductInsertRequest request)
+        public override async Task<ProductResponse> Insert(ProductInsertRequest request)
         {
             var entity = Mapper.Map<Product>(request);
             entity.ProductState = "draft";
             entity.CreatedAt = DateTime.UtcNow;
 
             Context.Products.Add(entity);
-            Context.SaveChanges();
+            await Context.SaveChangesAsync();
 
             return Mapper.Map<ProductResponse>(entity);
         }

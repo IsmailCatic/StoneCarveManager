@@ -14,7 +14,6 @@ class ReviewProvider {
       '${BaseProvider.baseUrl}/api/ProductReview/order/$orderId',
     );
 
-    print('[ReviewProvider] Fetching review for order $orderId');
 
     final response = await http.get(uri, headers: headers);
 
@@ -52,13 +51,9 @@ class ReviewProvider {
       'isApproved': true,
     });
 
-    print('[ReviewProvider] Adding review for order $orderId: $body');
 
     final response = await http.post(uri, headers: headers, body: body);
 
-    print(
-      '[ReviewProvider] Response: ${response.statusCode} - ${response.body}',
-    );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Review.fromJson(jsonDecode(response.body));
@@ -77,7 +72,6 @@ class ReviewProvider {
       '${BaseProvider.baseUrl}/api/ProductReview/product/$productId',
     );
 
-    print('[ReviewProvider] Fetching reviews for product $productId');
 
     final response = await http.get(uri, headers: headers);
 
@@ -106,7 +100,6 @@ class ReviewProvider {
       // Use dedicated ProductReview endpoint that returns all reviews with userName
       final uri = Uri.parse('${BaseProvider.baseUrl}/api/ProductReview');
 
-      print('[ReviewProvider] Fetching from: $uri');
 
       final response = await http.get(uri, headers: headers);
 
@@ -130,11 +123,9 @@ class ReviewProvider {
         );
       }
 
-      print('[ReviewProvider] Loaded ${allReviews.length} total reviews');
 
       return allReviews;
     } catch (e) {
-      print('[ReviewProvider] Error fetching all reviews: $e');
       throw Exception(AppErrorParser.fromException(e));
     }
   }

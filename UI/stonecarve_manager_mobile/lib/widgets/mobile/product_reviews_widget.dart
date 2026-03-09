@@ -40,7 +40,6 @@ class _ProductReviewsWidgetState extends State<ProductReviewsWidget> {
         _isLoading = false;
       });
     } catch (e) {
-      print('[ProductReviewsWidget] Error: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;

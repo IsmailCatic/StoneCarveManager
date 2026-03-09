@@ -71,11 +71,9 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
       for (var file in _selectedImages) {
         if (await file.exists()) {
           await file.delete();
-          print('[CustomOrderForm] Deleted temp image: ${file.path}');
         }
       }
     } catch (e) {
-      print('[CustomOrderForm] Error cleaning up temp images: $e');
     }
   }
 
@@ -137,14 +135,12 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
         final copiedFile = await originalFile.copy(permanentPath);
         newImages.add(copiedFile);
 
-        print('[CustomOrderForm] Copied image to: $permanentPath');
       }
 
       setState(() {
         _selectedImages.addAll(newImages);
       });
     } catch (e) {
-      print('[CustomOrderForm] Error picking images: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -164,10 +160,8 @@ class _CustomOrderFormScreenState extends State<CustomOrderFormScreen> {
     try {
       if (await file.exists()) {
         await file.delete();
-        print('[CustomOrderForm] Deleted removed image: ${file.path}');
       }
     } catch (e) {
-      print('[CustomOrderForm] Error deleting image: $e');
     }
   }
 

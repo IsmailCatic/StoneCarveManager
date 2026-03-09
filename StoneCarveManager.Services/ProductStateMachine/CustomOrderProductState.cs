@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Services.Database.Context;
@@ -38,16 +39,16 @@ namespace StoneCarveManager.Services.ProductStateMachine
         /// - Order was cancelled or failed
         /// - Project contains sensitive or confidential elements
         /// </summary>
-        public override ProductResponse Hide(int id)
+        public override async Task<ProductResponse> Hide(int id)
         {
-            var entity = Context.Products.Find(id);
+            var entity = await Context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             entity.ProductState = "hidden";
             entity.UpdatedAt = DateTime.UtcNow;
 
-            Context.SaveChanges();
+            await Context.SaveChangesAsync();
             return Mapper.Map<ProductResponse>(entity);
         }
 
@@ -62,9 +63,9 @@ namespace StoneCarveManager.Services.ProductStateMachine
         /// 1. Order is marked as "Delivered" or "Completed"
         /// 2. Customer has given explicit permission to showcase their project
         /// </summary>
-        public override ProductResponse AddToPortfolio(int id)
+        public override async Task<ProductResponse> AddToPortfolio(int id)
         {
-            var entity = Context.Products.Find(id);
+            var entity = await Context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
@@ -72,7 +73,7 @@ namespace StoneCarveManager.Services.ProductStateMachine
             entity.IsInPortfolio = true;
             entity.UpdatedAt = DateTime.UtcNow;
 
-            Context.SaveChanges();
+            await Context.SaveChangesAsync();
             return Mapper.Map<ProductResponse>(entity);
         }
 

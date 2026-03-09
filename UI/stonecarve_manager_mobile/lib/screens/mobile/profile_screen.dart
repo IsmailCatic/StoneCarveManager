@@ -89,11 +89,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       final roles = AuthProvider.roles;
       if (roles != null && roles.isNotEmpty) {
         currentRole = roles.first; // Take first role from JWT
-        print('[ProfileScreen] ⚠️ Using role from JWT: $currentRole');
       } else {
         // Last resort fallback
         currentRole = 'User';
-        print('[ProfileScreen] ⚠️ No role found, using default: User');
       }
     }
 
@@ -106,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       role: currentRole, // REQUIRED by backend validation
     );
 
-    print('[ProfileScreen] 📤 Sending update with role: $currentRole');
 
     final success = await provider.updateProfile(request);
 

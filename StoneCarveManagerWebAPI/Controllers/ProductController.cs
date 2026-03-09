@@ -113,41 +113,41 @@ namespace StoneCarveManagerWebAPI.Controllers
         // State Machine Endpoints - Admin/Employee only
         [HttpPatch("{id}/activate")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public IActionResult Activate(int id)
+        public async Task<IActionResult> Activate(int id)
         {
-            var result = _productService.Activate(id);
+            var result = await _productService.Activate(id);
             return Ok(result);
         }
 
         [HttpPatch("{id}/hide")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public IActionResult Hide(int id)
+        public async Task<IActionResult> Hide(int id)
         {
-            var result = _productService.Hide(id);
+            var result = await _productService.Hide(id);
             return Ok(result);
         }
 
         [HttpPatch("{id}/make-service")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public IActionResult MakeService(int id)
+        public async Task<IActionResult> MakeService(int id)
         {
-            var result = _productService.MakeService(id);
+            var result = await _productService.MakeService(id);
             return Ok(result);
         }
 
         [HttpPatch("{id}/add-to-portfolio")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public IActionResult AddToPortfolio(int id)
+        public async Task<IActionResult> AddToPortfolio(int id)
         {
-            var result = _productService.AddToPortfolio(id);
+            var result = await _productService.AddToPortfolio(id);
             return Ok(result);
         }
 
         [HttpGet("{id}/allowed-actions")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Employee}")]
-        public IActionResult GetAllowedActions(int id)
+        public async Task<IActionResult> GetAllowedActions(int id)
         {
-            var actions = _productService.AllowedActions(id);
+            var actions = await _productService.AllowedActions(id);
             return Ok(actions);
         }
 

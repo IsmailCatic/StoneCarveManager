@@ -22,7 +22,6 @@ class PaymentProvider {
         customerName: customerName,
       );
 
-      print('[PaymentProvider] Creating payment intent for order $orderId');
 
       final headers = await AuthProvider.getAuthHeaders();
       final response = await http.post(
@@ -31,8 +30,6 @@ class PaymentProvider {
         body: jsonEncode(request.toJson()),
       );
 
-      print('[PaymentProvider] Response status: ${response.statusCode}');
-      print('[PaymentProvider] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -41,7 +38,6 @@ class PaymentProvider {
         throw Exception('Failed to create payment intent: ${response.body}');
       }
     } catch (e) {
-      print('[PaymentProvider] Error creating payment intent: $e');
       rethrow;
     }
   }
@@ -57,7 +53,6 @@ class PaymentProvider {
         orderId: orderId,
       );
 
-      print('[PaymentProvider] Confirming payment for order $orderId');
 
       final headers = await AuthProvider.getAuthHeaders();
       final response = await http.post(
@@ -66,9 +61,6 @@ class PaymentProvider {
         body: jsonEncode(request.toJson()),
       );
 
-      print(
-        '[PaymentProvider] Confirm response status: ${response.statusCode}',
-      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -77,7 +69,6 @@ class PaymentProvider {
         throw Exception('Failed to confirm payment: ${response.body}');
       }
     } catch (e) {
-      print('[PaymentProvider] Error confirming payment: $e');
       rethrow;
     }
   }
@@ -85,7 +76,6 @@ class PaymentProvider {
   /// Get payment by order ID
   static Future<Payment?> getPaymentByOrderId(int orderId) async {
     try {
-      print('[PaymentProvider] Getting payment for order $orderId');
 
       final headers = await AuthProvider.getAuthHeaders();
       final response = await http.get(
@@ -102,7 +92,6 @@ class PaymentProvider {
         throw Exception('Failed to get payment: ${response.body}');
       }
     } catch (e) {
-      print('[PaymentProvider] Error getting payment: $e');
       rethrow;
     }
   }
@@ -123,7 +112,6 @@ class PaymentProvider {
         throw Exception('Failed to get payment: ${response.body}');
       }
     } catch (e) {
-      print('[PaymentProvider] Error getting payment by ID: $e');
       rethrow;
     }
   }
@@ -135,7 +123,6 @@ class PaymentProvider {
     int? pageSize,
   }) async {
     try {
-      print('[PaymentProvider] Getting my payments (status: $status)');
 
       final headers = await AuthProvider.getAuthHeaders();
 
@@ -157,7 +144,6 @@ class PaymentProvider {
 
       final response = await http.get(uri, headers: headers);
 
-      print('[PaymentProvider] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -180,7 +166,6 @@ class PaymentProvider {
         throw Exception('Failed to get payments: ${response.body}');
       }
     } catch (e) {
-      print('[PaymentProvider] Error getting my payments: $e');
       rethrow;
     }
   }

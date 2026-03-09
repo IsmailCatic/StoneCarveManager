@@ -38,7 +38,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('[OrderDetailsScreen] Error: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;

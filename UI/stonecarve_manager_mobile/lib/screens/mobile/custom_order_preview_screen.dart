@@ -30,11 +30,9 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
       for (var file in widget.sketchFiles) {
         if (await file.exists()) {
           await file.delete();
-          print('[CustomOrderPreview] Deleted temp image: ${file.path}');
         }
       }
     } catch (e) {
-      print('[CustomOrderPreview] Error cleaning up temp images: $e');
     }
   }
 
@@ -44,14 +42,12 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
     });
 
     try {
-      print('[CustomOrderPreview] Submitting custom order...');
 
       final order = await OrderProvider.createCustomOrder(
         widget.request,
         widget.sketchFiles,
       );
 
-      print('[CustomOrderPreview] Order created successfully: ${order.id}');
 
       // Clean up temporary image files after successful upload
       await _cleanupTempImages();
@@ -62,7 +58,6 @@ class _CustomOrderPreviewScreenState extends State<CustomOrderPreviewScreen> {
       // Navigate to a confirmation screen rather than the payment screen.
       _showOrderConfirmation(order.orderNumber);
     } catch (e) {
-      print('[CustomOrderPreview] Error: $e');
 
       if (!mounted) return;
 

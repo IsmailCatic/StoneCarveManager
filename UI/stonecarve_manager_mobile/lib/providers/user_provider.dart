@@ -65,21 +65,16 @@ class UserProvider extends BaseProvider<User> {
   // }
 
   Future<List<String>> getRoles() async {
-    print('Calling backend for roles...');
     final client = AuthClient(getToken: getToken);
     final response = await client.get(
       Uri.parse('${BaseProvider.baseUrl}/api/Role'),
     );
-    print('Roles response status: ${response.statusCode}');
-    print('Roles response body: ${response.body}');
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
       final List<dynamic> items = data['items'] ?? [];
       final roles = items.map((role) => role['name'] as String).toList();
-      print('Parsed roles: $roles');
       return roles;
     } else {
-      print('Failed to load roles, status: ${response.statusCode}');
       throw Exception('Failed to load roles');
     }
   }

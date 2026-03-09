@@ -25,7 +25,6 @@ class OrderProvider extends BaseProvider<Order> {
     final url = Uri.parse('${BaseProvider.baseUrl}/api/Order');
     final headers = await AuthProvider.getAuthHeaders();
 
-    print('[OrderProvider] Creating order: ${request.toJson()}');
 
     final response = await http.post(
       url,
@@ -33,8 +32,6 @@ class OrderProvider extends BaseProvider<Order> {
       body: jsonEncode(request.toJson()),
     );
 
-    print('[OrderProvider] Response status: ${response.statusCode}');
-    print('[OrderProvider] Response body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Order.fromJson(jsonDecode(response.body));
@@ -142,11 +139,9 @@ class OrderProvider extends BaseProvider<Order> {
       '${BaseProvider.baseUrl}/api/Order/my-orders',
     ).replace(queryParameters: queryParams);
 
-    print('[OrderProvider] Fetching my orders from: $uri');
 
     final response = await http.get(uri, headers: headers);
 
-    print('[OrderProvider] Response status: ${response.statusCode}');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -164,9 +159,6 @@ class OrderProvider extends BaseProvider<Order> {
   static Future<List<Order>> getMyActiveOrders() async {
     final all = await getMyOrders();
     final active = all.where((o) => o.status >= 0 && o.status <= 2).toList();
-    print(
-      '[OrderProvider] Active orders: ${active.length} (from ${all.length} total)',
-    );
     return active;
   }
 
@@ -175,9 +167,6 @@ class OrderProvider extends BaseProvider<Order> {
   static Future<List<Order>> getMyOrderHistory() async {
     final all = await getMyOrders();
     final history = all.where((o) => o.status >= 3 && o.status <= 5).toList();
-    print(
-      '[OrderProvider] History orders: ${history.length} (from ${all.length} total)',
-    );
     return history;
   }
 
@@ -187,7 +176,6 @@ class OrderProvider extends BaseProvider<Order> {
 
     final uri = Uri.parse('${BaseProvider.baseUrl}/api/Order/$orderId');
 
-    print('[OrderProvider] Fetching order details from: $uri');
 
     final response = await http.get(uri, headers: headers);
 
@@ -223,12 +211,10 @@ class OrderProvider extends BaseProvider<Order> {
       request.fields['description'] = description;
     }
 
-    print('[OrderProvider] Uploading custom sketch: ${file.path}');
 
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
 
-    print('[OrderProvider] Upload response: ${response.statusCode}');
 
     if (isValidResponse(response)) {
       final data = jsonDecode(response.body);
@@ -246,7 +232,6 @@ class OrderProvider extends BaseProvider<Order> {
         imageUrl = '${ApiConfig.baseUrl}/$imageUrl';
       }
 
-      print('[OrderProvider] Sketch uploaded successfully: $imageUrl');
       return imageUrl;
     } else {
       throw Exception("Failed to upload sketch: ${response.body}");
@@ -263,23 +248,15 @@ class OrderProvider extends BaseProvider<Order> {
     final provider = OrderProvider();
 
     try {
-      print('[OrderProvider] Starting custom order creation');
-      print(
-        '[OrderProvider] Number of sketches to upload: ${sketchFiles.length}',
-      );
 
       // 1. Upload all sketches first
       final uploadedUrls = <String>[];
       for (int i = 0; i < sketchFiles.length; i++) {
         final file = sketchFiles[i];
-        print(
-          '[OrderProvider] Uploading sketch ${i + 1}/${sketchFiles.length}',
-        );
         final url = await provider.uploadCustomSketch(file);
         uploadedUrls.add(url);
       }
 
-      print('[OrderProvider] All sketches uploaded: $uploadedUrls');
 
       // 2. Create request with uploaded URLs
       final requestWithUrls = CustomOrderRequest(
@@ -299,8 +276,6 @@ class OrderProvider extends BaseProvider<Order> {
       // 3. Create custom order
       final uri = Uri.parse('${ApiConfig.apiBaseUrl}Order/custom');
 
-      print('[OrderProvider] Creating custom order at: $uri');
-      print('[OrderProvider] Request body: ${requestWithUrls.toJson()}');
 
       final response = await http.post(
         uri,
@@ -308,20 +283,14 @@ class OrderProvider extends BaseProvider<Order> {
         body: jsonEncode(requestWithUrls.toJson()),
       );
 
-      print('[OrderProvider] Custom order response: ${response.statusCode}');
-      print('[OrderProvider] Response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final order = Order.fromJson(jsonDecode(response.body));
-        print(
-          '[OrderProvider] Custom order created successfully: Order #${order.id}',
-        );
         return order;
       } else {
         throw Exception('Failed to create custom order: ${response.body}');
       }
     } catch (e) {
-      print('[OrderProvider] Error creating custom order: $e');
       rethrow;
     }
   }
@@ -336,12 +305,10 @@ class OrderProvider extends BaseProvider<Order> {
     final provider = OrderProvider();
 
     try {
-      print('[OrderProvider] Starting service request creation');
 
       // 1. Upload images
       final uploadedUrls = <String>[];
       for (int i = 0; i < imageFiles.length; i++) {
-        print('[OrderProvider] Uploading image ${i + 1}/${imageFiles.length}');
         final url = await provider.uploadCustomSketch(imageFiles[i]);
         uploadedUrls.add(url);
       }
@@ -361,8 +328,6 @@ class OrderProvider extends BaseProvider<Order> {
 
       // 3. POST to service-request endpoint
       final uri = Uri.parse('${ApiConfig.apiBaseUrl}Order/service-request');
-      print('[OrderProvider] POSTing service request to: $uri');
-      print('[OrderProvider] Body: ${requestWithUrls.toJson()}');
 
       final response = await http.post(
         uri,
@@ -370,17 +335,14 @@ class OrderProvider extends BaseProvider<Order> {
         body: jsonEncode(requestWithUrls.toJson()),
       );
 
-      print('[OrderProvider] Service request response: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final order = Order.fromJson(jsonDecode(response.body));
-        print('[OrderProvider] Service request created: Order #${order.id}');
         return order;
       } else {
         throw Exception('Failed to submit service request: ${response.body}');
       }
     } catch (e) {
-      print('[OrderProvider] Error creating service request: $e');
       rethrow;
     }
   }

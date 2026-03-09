@@ -106,19 +106,16 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
         '${BaseProvider.baseUrl}/api/Product/portfolio',
       ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-      print('[PortfolioMobile] Fetching from: $uri');
 
       final response = await http.get(
         uri,
         headers: AuthProvider.getAuthHeaders(),
       );
 
-      print('[PortfolioMobile] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         final List<dynamic> items = jsonResponse['items'] ?? [];
-        print('[PortfolioMobile] Loaded ${items.length} portfolio items');
 
         var projects = items.map((json) => Product.fromJson(json)).toList();
 
@@ -166,7 +163,6 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
       final result = await _categoryProvider.get();
       setState(() => _categories = result.items ?? []);
     } catch (e) {
-      print('Error loading categories: $e');
     }
   }
 
@@ -175,7 +171,6 @@ class _PortfolioMobileScreenState extends State<PortfolioMobileScreen>
       final result = await _materialProvider.get();
       setState(() => _materials = result.items ?? []);
     } catch (e) {
-      print('Error loading materials: $e');
     }
   }
 

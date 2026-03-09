@@ -35,13 +35,11 @@ namespace StoneCarveManager.Services.Services
 
         public async Task<CheckoutSummaryResponse> GetCheckoutSummaryAsync(int userId, CancellationToken cancellationToken = default)
         {
-            // Dohvati košaricu
             var cart = await _cartService.GetCartByUserIdAsync(userId, cancellationToken);
 
             if (cart == null || cart.Items.Count == 0)
                 throw new InvalidOperationException("Cart is empty");
 
-            // Kreiraj sažetak
             var items = cart.Items.Select(item => new CheckoutItemResponse
             {
                 ProductId = item.ProductId,
@@ -52,10 +50,11 @@ namespace StoneCarveManager.Services.Services
                 Total = item.Total
             }).ToList();
 
-            var subtotal = items.Sum(i => i.Total);
-            var discount = 0m; // TODO: Implement discount logic
+            // Use cart.Subtotal consistently (same base as CreateOrderFromCartAsync)
+            var subtotal = cart.Subtotal;
+            var discount = cart.TotalDiscount;
             var deliveryFee = CalculateDeliveryFee(subtotal);
-            var total = subtotal - discount + deliveryFee;
+            var total = cart.Total + deliveryFee;
 
             return new CheckoutSummaryResponse
             {
@@ -70,46 +69,56 @@ namespace StoneCarveManager.Services.Services
 
         public async Task<CheckoutResponse> ProcessCheckoutAsync(int userId, CheckoutRequest request, CancellationToken cancellationToken = default)
         {
-            // 1. Dohvati košaricu
+            // 1. Get cart
             var cartResponse = await _cartService.GetCartByUserIdAsync(userId, cancellationToken);
 
             if (cartResponse == null || cartResponse.Items.Count == 0)
                 throw new InvalidOperationException("Cart is empty");
 
-            // 2. Validacija zaliha (provjeri da li su svi proizvodi još uvijek dostupni)
-            foreach (var item in cartResponse.Items)
+            // 2. Use a transaction so the order + stock reservation are rolled back if payment intent creation fails
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+            try
             {
-                if (!item.IsInStock)
-                    throw new InvalidOperationException($"Product '{item.ProductName}' is no longer in stock");
+                // 3. Reserve stock atomically — validates availability and decrements in one step.
+                //    This prevents two concurrent checkouts from buying the same last item.
+                await ReserveStockAsync(cartResponse.Items, cancellationToken);
+
+                // 4. Create order from cart
+                var order = await CreateOrderFromCartAsync(userId, cartResponse, request, cancellationToken);
+
+                // 5. Create Stripe Payment Intent
+                var paymentIntentRequest = new CreatePaymentIntentRequest
+                {
+                    OrderId = order.Id,
+                    PaymentMethod = request.PaymentMethod
+                };
+
+                var paymentIntent = await _paymentService.CreatePaymentIntentAsync(userId, paymentIntentRequest, cancellationToken);
+
+                // 6. Commit — order, stock reservation, and payment record are saved
+                await transaction.CommitAsync(cancellationToken);
+
+                return new CheckoutResponse
+                {
+                    OrderId = order.Id,
+                    OrderNumber = order.OrderNumber,
+                    TotalAmount = order.TotalAmount,
+                    PaymentIntentId = paymentIntent.PaymentIntentId,
+                    ClientSecret = paymentIntent.ClientSecret,
+                    PaymentStatus = paymentIntent.Status
+                };
             }
-
-            // 3. Kreiraj Order iz Cart-a
-            var order = await CreateOrderFromCartAsync(userId, cartResponse, request, cancellationToken);
-
-            // 4. Kreiraj Payment Intent
-            var paymentIntentRequest = new CreatePaymentIntentRequest
+            catch
             {
-                OrderId = order.Id,
-                PaymentMethod = request.PaymentMethod
-            };
-
-            var paymentIntent = await _paymentService.CreatePaymentIntentAsync(userId, paymentIntentRequest, cancellationToken);
-
-            // 5. Vrati checkout response
-            return new CheckoutResponse
-            {
-                OrderId = order.Id,
-                OrderNumber = order.OrderNumber,
-                TotalAmount = order.TotalAmount,
-                PaymentIntentId = paymentIntent.PaymentIntentId,
-                ClientSecret = paymentIntent.ClientSecret,
-                PaymentStatus = paymentIntent.Status
-            };
+                // Roll back order, stock decrement, and payment DB record if anything fails
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
         }
 
         public async Task<OrderResponse> CompleteCheckoutAsync(string paymentIntentId, CancellationToken cancellationToken = default)
         {
-            // 1. Dohvati payment po PaymentIntentId
             var payment = await _context.Payments
                 .Include(p => p.Order)
                     .ThenInclude(o => o.User)
@@ -120,31 +129,56 @@ namespace StoneCarveManager.Services.Services
             if (payment == null)
                 throw new KeyNotFoundException("Payment not found");
 
-            // 2. Provjeri da li je pla?anje uspješno
             if (payment.Status != "succeeded")
                 throw new InvalidOperationException($"Payment is not successful. Status: {payment.Status}");
 
-            // 3. Ažuriraj order status
+            // Update order status
             payment.Order.Status = DatabaseOrderStatus.Processing;
             await _context.SaveChangesAsync(cancellationToken);
 
-            // 4. Isprazni košaricu korisnika
+            // Clear user cart
             await _cartService.ClearCartAsync(payment.Order.UserId, cancellationToken);
 
-            // 5. Smanji stock quantity za svaki proizvod
-            await UpdateProductStockAsync(payment.Order.OrderItems, cancellationToken);
+            // Stock was already reserved during ProcessCheckoutAsync — no decrement here.
 
-            // 6. Vrati order response
             return _mapper.Map<OrderResponse>(payment.Order);
         }
 
         // Helper methods
+
+        /// <summary>
+        /// Reserve stock for all items at checkout time.
+        /// Validates each product has sufficient stock and decrements atomically within the current transaction.
+        /// Throws InvalidOperationException if any product has insufficient stock.
+        /// </summary>
+        private async Task ReserveStockAsync(System.Collections.Generic.List<CartItemResponse> items, CancellationToken cancellationToken)
+        {
+            foreach (var item in items)
+            {
+                var product = await _context.Products.FindAsync(new object[] { item.ProductId }, cancellationToken);
+
+                if (product == null)
+                    throw new InvalidOperationException($"Product with ID {item.ProductId} no longer exists.");
+
+                if (product.StockQuantity < item.Quantity)
+                    throw new InvalidOperationException(
+                        $"Insufficient stock for '{product.Name}'. Requested: {item.Quantity}, Available: {product.StockQuantity}");
+
+                product.StockQuantity -= item.Quantity;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
         private async Task<Order> CreateOrderFromCartAsync(
             int userId,
             CartResponse cart,
             CheckoutRequest request,
             CancellationToken cancellationToken)
         {
+            // cart.Subtotal = zbroj (cijena × koli?ina) prije popusta
+            // cart.Total    = zbroj ukupnih cijena artikala (nakon popusta, bez troškova dostave)
+            // Trošak dostave se ovdje jednom izra?unava na temelju zbroja cijena proizvoda.
             var deliveryFee = CalculateDeliveryFee(cart.Subtotal);
             var totalAmount = cart.Total + deliveryFee;
 
@@ -172,23 +206,6 @@ namespace StoneCarveManager.Services.Services
             await _context.SaveChangesAsync(cancellationToken);
 
             return order;
-        }
-
-        private async Task UpdateProductStockAsync(ICollection<OrderItem> orderItems, CancellationToken cancellationToken)
-        {
-            foreach (var item in orderItems)
-            {
-                var product = await _context.Products.FindAsync(new object[] { item.ProductId }, cancellationToken);
-                if (product != null)
-                {
-                    product.StockQuantity -= item.Quantity;
-
-                    if (product.StockQuantity < 0)
-                        product.StockQuantity = 0; // Prevent negative stock
-                }
-            }
-
-            await _context.SaveChangesAsync(cancellationToken);
         }
 
         private decimal CalculateDeliveryFee(decimal subtotal)

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:stonecarve_manager_mobile/config/api_config.dart';
 import 'package:stonecarve_manager_mobile/models/search_result.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,24 +8,15 @@ import 'package:stonecarve_manager_mobile/providers/auth_provider.dart';
 import 'package:http/http.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
-  static const _apiHost = String.fromEnvironment(
-    "API_HOST",
-    defaultValue: "10.0.2.2",
-  );
-  static const _apiPort = String.fromEnvironment(
-    "API_PORT",
-    defaultValue: "8080",
-  );
-
-  /// Base URL without /api/ — used by other providers to build custom URLs
-  static String get baseUrl => "http://$_apiHost:$_apiPort";
+  /// Delegates to [ApiConfig] — the single source of truth.
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static String? _fullBaseUrl;
   String _endpoint = "";
 
   BaseProvider(String endpoint) {
     _endpoint = endpoint;
-    _fullBaseUrl = "$baseUrl/api/";
+    _fullBaseUrl = ApiConfig.apiBaseUrl;
   }
 
   String get endpoint => _endpoint;
@@ -41,7 +33,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
       var uri = Uri.parse(url);
       var headers = createHeaders();
 
-      print("Making GET request to: $url"); // Debug log
 
       var response = await http
           .get(uri, headers: headers)
@@ -50,8 +41,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
             onTimeout: () => throw Exception('Request timeout'),
           );
 
-      print("Response status: ${response.statusCode}"); // Debug log
-      print("Response body: ${response.body}"); // Debug log
 
       if (isValidResponse(response)) {
         var data = jsonDecode(response.body);
@@ -66,7 +55,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
         throw Exception("HTTP ${response.statusCode}: ${response.body}");
       }
     } catch (e) {
-      print("Error in BaseProvider.get(): $e"); // Debug log
       if (e.toString().contains('Failed host lookup') ||
           e.toString().contains('Connection refused')) {
         throw Exception(
@@ -133,7 +121,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
     } else if (response.statusCode == 401) {
       throw new Exception("Unauthorized");
     } else {
-      print(response.body);
       throw new Exception("Something bad happened please try again");
     }
   }

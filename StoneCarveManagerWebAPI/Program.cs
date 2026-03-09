@@ -56,6 +56,7 @@ MapEnv("CORS_ALLOWED_ORIGINS", "CORSAllowedOrigins");
 MapEnv("AZURE_BLOB_CONNECTION_STRING", "AzureBlobStorage:ConnectionString");
 MapEnv("STRIPE_PUBLISHABLE_KEY", "Stripe:PublishableKey");
 MapEnv("STRIPE_SECRET_KEY", "Stripe:SecretKey");
+MapEnv("STRIPE_WEBHOOK_SECRET", "Stripe:WebhookSecret");
 MapEnv("FRONTEND_URL", "FrontendUrl");
 MapEnv("RABBITMQ_USER", "RabbitMQ:UserName");
 MapEnv("RABBITMQ_PASSWORD", "RabbitMQ:Password");

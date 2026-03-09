@@ -88,7 +88,6 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
         _handleDeepLink(initialUri);
       }
     } catch (e) {
-      debugPrint('Failed to get initial link: $e');
     }
 
     // Listen for deep links when app is already running
@@ -99,24 +98,17 @@ class _StoneCarveManagerAppState extends State<StoneCarveManagerApp> {
         }
       },
       onError: (err) {
-        debugPrint('Deep link error: $err');
       },
     );
   }
 
   void _handleDeepLink(Uri uri) {
     try {
-      debugPrint('🔗 Deep link received: $uri');
-      debugPrint('   Host: ${uri.host}');
-      debugPrint('   Path: ${uri.path}');
-      debugPrint('   Query params: ${uri.queryParameters}');
 
       // Note: Password reset now uses 6-digit verification code via email
       // Deep linking is reserved for future features (e.g., product sharing, order tracking)
 
-      debugPrint('ℹ️ Deep link handler - no actions configured yet');
     } catch (e) {
-      debugPrint('❌ Failed to handle deep link: $e');
     }
   }
 

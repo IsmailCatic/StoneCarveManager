@@ -55,6 +55,7 @@ services:
       - AzureBlobStorage__ConnectionString=${AZURE_BLOB_CONNECTION_STRING}
       - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
       - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+      - Stripe__WebhookSecret=${STRIPE_WEBHOOK_SECRET}
       - FrontendUrl=${FRONTEND_URL}
     depends_on:
       mssql:

@@ -27,19 +27,12 @@ class BlogPostProvider extends BaseProvider {
         ),
       );
 
-      print('🔵 [BlogPost] Fetching blog posts from: $uri');
-      print('🔵 [BlogPost] Token available: ${token != null}');
 
       final response = await http.get(uri, headers: _headers(token!));
 
-      print('🔵 [BlogPost] Response status: ${response.statusCode}');
-      print('🔵 [BlogPost] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final decodedResponse = json.decode(response.body);
-        print(
-          '🔵 [BlogPost] Decoded response type: ${decodedResponse.runtimeType}',
-        );
 
         // Check if response is a List or a wrapped object
         final List data;
@@ -48,28 +41,19 @@ class BlogPostProvider extends BaseProvider {
         } else if (decodedResponse is Map<String, dynamic>) {
           // API returns wrapped response like { "items": [...], "totalCount": 10 }
           data = decodedResponse['items'] ?? decodedResponse['data'] ?? [];
-          print(
-            '🔵 [BlogPost] Extracted ${data.length} items from wrapped response',
-          );
         } else {
           throw Exception(
             'Unexpected response format: ${decodedResponse.runtimeType}',
           );
         }
 
-        print('✅ [BlogPost] Successfully loaded ${data.length} blog posts');
         return data.map((e) => BlogPost.fromJson(e)).toList();
       } else {
-        print(
-          '❌ [BlogPost] Failed with status ${response.statusCode}: ${response.body}',
-        );
         throw Exception(
           'Failed to load blog posts: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e, stackTrace) {
-      print('❌ [BlogPost] Error fetching blog posts: $e');
-      print('❌ [BlogPost] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -79,24 +63,16 @@ class BlogPostProvider extends BaseProvider {
       final token = AuthProvider.token;
       final uri = Uri.parse('$apiUrl/BlogPost/$id');
 
-      print('🔵 [BlogPost] Fetching blog post $id from: $uri');
 
       final response = await http.get(uri, headers: _headers(token!));
 
-      print('🔵 [BlogPost] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        print('✅ [BlogPost] Successfully loaded blog post $id');
         return BlogPost.fromJson(json.decode(response.body));
       } else {
-        print(
-          '❌ [BlogPost] Failed with status ${response.statusCode}: ${response.body}',
-        );
         throw Exception('Failed to load blog post: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('❌ [BlogPost] Error fetching blog post $id: $e');
-      print('❌ [BlogPost] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -109,8 +85,6 @@ class BlogPostProvider extends BaseProvider {
       final token = AuthProvider.token;
       final uri = Uri.parse('$apiUrl/BlogPost');
 
-      print('🔵 [BlogPost] Inserting blog post to: $uri');
-      print('🔵 [BlogPost] Request data: ${json.encode(request.toJson())}');
 
       final response = await http.post(
         uri,
@@ -118,20 +92,13 @@ class BlogPostProvider extends BaseProvider {
         body: json.encode(request.toJson()),
       );
 
-      print('🔵 [BlogPost] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [BlogPost] Successfully inserted blog post');
         return BlogPost.fromJson(json.decode(response.body));
       } else {
-        print(
-          '❌ [BlogPost] Failed with status ${response.statusCode}: ${response.body}',
-        );
         throw Exception('Failed to insert blog post: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('❌ [BlogPost] Error inserting blog post: $e');
-      print('❌ [BlogPost] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -173,7 +140,6 @@ class BlogPostProvider extends BaseProvider {
       final token = AuthProvider.token;
       final uri = Uri.parse('$apiUrl/BlogPost/$postId/images');
 
-      print('🔵 [BlogPost] Uploading image for post $postId to: $uri');
 
       var req = http.MultipartRequest('POST', uri);
       req.headers.addAll(_headers(token!, isMultipart: true));
@@ -185,18 +151,13 @@ class BlogPostProvider extends BaseProvider {
       final streamed = await req.send();
       final response = await http.Response.fromStream(streamed);
 
-      print('🔵 [BlogPost] Upload response status: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ [BlogPost] Image uploaded successfully');
         return BlogImageResponse.fromJson(json.decode(response.body));
       } else {
-        print('❌ [BlogPost] Upload failed: ${response.body}');
         throw Exception('Failed to upload image: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('❌ [BlogPost] Error uploading image: $e');
-      print('❌ [BlogPost] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -209,7 +170,6 @@ class BlogPostProvider extends BaseProvider {
       final token = AuthProvider.token;
       final uri = Uri.parse('$apiUrl/BlogPost/upload-featured');
 
-      print('🔵 [BlogPost] Uploading featured image to: $uri');
 
       var req = http.MultipartRequest('POST', uri);
       req.headers.addAll(_headers(token!, isMultipart: true));
@@ -218,21 +178,15 @@ class BlogPostProvider extends BaseProvider {
       final streamed = await req.send();
       final response = await http.Response.fromStream(streamed);
 
-      print('🔵 [BlogPost] Upload response status: ${response.statusCode}');
-      print('🔵 [BlogPost] Upload response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         final imageUrl = data['imageUrl'] ?? data['url'];
-        print('✅ [BlogPost] Featured image uploaded: $imageUrl');
         return imageUrl;
       } else {
-        print('❌ [BlogPost] Upload failed: ${response.body}');
         throw Exception('Failed to upload featured image');
       }
     } catch (e, stackTrace) {
-      print('❌ [BlogPost] Error uploading featured image: $e');
-      print('❌ [BlogPost] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -258,27 +212,20 @@ class BlogPostProvider extends BaseProvider {
     try {
       final token = AuthProvider.token;
       if (token == null) {
-        print('⚠️ [BlogPost] No token available for view tracking');
         return false;
       }
 
       final uri = Uri.parse('$apiUrl/BlogPost/$postId/increment-view-count');
-      print('🔵 [BlogPost] Incrementing view count for post $postId');
 
       final response = await http.patch(uri, headers: _headers(token));
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        print('✅ [BlogPost] View count incremented for post $postId');
         return true;
       } else {
-        print(
-          '⚠️ [BlogPost] View increment returned status ${response.statusCode}',
-        );
         return false;
       }
     } catch (e) {
       // Fail silently - view tracking shouldn't break the user experience
-      print('⚠️ [BlogPost] Error incrementing view count: $e');
       return false;
     }
   }

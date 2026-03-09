@@ -24,7 +24,6 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔵 [BlogListScreen] Initializing with API URL: $kApiUrl');
     _provider = BlogPostProvider('BlogPost', apiUrl: kApiUrl);
     _fetchPosts();
   }
@@ -35,16 +34,12 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
       _error = null;
     });
     try {
-      print('🔵 [BlogListScreen] Starting to fetch posts...');
       final posts = await _provider.fetchBlogPosts(context);
-      print('✅ [BlogListScreen] Received ${posts.length} posts');
       setState(() {
         _posts = posts;
         _loading = false;
       });
     } catch (e, stackTrace) {
-      print('❌ [BlogListScreen] Error fetching posts: $e');
-      print('❌ [BlogListScreen] Stack trace: $stackTrace');
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -162,9 +157,6 @@ class _BlogPostListScreenState extends State<BlogPostListScreen> {
                               width: double.infinity,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                print(
-                                  '❌ [BlogListScreen] Error loading image: $error',
-                                );
                                 return Container(
                                   height: 200,
                                   decoration: BoxDecoration(

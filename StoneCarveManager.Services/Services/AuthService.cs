@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
+using StoneCarveManager.Services.Database.Context;
 using StoneCarveManager.Services.Database.Entities;
 using StoneCarveManager.Services.IServices;
 using System;
@@ -23,20 +25,17 @@ namespace StoneCarveManager.Services.Services
         private readonly RoleManager<Role> _roleManager;
         private readonly SignInManager<User> _signInManager;
         private readonly IConfiguration _configuration;
-        
-        // ✅ In-memory cache for verification codes (Development only)
-        // TODO: Replace with Redis in production
-        private static readonly Dictionary<string, (string Code, DateTime ExpiresAt)> _verificationCodes 
-            = new Dictionary<string, (string Code, DateTime ExpiresAt)>();
+        private readonly AppDbContext _context;
 
         public AuthService(UserManager<User> userManager, SignInManager<User> signInManager,
-            IConfiguration configuration, RoleManager<Role> roleManager
-              )
+            IConfiguration configuration, RoleManager<Role> roleManager,
+            AppDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _roleManager = roleManager;
+            _context = context;
         }
 
         public async Task<TokenDTO> Register(RegisterRequest model)
@@ -76,7 +75,7 @@ namespace StoneCarveManager.Services.Services
             }
 
             // Send email message via RabbitMQ
-            SendToRabbitMQ(new
+            await SendToRabbitMQ(new
             {
                 Name = $"{newUser.FirstName} {newUser.LastName}",
                 Email = newUser.Email,
@@ -97,16 +96,16 @@ namespace StoneCarveManager.Services.Services
                 throw new UnauthorizedAccessException("Invalid username or password");
             }
 
+            // Check if user is blocked BEFORE attempting sign-in
+            if (user.IsBlocked == true)
+            {
+                throw new Exception("Your account has been blocked. Please contact an administrator for assistance.");
+            }
+
             var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: false, lockoutOnFailure: false);
             if (!result.Succeeded)
             {
                 throw new UnauthorizedAccessException("Invalid username or password");
-            }
-
-            // ⭐ Check if user is blocked
-            if (user.IsBlocked == true)
-            {
-                throw new Exception("Your account has been blocked. Please contact an administrator for assistance.");
             }
 
             var token = await GenerateJwtTokenAsync(user);
@@ -121,7 +120,7 @@ namespace StoneCarveManager.Services.Services
                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-               new Claim("userid", user.Id.ToString()), // custom claim
+               new Claim("userid", user.Id.ToString()),
                new Claim(ClaimTypes.Name, user.UserName),
                new Claim("firstname", $"{user.FirstName}")
             };
@@ -151,7 +150,7 @@ namespace StoneCarveManager.Services.Services
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 UserId = user.Id,
                 ValidTo = expiry,
-                Roles = userRoles.ToArray(), // ✅ Promijenjeno sa Role na Roles
+                Roles = userRoles.ToArray(),
             };
 
             return tokenModel;
@@ -187,7 +186,6 @@ namespace StoneCarveManager.Services.Services
             }
         }
 
-        // ✅ NEW: Request password reset with verification code
         public async Task<bool> RequestPasswordResetAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -197,30 +195,44 @@ namespace StoneCarveManager.Services.Services
                 return true;
             }
 
+            // Invalidate any previous unused codes for this email
+            var previousCodes = await _context.PasswordResetCodes
+                .Where(c => c.Email == email.ToLower() && !c.IsUsed)
+                .ToListAsync();
+
+            foreach (var old in previousCodes)
+                old.IsUsed = true;
+
             // Generate 6-digit verification code
-            var random = new Random();
-            var verificationCode = random.Next(100000, 999999).ToString();
+            var verificationCode = Random.Shared.Next(100000, 999999).ToString();
 
-            // ✅ Store verification code in memory with 1 hour expiration
-            var expiresAt = DateTime.UtcNow.AddHours(1);
-            _verificationCodes[email.ToLower()] = (verificationCode, expiresAt);
+            var expiresAt = DateTime.UtcNow.AddMinutes(15);
 
-            Console.WriteLine($"✅ Stored verification code for {email}: {verificationCode} (expires at {expiresAt})");
+            // Store verification code in database
+            _context.PasswordResetCodes.Add(new PasswordResetCode
+            {
+                Email = email.ToLower(),
+                Code = verificationCode,
+                ExpiresAt = expiresAt,
+                CreatedAt = DateTime.UtcNow,
+                IsUsed = false
+            });
+
+            await _context.SaveChangesAsync();
 
             // Send message to RabbitMQ for password reset email with verification code
-            SendPasswordResetToRabbitMQ(new
+            await SendPasswordResetToRabbitMQ(new
             {
                 Name = $"{user.FirstName} {user.LastName}",
                 Email = user.Email,
                 VerificationCode = verificationCode,
-                ResetToken = "",  // Not used anymore
+                ResetToken = "",
                 ExpiresAt = expiresAt
             });
 
             return true;
         }
 
-        // ✅ NEW: Confirm password reset with verification code
         public async Task<bool> ResetPasswordAsync(string email, string verificationCode, string newPassword)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -229,33 +241,33 @@ namespace StoneCarveManager.Services.Services
                 throw new Exception("Invalid password reset request.");
             }
 
-            // ✅ Validate verification code from memory
-            var emailKey = email.ToLower();
-            
-            if (!_verificationCodes.ContainsKey(emailKey))
-            {
-                throw new Exception("No verification code found. Please request a new one.");
-            }
+            // Find a valid, unused, non-expired code for this email
+            var resetCode = await _context.PasswordResetCodes
+                .Where(c => c.Email == email.ToLower()
+                         && c.Code == verificationCode
+                         && !c.IsUsed
+                         && c.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
 
-            var (storedCode, expiresAt) = _verificationCodes[emailKey];
-
-            // Check if code expired
-            if (DateTime.UtcNow > expiresAt)
+            if (resetCode == null)
             {
-                _verificationCodes.Remove(emailKey);
-                throw new Exception("Verification code has expired. Please request a new one.");
-            }
+                // Check if there's an expired code to give a better message
+                var expiredCode = await _context.PasswordResetCodes
+                    .AnyAsync(c => c.Email == email.ToLower()
+                               && c.Code == verificationCode
+                               && !c.IsUsed
+                               && c.ExpiresAt <= DateTime.UtcNow);
 
-            // Check if code matches
-            if (storedCode != verificationCode)
-            {
+                if (expiredCode)
+                    throw new Exception("Verification code has expired. Please request a new one.");
+
                 throw new Exception("Invalid verification code.");
             }
 
-            Console.WriteLine($"✅ Verification code valid for {email}. Resetting password...");
-
-            // Remove used code
-            _verificationCodes.Remove(emailKey);
+            // Mark code as used
+            resetCode.IsUsed = true;
+            await _context.SaveChangesAsync();
 
             // Reset password using ASP.NET Identity
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
@@ -267,13 +279,11 @@ namespace StoneCarveManager.Services.Services
                 throw new Exception($"Password reset failed: {errors}");
             }
 
-            Console.WriteLine($"✅ Password successfully reset for {email}");
-
             return true;
         }
 
         // Helper method for sending messages to RabbitMQ
-        private async void SendToRabbitMQ(object message)
+        private async Task SendToRabbitMQ(object message)
         {
             try
             {
@@ -310,7 +320,7 @@ namespace StoneCarveManager.Services.Services
         }
 
         // Helper method for sending password reset messages to RabbitMQ
-        private async void SendPasswordResetToRabbitMQ(object message)
+        private async Task SendPasswordResetToRabbitMQ(object message)
         {
             try
             {

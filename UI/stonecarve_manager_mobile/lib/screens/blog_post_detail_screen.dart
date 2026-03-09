@@ -31,8 +31,6 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔵 [BlogDetailScreen] Initializing for post ID: ${widget.postId}');
-    print('🔵 [BlogDetailScreen] API URL: $kApiUrl');
     _provider = BlogPostProvider('BlogPost', apiUrl: kApiUrl);
     _fetch();
   }
@@ -42,9 +40,6 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
 
     // Check if it's a placeholder/invalid value from backend (e.g., "string")
     if (imageUrl == 'string' || imageUrl.length < 5) {
-      print(
-        '⚠️ [BlogDetailScreen] Invalid featuredImageUrl detected: "$imageUrl"',
-      );
       return null;
     }
 
@@ -68,9 +63,6 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
     // Fallback to first image in gallery if available
     if (_post != null && _post!.images.isNotEmpty) {
       final firstImage = _post!.images.first.imageUrl;
-      print(
-        'ℹ️ [BlogDetailScreen] Using first gallery image as fallback: $firstImage',
-      );
       return firstImage;
     }
 
@@ -94,13 +86,11 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
       _uploading = true;
     });
     try {
-      print('🔵 [BlogDetailScreen] Uploading image for post ${_post!.id}');
       final newImgResponse = await _provider.uploadBlogImage(
         context,
         _post!.id,
         BlogImageUploadRequest(filePath: imageFile.path),
       );
-      print('✅ [BlogDetailScreen] Image uploaded successfully');
       // Convert BlogImageResponse to BlogImage
       final newImg = BlogImage(
         id: newImgResponse.id,
@@ -119,8 +109,6 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
         ).showSnackBar(const SnackBar(content: Text('Image uploaded!')));
       }
     } catch (e, stackTrace) {
-      print('❌ [BlogDetailScreen] Error uploading image: $e');
-      print('❌ [BlogDetailScreen] Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -181,9 +169,7 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
       _error = null;
     });
     try {
-      print('🔵 [BlogDetailScreen] Fetching post ${widget.postId}...');
       final post = await _provider.getBlogPost(context, widget.postId);
-      print('✅ [BlogDetailScreen] Successfully loaded post: ${post.title}');
 
       setState(() {
         _post = post;
@@ -192,10 +178,7 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
 
       // NOTE: View count is NOT incremented on desktop (admin) version
       // Only mobile app (end-user) increments view count
-      print('ℹ️ [BlogDetailScreen] Desktop view - not tracking views');
     } catch (e, stackTrace) {
-      print('❌ [BlogDetailScreen] Error fetching post: $e');
-      print('❌ [BlogDetailScreen] Stack trace: $stackTrace');
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -264,10 +247,6 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
                         width: double.infinity,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          print(
-                            '❌ [BlogDetailScreen] Error loading image from URL: $imageUrl',
-                          );
-                          print('❌ [BlogDetailScreen] Error: $error');
                           return Container(
                             height: 200,
                             color: Colors.grey[300],
@@ -373,9 +352,6 @@ class _BlogPostDetailScreenState extends State<BlogPostDetailScreen> {
                                       height: 120,
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) {
-                                        print(
-                                          '❌ [BlogDetailScreen] Error loading image ${img.id}: $error',
-                                        );
                                         return Container(
                                           width: 120,
                                           height: 120,

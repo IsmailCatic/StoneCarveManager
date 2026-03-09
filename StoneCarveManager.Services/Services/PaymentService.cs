@@ -23,12 +23,14 @@ namespace StoneCarveManager.Services.Services
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IConfiguration _configuration;
+        private readonly bool _isDevelopment;
 
         public PaymentService(AppDbContext context, IMapper mapper, IConfiguration configuration)
         {
             _context = context;
             _mapper = mapper;
             _configuration = configuration;
+            _isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 
             var stripeSecretKey = _configuration["Stripe:SecretKey"]
                 ?? throw new InvalidOperationException("Stripe SecretKey not configured");
@@ -124,26 +126,21 @@ namespace StoneCarveManager.Services.Services
             if (payment == null)
                 throw new KeyNotFoundException("Payment not found");
 
-            // ============================================
-            // AUTO-CONFIRM FOR TEST MODE (Development Only)
-            // 
-            // ⚠️ IMPORTANT: Remove this block before production deployment!
-            // In production, customers will enter real card details through
-            // a proper Stripe payment form (e.g., flutter_stripe package)
-            // ============================================
-            if (paymentIntent.Status == "requires_payment_method" ||
-                paymentIntent.Status == "requires_confirmation")
+            // 3. Development-only: auto-confirm with test card
+            //    In production the client (flutter_stripe) confirms with real card details
+            //    and this endpoint only reads the final status from Stripe.
+            if (_isDevelopment &&
+                (paymentIntent.Status == "requires_payment_method" ||
+                 paymentIntent.Status == "requires_confirmation"))
             {
                 try
                 {
-                    // Attach Stripe's test card to the payment intent
                     var updateOptions = new PaymentIntentUpdateOptions
                     {
-                        PaymentMethod = "pm_card_visa" // Stripe's official test card
+                        PaymentMethod = "pm_card_visa"
                     };
                     paymentIntent = await service.UpdateAsync(paymentIntent.Id, updateOptions, cancellationToken: cancellationToken);
 
-                    // Now confirm the payment
                     var confirmOptions = new PaymentIntentConfirmOptions
                     {
                         PaymentMethod = "pm_card_visa"
@@ -155,20 +152,19 @@ namespace StoneCarveManager.Services.Services
                         cancellationToken: cancellationToken
                     );
 
-                    Console.WriteLine($"✅ [Payment] Auto-confirmed test payment: {paymentIntent.Id} -> {paymentIntent.Status}");
+                    Console.WriteLine($"✅ [Payment] DEV auto-confirmed test payment: {paymentIntent.Id} -> {paymentIntent.Status}");
                 }
                 catch (StripeException ex)
                 {
-                    Console.WriteLine($"❌ [Payment] Auto-confirm failed: {ex.Message}");
+                    Console.WriteLine($"❌ [Payment] DEV auto-confirm failed: {ex.Message}");
                     payment.Status = "failed";
                     payment.FailureReason = $"Auto-confirm failed: {ex.Message}";
                     await _context.SaveChangesAsync(cancellationToken);
                     return MapToPaymentResponse(payment);
                 }
             }
-            // ============================================
 
-            // 3. Update payment status based on Stripe's final status
+            // 4. Update payment status based on Stripe's authoritative status
             payment.Status = paymentIntent.Status;
             payment.TransactionId = paymentIntent.Id;
 
@@ -531,9 +527,234 @@ namespace StoneCarveManager.Services.Services
         // WEBHOOK metod - OPCIONALAN (ne treba za lokalni razvoj)
         public async Task<bool> HandleStripeWebhookAsync(string json, string signature, CancellationToken cancellationToken = default)
         {
-            // Ova metoda može ostati prazna ili vratiti true
-            // Ne koristi se u lokalnom razvoju
-            return await Task.FromResult(true);
+            var webhookSecret = _configuration["Stripe:WebhookSecret"];
+
+            Event stripeEvent;
+
+            if (!string.IsNullOrWhiteSpace(webhookSecret))
+            {
+                // Production path: verify signature using webhook secret
+                try
+                {
+                    stripeEvent = EventUtility.ConstructEvent(json, signature, webhookSecret);
+                }
+                catch (StripeException ex)
+                {
+                    Console.WriteLine($"❌ [Webhook] Signature verification failed: {ex.Message}");
+                    return false;
+                }
+            }
+            else if (_isDevelopment)
+            {
+                // Development path: skip signature verification, parse event directly from JSON
+                // ⚠️ This is ONLY safe for local testing — never run without a webhook secret in production
+                Console.WriteLine("⚠️ [Webhook] Development mode — skipping signature verification");
+                try
+                {
+                    stripeEvent = EventUtility.ParseEvent(json);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ [Webhook] Failed to parse event JSON: {ex.Message}");
+                    return false;
+                }
+            }
+            else
+            {
+                // Non-development without webhook secret — reject
+                Console.WriteLine("❌ [Webhook] Stripe WebhookSecret not configured and not in Development mode — rejecting.");
+                return false;
+            }
+
+            Console.WriteLine($"✅ [Webhook] Received event: {stripeEvent.Type} (id: {stripeEvent.Id})");
+
+            try
+            {
+                switch (stripeEvent.Type)
+                {
+                    case EventTypes.PaymentIntentSucceeded:
+                        await HandlePaymentIntentSucceededAsync(stripeEvent, cancellationToken);
+                        break;
+
+                    case EventTypes.PaymentIntentPaymentFailed:
+                        await HandlePaymentIntentFailedAsync(stripeEvent, cancellationToken);
+                        break;
+
+                    case EventTypes.ChargeRefunded:
+                        await HandleChargeRefundedAsync(stripeEvent, cancellationToken);
+                        break;
+
+                    case EventTypes.PaymentIntentCanceled:
+                        await HandlePaymentIntentCanceledAsync(stripeEvent, cancellationToken);
+                        break;
+
+                    default:
+                        Console.WriteLine($"ℹ️ [Webhook] Unhandled event type: {stripeEvent.Type}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [Webhook] Error processing event {stripeEvent.Type}: {ex.Message}");
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Handle payment_intent.succeeded — mark payment as succeeded, update order to Processing.
+        /// </summary>
+        private async Task HandlePaymentIntentSucceededAsync(Event stripeEvent, CancellationToken cancellationToken)
+        {
+            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+            if (paymentIntent == null) return;
+
+            var payment = await _context.Payments
+                .Include(p => p.Order)
+                .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntent.Id, cancellationToken);
+
+            if (payment == null)
+            {
+                Console.WriteLine($"⚠️ [Webhook] No payment found for PaymentIntent {paymentIntent.Id}");
+                return;
+            }
+
+            // Idempotency: skip if already succeeded
+            if (payment.Status == "succeeded")
+            {
+                Console.WriteLine($"ℹ️ [Webhook] Payment {payment.Id} already succeeded — skipping.");
+                return;
+            }
+
+            payment.Status = "succeeded";
+            payment.TransactionId = paymentIntent.Id;
+            payment.CompletedAt = DateTime.UtcNow;
+
+            // Move order from Pending to Processing
+            if (payment.Order.Status == DatabaseOrderStatus.Pending)
+            {
+                payment.Order.Status = DatabaseOrderStatus.Processing;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            Console.WriteLine($"✅ [Webhook] Payment {payment.Id} for order {payment.Order.OrderNumber} marked as succeeded.");
+        }
+
+        /// <summary>
+        /// Handle payment_intent.payment_failed — mark payment as failed, record reason.
+        /// </summary>
+        private async Task HandlePaymentIntentFailedAsync(Event stripeEvent, CancellationToken cancellationToken)
+        {
+            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+            if (paymentIntent == null) return;
+
+            var payment = await _context.Payments
+                .Include(p => p.Order)
+                .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntent.Id, cancellationToken);
+
+            if (payment == null)
+            {
+                Console.WriteLine($"⚠️ [Webhook] No payment found for PaymentIntent {paymentIntent.Id}");
+                return;
+            }
+
+            // Don't overwrite a succeeded payment
+            if (payment.Status == "succeeded")
+            {
+                Console.WriteLine($"ℹ️ [Webhook] Payment {payment.Id} already succeeded — ignoring failure event.");
+                return;
+            }
+
+            payment.Status = "failed";
+            payment.FailureReason = paymentIntent.LastPaymentError?.Message ?? "Payment failed";
+
+            await _context.SaveChangesAsync(cancellationToken);
+            Console.WriteLine($"✅ [Webhook] Payment {payment.Id} for order {payment.Order.OrderNumber} marked as failed: {payment.FailureReason}");
+        }
+
+        /// <summary>
+        /// Handle charge.refunded — update payment refund info and order status.
+        /// </summary>
+        private async Task HandleChargeRefundedAsync(Event stripeEvent, CancellationToken cancellationToken)
+        {
+            var charge = stripeEvent.Data.Object as Charge;
+            if (charge == null) return;
+
+            var paymentIntentId = charge.PaymentIntentId;
+            if (string.IsNullOrEmpty(paymentIntentId))
+            {
+                Console.WriteLine("⚠️ [Webhook] Charge has no PaymentIntent ID — skipping.");
+                return;
+            }
+
+            var payment = await _context.Payments
+                .Include(p => p.Order)
+                .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId, cancellationToken);
+
+            if (payment == null)
+            {
+                Console.WriteLine($"⚠️ [Webhook] No payment found for PaymentIntent {paymentIntentId}");
+
+                return;
+            }
+
+            // Calculate total refunded from Stripe (in cents → decimal)
+            var totalRefunded = (charge.AmountRefunded / 100m);
+
+            payment.RefundAmount = totalRefunded;
+            payment.RefundedAt = DateTime.UtcNow;
+
+            if (totalRefunded >= payment.Amount)
+            {
+                // Full refund
+                payment.Status = "refunded";
+
+                // Cancel the order if not already delivered
+                if (payment.Order.Status != DatabaseOrderStatus.Delivered)
+                {
+                    payment.Order.Status = DatabaseOrderStatus.Cancelled;
+                }
+            }
+            else
+            {
+                // Partial refund
+                payment.Status = "partially_refunded";
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            Console.WriteLine($"✅ [Webhook] Payment {payment.Id} refund updated: {totalRefunded:C} of {payment.Amount:C} ({payment.Status}).");
+        }
+
+        /// <summary>
+        /// Handle payment_intent.canceled — mark payment as cancelled.
+        /// </summary>
+        private async Task HandlePaymentIntentCanceledAsync(Event stripeEvent, CancellationToken cancellationToken)
+        {
+            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+            if (paymentIntent == null) return;
+
+            var payment = await _context.Payments
+                .Include(p => p.Order)
+                .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntent.Id, cancellationToken);
+
+            if (payment == null)
+            {
+                Console.WriteLine($"⚠️ [Webhook] No payment found for PaymentIntent {paymentIntent.Id}");
+                return;
+            }
+
+            // Don't overwrite a succeeded or refunded payment
+            if (payment.Status == "succeeded" || payment.Status == "refunded" || payment.Status == "partially_refunded")
+            {
+                Console.WriteLine($"ℹ️ [Webhook] Payment {payment.Id} is {payment.Status} — ignoring cancel event.");
+                return;
+            }
+
+            payment.Status = "cancelled";
+
+            await _context.SaveChangesAsync(cancellationToken);
+            Console.WriteLine($"✅ [Webhook] Payment {payment.Id} for order {payment.Order.OrderNumber} marked as cancelled.");
         }
 
         public async Task DeletePaymentAsync(int paymentId, CancellationToken cancellationToken = default)

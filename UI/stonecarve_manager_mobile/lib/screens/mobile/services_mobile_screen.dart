@@ -53,19 +53,16 @@ class _ServicesMobileScreenState extends State<ServicesMobileScreen> {
         '${BaseProvider.baseUrl}/api/Product/services',
       ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-      print('[ServicesMobile] Fetching from: $uri');
 
       final response = await http.get(
         uri,
         headers: AuthProvider.getAuthHeaders(),
       );
 
-      print('[ServicesMobile] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         final List<dynamic> items = jsonResponse['items'] ?? [];
-        print('[ServicesMobile] Loaded ${items.length} services');
         if (!mounted) return;
         final services = items.map((j) => Product.fromJson(j)).toList();
         setState(() {
@@ -80,7 +77,6 @@ class _ServicesMobileScreenState extends State<ServicesMobileScreen> {
         });
       }
     } catch (e) {
-      print('[ServicesMobile] Error: $e');
       if (!mounted) return;
       setState(() {
         _errorMessage = 'Error: $e';

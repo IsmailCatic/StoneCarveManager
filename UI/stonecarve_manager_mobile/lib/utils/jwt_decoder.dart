@@ -6,7 +6,6 @@ class JwtDecoder {
     try {
       final parts = token.split('.');
       if (parts.length != 3) {
-        print('[JwtDecoder] Invalid token format');
         return null;
       }
 
@@ -22,7 +21,6 @@ class JwtDecoder {
       // Parse JSON
       return jsonDecode(decoded) as Map<String, dynamic>;
     } catch (e) {
-      print('[JwtDecoder] Error decoding token: $e');
       return null;
     }
   }
@@ -50,7 +48,6 @@ class JwtDecoder {
       }
     }
 
-    print('[JwtDecoder] UserId not found in token claims: ${payload.keys}');
     return null;
   }
 
@@ -87,7 +84,6 @@ class JwtDecoder {
       );
       return DateTime.now().toUtc().isAfter(expiry);
     } catch (e) {
-      print('[JwtDecoder] Error checking token expiry: $e');
       return true; // Treat decode failures as expired
     }
   }

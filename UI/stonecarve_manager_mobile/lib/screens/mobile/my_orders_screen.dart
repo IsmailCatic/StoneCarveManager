@@ -60,7 +60,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
         _isLoading = false;
       });
     } catch (e) {
-      print('[MyOrdersScreen] Error: $e');
 
       if (!mounted) return; // Check before setState in catch
 
@@ -297,15 +296,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
     final isCustom = hasNoProductId || hasAttachment || hasCustomProductName;
 
     // Debug logging for ALL orders
-    print(
-      '[MyOrders] Order #${order.orderNumber}: '
-      'hasNoProductId=$hasNoProductId, hasAttachment=$hasAttachment, '
-      'hasCustomProductName=$hasCustomProductName, '
-      'itemsCount=${order.orderItems.length}, '
-      'firstItemProductId=${order.orderItems.isNotEmpty ? order.orderItems.first.productId : "N/A"}, '
-      'firstItemProductName=${order.orderItems.isNotEmpty ? order.orderItems.first.productName : "N/A"}, '
-      'isCustom=$isCustom',
-    );
 
     return isCustom;
   }

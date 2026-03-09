@@ -31,7 +31,7 @@ namespace StoneCarveManager.Services.Services
         public override async Task<ProductResponse> CreateAsync(ProductInsertRequest request)
         {
             var state = BaseProductState.CreateState("initial");
-            return state.Insert(request);
+            return await state.Insert(request);
         }
 
         public override async Task<ProductResponse?> UpdateAsync(int id, ProductUpdateRequest request)
@@ -41,50 +41,50 @@ namespace StoneCarveManager.Services.Services
                 return null;
 
             var state = BaseProductState.CreateState(entity.ProductState);
-            return state.Update(id, request);
+            return await state.Update(id, request);
         }
 
-        public ProductResponse Activate(int id)
+        public async Task<ProductResponse> Activate(int id)
         {
-            var entity = _context.Products.Find(id);
+            var entity = await _context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             var state = BaseProductState.CreateState(entity.ProductState);
-            return state.Activate(id);
+            return await state.Activate(id);
         }
 
-        public ProductResponse Hide(int id)
+        public async Task<ProductResponse> Hide(int id)
         {
-            var entity = _context.Products.Find(id);
+            var entity = await _context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             var state = BaseProductState.CreateState(entity.ProductState);
-            return state.Hide(id);
+            return await state.Hide(id);
         }
 
-        public ProductResponse MakeService(int id)
+        public async Task<ProductResponse> MakeService(int id)
         {
-            var entity = _context.Products.Find(id);
+            var entity = await _context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             var state = BaseProductState.CreateState(entity.ProductState);
-            return state.MakeService(id);
+            return await state.MakeService(id);
         }
 
-        public ProductResponse AddToPortfolio(int id)
+        public async Task<ProductResponse> AddToPortfolio(int id)
         {
-            var entity = _context.Products.Find(id);
+            var entity = await _context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             var state = BaseProductState.CreateState(entity.ProductState);
-            return state.AddToPortfolio(id);
+            return await state.AddToPortfolio(id);
         }
 
-        public List<string> AllowedActions(int id)
+        public async Task<List<string>> AllowedActions(int id)
         {
             _logger.LogInformation($"Allowed actions called for: {id}");
 
@@ -95,7 +95,7 @@ namespace StoneCarveManager.Services.Services
             }
             else
             {
-                var entity = _context.Products.Find(id);
+                var entity = await _context.Products.FindAsync(id);
                 if (entity == null)
                     throw new KeyNotFoundException($"Product with ID {id} not found");
 

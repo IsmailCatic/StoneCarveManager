@@ -135,15 +135,11 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
         '${BaseProvider.baseUrl}/api/Product',
       ).replace(queryParameters: queryParams);
 
-      print(
-        '[ProductsMobile] Fetching${isSearchMode ? " (search=\"$search\")" : " page $page"} from: $uri',
-      );
 
       final response = await http.get(
         uri,
         headers: AuthProvider.getAuthHeaders(),
       );
-      print('[ProductsMobile] Response status: ${response.statusCode}');
 
       if (response.statusCode == 401) {
         if (!mounted) return;
@@ -161,9 +157,6 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
             .map((json) => Product.fromJson(json))
             .where((p) => p.productState?.toLowerCase() == 'active')
             .toList();
-        print(
-          '[ProductsMobile] ${fetched.length} active items fetched (raw: $rawCount)',
-        );
 
         if (!mounted) return;
         setState(() {
@@ -220,7 +213,6 @@ class _ProductsMobileScreenState extends State<ProductsMobileScreen>
         });
       }
     } catch (e) {
-      print('[ProductsMobile] Error: $e');
       if (!mounted) return;
       setState(() {
         _errorMessage = 'Error: $e';

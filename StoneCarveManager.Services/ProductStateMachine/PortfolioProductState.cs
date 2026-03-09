@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using StoneCarveManager.Model.Requests;
 using StoneCarveManager.Model.Responses;
 using StoneCarveManager.Services.Database.Context;
@@ -13,30 +14,30 @@ namespace StoneCarveManager.Services.ProductStateMachine
         {
         }
 
-        public override ProductResponse Update(int id, ProductUpdateRequest request)
+        public override async Task<ProductResponse> Update(int id, ProductUpdateRequest request)
         {
-            var entity = Context.Products.Find(id);
+            var entity = await Context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             Mapper.Map(request, entity);
             entity.UpdatedAt = DateTime.UtcNow;
 
-            Context.SaveChanges();
+            await Context.SaveChangesAsync();
 
             return Mapper.Map<ProductResponse>(entity);
         }
 
-        public override ProductResponse Hide(int id)
+        public override async Task<ProductResponse> Hide(int id)
         {
-            var entity = Context.Products.Find(id);
+            var entity = await Context.Products.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException($"Product with ID {id} not found");
 
             entity.ProductState = "hidden";
             entity.UpdatedAt = DateTime.UtcNow;
 
-            Context.SaveChanges();
+            await Context.SaveChangesAsync();
 
             return Mapper.Map<ProductResponse>(entity);
         }

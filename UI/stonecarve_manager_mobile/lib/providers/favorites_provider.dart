@@ -59,7 +59,6 @@ class FavoritesProvider with ChangeNotifier {
   /// Should be called AFTER successful login
   Future<void> loadFavorites() async {
     try {
-      debugPrint('[FavoritesProvider] 🔄 Loading favorites...');
 
       // First, load from local cache for instant UI
       await _loadFromLocalStorage();
@@ -68,24 +67,15 @@ class FavoritesProvider with ChangeNotifier {
 
       // Then sync with backend if authenticated
       if (AuthProvider.isAuthenticated()) {
-        debugPrint(
-          '[FavoritesProvider] ✅ Authenticated - syncing with backend',
-        );
         // Don't await - let it run in background
         _fetchFromBackend()
             .then((_) {
-              debugPrint('[FavoritesProvider] ✅ Background sync completed');
             })
             .catchError((e) {
-              debugPrint('[FavoritesProvider] ❌ Background sync failed: $e');
             });
       } else {
-        debugPrint(
-          '[FavoritesProvider] ⚠️ Not authenticated, using local cache only',
-        );
       }
     } catch (e) {
-      debugPrint('[FavoritesProvider] ❌ Error loading favorites: $e');
       _lastError = e.toString();
       _isInitialized = true;
       notifyListeners();
@@ -103,14 +93,9 @@ class FavoritesProvider with ChangeNotifier {
         _favoriteProductIds.addAll(
           savedIds.map((id) => int.parse(id)).toList(),
         );
-        debugPrint(
-          '[FavoritesProvider] Loaded ${_favoriteProductIds.length} favorites from cache',
-        );
       } else {
-        debugPrint('[FavoritesProvider] No cached favorites found');
       }
     } catch (e) {
-      debugPrint('[FavoritesProvider] Error loading from cache: $e');
     }
   }
 
@@ -123,11 +108,7 @@ class FavoritesProvider with ChangeNotifier {
           .toList();
 
       await prefs.setStringList(_storageKey, idsToSave);
-      debugPrint(
-        '[FavoritesProvider] Saved ${idsToSave.length} favorites to cache',
-      );
     } catch (e) {
-      debugPrint('[FavoritesProvider] Error saving to cache: $e');
     }
   }
 
@@ -136,7 +117,6 @@ class FavoritesProvider with ChangeNotifier {
     try {
       // Use /ids endpoint to get just the product IDs
       final url = '${BaseProvider.baseUrl}/api/Favorite/ids';
-      debugPrint('[FavoritesProvider] Fetching from backend: $url');
 
       final response = await http
           .get(Uri.parse(url), headers: AuthProvider.getAuthHeaders())
@@ -153,25 +133,16 @@ class FavoritesProvider with ChangeNotifier {
           await _saveToLocalStorage();
           notifyListeners();
 
-          debugPrint(
-            '[FavoritesProvider] Synced ${_favoriteProductIds.length} favorites from backend',
-          );
         } else {
-          debugPrint('[FavoritesProvider] Backend favorites match local cache');
         }
 
         _lastError = null;
       } else if (response.statusCode == 401) {
-        debugPrint('[FavoritesProvider] Unauthorized, using local cache');
         _lastError = 'Not authenticated';
       } else {
-        debugPrint(
-          '[FavoritesProvider] Backend error ${response.statusCode}, using cache',
-        );
         _lastError = 'Backend error: ${response.statusCode}';
       }
     } catch (e) {
-      debugPrint('[FavoritesProvider] Network error, using cache: $e');
       _lastError = 'Offline mode';
       // Continue using local cache
     }
@@ -208,7 +179,6 @@ class FavoritesProvider with ChangeNotifier {
           })
           .catchError((error) {
             // Log error but DON'T revert - offline-first approach
-            debugPrint('[FavoritesProvider] Backend sync failed: $error');
             _lastError = 'Saved locally (sync failed)';
           });
     } else {
@@ -238,7 +208,6 @@ class FavoritesProvider with ChangeNotifier {
         throw Exception('Backend returned ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('[FavoritesProvider] Sync error: $e');
       rethrow;
     }
   }
@@ -274,9 +243,6 @@ class FavoritesProvider with ChangeNotifier {
     final newIds = productIds.where((id) => !_favoriteProductIds.contains(id));
 
     _favoriteProductIds.addAll(newIds);
-    debugPrint(
-      '[FavoritesProvider] Added ${newIds.length} products to favorites',
-    );
 
     notifyListeners();
     await _saveToLocalStorage();
@@ -295,9 +261,6 @@ class FavoritesProvider with ChangeNotifier {
       _favoriteProductIds.remove(id);
     }
 
-    debugPrint(
-      '[FavoritesProvider] Removed ${productIds.length} products from favorites',
-    );
 
     notifyListeners();
     await _saveToLocalStorage();
@@ -320,7 +283,6 @@ class FavoritesProvider with ChangeNotifier {
     notifyListeners();
     await _saveToLocalStorage();
 
-    debugPrint('[FavoritesProvider] Cleared all $count favorites');
 
     // Sync with backend
     if (AuthProvider.isAuthenticated()) {
@@ -331,13 +293,11 @@ class FavoritesProvider with ChangeNotifier {
             .timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
-          debugPrint('[FavoritesProvider] Backend clear successful');
           _lastError = null;
         } else {
           throw Exception('Backend returned ${response.statusCode}');
         }
       } catch (e) {
-        debugPrint('[FavoritesProvider] Backend clear failed, reverting: $e');
 
         // Revert on failure
         _favoriteProductIds.addAll(backup);
@@ -354,12 +314,10 @@ class FavoritesProvider with ChangeNotifier {
   /// Should be called after login or when coming back online
   Future<bool> syncWithBackend() async {
     if (_isSyncing) {
-      debugPrint('[FavoritesProvider] Sync already in progress');
       return false;
     }
 
     if (!AuthProvider.isAuthenticated()) {
-      debugPrint('[FavoritesProvider] Cannot sync - not authenticated');
       return false;
     }
 
@@ -370,9 +328,6 @@ class FavoritesProvider with ChangeNotifier {
       final url = '${BaseProvider.baseUrl}/api/Favorite/sync';
       final localIds = _favoriteProductIds.toList();
 
-      debugPrint(
-        '[FavoritesProvider] Syncing ${localIds.length} local favorites with backend',
-      );
 
       final response = await http
           .post(
@@ -387,10 +342,6 @@ class FavoritesProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        debugPrint('[FavoritesProvider] Sync successful: ${result['message']}');
-        debugPrint(
-          '[FavoritesProvider] Added: ${result['added']}, Removed: ${result['removed']}',
-        );
 
         // Server returns the synchronized list
         final serverFavorites = List<int>.from(
@@ -404,16 +355,12 @@ class FavoritesProvider with ChangeNotifier {
         await _saveToLocalStorage();
         _lastError = null;
 
-        debugPrint(
-          '[FavoritesProvider] Final count: ${_favoriteProductIds.length}',
-        );
 
         return true;
       } else {
         throw Exception('Sync failed: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('[FavoritesProvider] Sync error: $e');
       _lastError = 'Sync failed: $e';
       return false;
     } finally {
@@ -429,9 +376,7 @@ class FavoritesProvider with ChangeNotifier {
 
     try {
       await _fetchFromBackend();
-      debugPrint('[FavoritesProvider] Refreshed from backend');
     } catch (e) {
-      debugPrint('[FavoritesProvider] Refresh failed: $e');
       _lastError = 'Refresh failed';
     }
   }

@@ -709,46 +709,58 @@ namespace StoneCarveManager.Services.Services
             int year,
             CancellationToken cancellationToken = default)
         {
+            // Aggregate order count and revenue per month on the database
+            var monthlyAggregates = await _context.Orders
+                .Where(o => o.OrderDate.Year == year)
+                .GroupBy(o => o.OrderDate.Month)
+                .Select(g => new
+                {
+                    Month = g.Key,
+                    OrderCount = g.Count(),
+                    TotalRevenue = g.Sum(o => o.TotalAmount)
+                })
+                .OrderBy(m => m.Month)
+                .ToListAsync(cancellationToken);
+
+            var yearOrderCount = monthlyAggregates.Sum(m => m.OrderCount);
+            var yearTotalRevenue = monthlyAggregates.Sum(m => m.TotalRevenue);
+
+            // Load the actual orders per month with only the navigations needed for the response
             var orders = await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.AssignedEmployee)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
-                .Include(o => o.ProgressImages)
-                    .ThenInclude(pi => pi.UploadedByUser)
-                .Include(o => o.Review)
                 .AsSplitQuery()
                 .Where(o => o.OrderDate.Year == year)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync(cancellationToken);
 
-            var orderResponses = orders.Select(o =>
+            var ordersByMonth = orders.GroupBy(o => o.OrderDate.Month)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var monthlyGroups = monthlyAggregates.Select(m =>
             {
-                var response = _mapper.Map<OrderResponse>(o);
-
-                // Populate client and employee names
-                response.ClientName = o.User != null
-                    ? $"{o.User.FirstName} {o.User.LastName}"
-                    : null;
-                response.ClientEmail = o.User?.Email;
-                response.AssignedEmployeeName = o.AssignedEmployee != null
-                    ? $"{o.AssignedEmployee.FirstName} {o.AssignedEmployee.LastName}"
-                    : null;
-
-                return response;
-            }).ToList();
-
-            var monthlyGroups = orderResponses
-                .GroupBy(o => o.OrderDate.Month)
-                .Select(g => new MonthSummary
+                var monthOrders = ordersByMonth.GetValueOrDefault(m.Month, new List<Order>());
+                return new MonthSummary
                 {
-                    Month = g.Key,
-                    OrderCount = g.Count(),
-                    TotalRevenue = g.Sum(o => o.TotalAmount),
-                    Orders = g.OrderByDescending(o => o.OrderDate).ToList()
-                })
-                .OrderBy(m => m.Month)
-                .ToList();
+                    Month = m.Month,
+                    OrderCount = m.OrderCount,
+                    TotalRevenue = m.TotalRevenue,
+                    Orders = monthOrders.Select(o =>
+                    {
+                        var response = _mapper.Map<OrderResponse>(o);
+                        response.ClientName = o.User != null
+                            ? $"{o.User.FirstName} {o.User.LastName}"
+                            : null;
+                        response.ClientEmail = o.User?.Email;
+                        response.AssignedEmployeeName = o.AssignedEmployee != null
+                            ? $"{o.AssignedEmployee.FirstName} {o.AssignedEmployee.LastName}"
+                            : null;
+                        return response;
+                    }).ToList()
+                };
+            }).ToList();
 
             return new OrderMonthlySummaryResponse
             {
@@ -756,8 +768,8 @@ namespace StoneCarveManager.Services.Services
                 Months = monthlyGroups,
                 YearTotal = new YearTotalSummary
                 {
-                    OrderCount = orderResponses.Count,
-                    TotalRevenue = orderResponses.Sum(o => o.TotalAmount)
+                    OrderCount = yearOrderCount,
+                    TotalRevenue = yearTotalRevenue
                 }
             };
         }
@@ -812,7 +824,7 @@ namespace StoneCarveManager.Services.Services
             // Notify customer via email
             if (order.User != null && !string.IsNullOrEmpty(order.User.Email))
             {
-                _ = SendOrderStatusChangedToRabbitMQ(new
+                await SendOrderStatusChangedToRabbitMQ(new
                 {
                     ClientName = $"{order.User.FirstName} {order.User.LastName}",
                     ClientEmail = order.User.Email,

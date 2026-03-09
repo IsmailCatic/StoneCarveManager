@@ -32,15 +32,11 @@ class _ProductActionButtonsState extends State<ProductActionButtons> {
     try {
       final provider = ProductProvider();
       final actions = await provider.getAllowedActions(widget.productId);
-      print('🎯 [ProductActionButtons] Product ID: ${widget.productId}');
-      print('🎯 [ProductActionButtons] Current State: ${widget.currentState}');
-      print('🎯 [ProductActionButtons] Allowed Actions: $actions');
       setState(() {
         _allowedActions = actions;
         _loading = false;
       });
     } catch (e) {
-      print('❌ Error loading allowed actions: $e');
       setState(() {
         _loading = false;
       });

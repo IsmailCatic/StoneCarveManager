@@ -41,32 +41,32 @@ namespace StoneCarveManager.Services.ProductStateMachine
             ServiceProvider = serviceProvider;
         }
 
-        public virtual ProductResponse Insert(ProductInsertRequest request)
+        public virtual async Task<ProductResponse> Insert(ProductInsertRequest request)
         {
             throw new InvalidOperationException("Insert is not allowed in this state");
         }
 
-        public virtual ProductResponse Update(int id, ProductUpdateRequest request)
+        public virtual async Task<ProductResponse> Update(int id, ProductUpdateRequest request)
         {
             throw new InvalidOperationException("Update is not allowed in this state");
         }
 
-        public virtual ProductResponse Activate(int id)
+        public virtual async Task<ProductResponse> Activate(int id)
         {
             throw new InvalidOperationException("Activate is not allowed in this state");
         }
 
-        public virtual ProductResponse Hide(int id)
+        public virtual async Task<ProductResponse> Hide(int id)
         {
             throw new InvalidOperationException("Hide is not allowed in this state");
         }
 
-        public virtual ProductResponse MakeService(int id)
+        public virtual async Task<ProductResponse> MakeService(int id)
         {
             throw new InvalidOperationException("MakeService is not allowed in this state");
         }
 
-        public virtual ProductResponse AddToPortfolio(int id)
+        public virtual async Task<ProductResponse> AddToPortfolio(int id)
         {
             throw new InvalidOperationException("AddToPortfolio is not allowed in this state");
         }

@@ -68,9 +68,6 @@ class _OrderPaymentScreenState extends State<OrderPaymentScreen> {
 
     try {
       // 1. Create payment intent on the backend
-      print(
-        '[OrderPaymentScreen] Creating payment intent for order ${widget.order.id}',
-      );
       final paymentIntent = await PaymentProvider.createPaymentIntent(
         orderId: widget.order.id,
         paymentMethod: 'stripe',
@@ -83,7 +80,6 @@ class _OrderPaymentScreenState extends State<OrderPaymentScreen> {
       }
 
       // 2. Confirm with Stripe SDK (uses the CardField card details entered above)
-      print('[OrderPaymentScreen] Confirming with Stripe...');
       try {
         await Stripe.instance.confirmPayment(
           paymentIntentClientSecret: paymentIntent.clientSecret!,
@@ -93,19 +89,14 @@ class _OrderPaymentScreenState extends State<OrderPaymentScreen> {
         );
       } on StripeException catch (e) {
         // In test mode the SDK may still succeed server-side; continue to backend confirm
-        print(
-          '[OrderPaymentScreen] Stripe SDK error (may be OK in test): ${e.error.message}',
-        );
       }
 
       // 3. Confirm with backend to record payment in the database
-      print('[OrderPaymentScreen] Confirming with backend...');
       final payment = await PaymentProvider.confirmPayment(
         paymentIntentId: paymentIntent.id!,
         orderId: widget.order.id,
       );
 
-      print('[OrderPaymentScreen] Payment status: ${payment.status}');
 
       if (!mounted) return;
 
@@ -117,7 +108,6 @@ class _OrderPaymentScreenState extends State<OrderPaymentScreen> {
         );
       }
     } catch (e) {
-      print('[OrderPaymentScreen] Error: $e');
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(

@@ -33,12 +33,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (AuthProvider.isAuthenticated()) {
-      print('[Login] 🔄 User already authenticated, redirecting to home...');
 
       // Load favorites in background (don't await - non-blocking)
       final favoritesProvider = context.read<FavoritesProvider>();
       favoritesProvider.loadFavorites().then((_) {
-        print('[Login] ✅ Background favorites sync completed');
       });
 
       // Navigate to home immediately
@@ -74,7 +72,6 @@ class _LoginScreenState extends State<LoginScreen> {
         final favoritesProvider = context.read<FavoritesProvider>();
 
         // Now load favorites (cache + backend) after successful login
-        debugPrint('[Login] Loading favorites after login...');
         await favoritesProvider.loadFavorites();
 
         // Navigate to home

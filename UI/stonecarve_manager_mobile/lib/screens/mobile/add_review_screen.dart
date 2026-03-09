@@ -66,7 +66,6 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
         Navigator.pop(context, review); // Return review to previous screen
       }
     } catch (e) {
-      print('[AddReviewScreen] Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

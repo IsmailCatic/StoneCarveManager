@@ -1,18 +1,31 @@
 /// Stripe Configuration
 ///
-/// IMPORTANT: This uses TEST keys for development.
-/// Before going to production, replace with LIVE keys and move to environment variables.
+/// Keys are supplied via --dart-define at build / run time:
+///   flutter run --dart-define=STRIPE_PUBLISHABLE_KEY=pk_test_...
+///
+/// The defaults below are **test-mode** fallbacks for local development only.
 class StripeConfig {
-  // Stripe Publishable Key (Safe to expose in client-side code)
-  // Get this from: https://dashboard.stripe.com/test/apikeys
-  static const String publishableKey =
-      'pk_test_51QkXtqP3Qv3nEfp1dqHhz0AYPuCnoamCT1X95IDpOFXrC9jgC6AUxlKglJQ8cSaxlP0ghKO0Tl9SQFxA39LzE6uq00FZI0QiVe';
+  // Stripe Publishable Key
+  // Override with: --dart-define=STRIPE_PUBLISHABLE_KEY=<your_key>
+  static const String publishableKey = String.fromEnvironment(
+    'STRIPE_PUBLISHABLE_KEY',
+    defaultValue:
+        'pk_test_51QkXtqP3Qv3nEfp1dqHhz0AYPuCnoamCT1X95IDpOFXrC9jgC6AUxlKglJQ8cSaxlP0ghKO0Tl9SQFxA39LzE6uq00FZI0QiVe',
+  );
 
-  // Merchant identifier (for Apple Pay - optional)
-  static const String merchantIdentifier = 'merchant.com.stonecarve.manager';
+  // Merchant identifier (for Apple Pay)
+  // Override with: --dart-define=STRIPE_MERCHANT_ID=<your_id>
+  static const String merchantIdentifier = String.fromEnvironment(
+    'STRIPE_MERCHANT_ID',
+    defaultValue: 'merchant.com.stonecarve.manager',
+  );
 
   // URL scheme for return URL (for 3D Secure redirects)
-  static const String urlScheme = 'stonecarve';
+  // Override with: --dart-define=STRIPE_URL_SCHEME=<your_scheme>
+  static const String urlScheme = String.fromEnvironment(
+    'STRIPE_URL_SCHEME',
+    defaultValue: 'stonecarve',
+  );
 
   /// Test card numbers for Stripe Test Mode:
   /// - Success: 4242 4242 4242 4242

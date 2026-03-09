@@ -101,7 +101,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       if (mounted) setState(() => _recommendations = recs);
     } catch (e) {
-      print('[ProductDetail] Recommendations error: $e');
     } finally {
       if (mounted) setState(() => _loadingRecs = false);
     }
